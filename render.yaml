@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: paradox-edge-trader
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      cd frontend && npm install && npm run build && cd ..
+    startCommand: uvicorn api.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ALPACA_KEY_TEMPEST
+        sync: false
+      - key: ALPACA_SECRET_TEMPEST
+        sync: false
+      - key: ALPACA_KEY_SIREN
+        sync: false
+      - key: ALPACA_SECRET_SIREN
+        sync: false
+      - key: ALPACA_KEY_ALCHEMIST
+        sync: false
+      - key: ALPACA_SECRET_ALCHEMIST
+        sync: false
+      - key: ALPACA_KEY_WEAVER
+        sync: false
+      - key: ALPACA_SECRET_WEAVER
+        sync: false
+      - key: ALPACA_KEY_ORACLE
+        sync: false
+      - key: ALPACA_SECRET_ORACLE
+        sync: false
+      - key: ALPACA_KEY_SHADOW
+        sync: false
+      - key: ALPACA_SECRET_SHADOW
+        sync: false
+      - key: ALPACA_KEY_PARADOX_HUNTER
+        sync: false
+      - key: ALPACA_SECRET_PARADOX_HUNTER
+        sync: false
+      - key: FMP_API_KEY
+        sync: false
+      - key: FRED_API_KEY
+        sync: false
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

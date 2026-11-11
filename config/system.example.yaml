@@ -1,0 +1,143 @@
+# Paradox Edge Trader v2 — System Configuration
+# Copy this file to config/system.yaml and fill in your values.
+# config/system.yaml is gitignored — never commit your keys.
+
+# ─── LLM Routing ───────────────────────────────────────────────
+openrouter:
+  api_key: "YOUR_OPENROUTER_API_KEY"
+  base_url: "https://openrouter.ai/api/v1"
+
+# ─── Agent Model Assignments ───────────────────────────────────
+# Change these any time from the Config panel in the web interface,
+# or edit here and redeploy. Use exact OpenRouter model IDs.
+# Browse all models at: https://openrouter.ai/models
+agent_models:
+  tempest:        "deepseek/deepseek-v3.2"                    # Latest DeepSeek V3 — fast, instinctive momentum reader
+  siren:          "qwen/qwen3-235b-a22b-2507"                 # Qwen3 235B July update — nuance, narrative, reads between lines
+  alchemist:      "deepseek/deepseek-r1-0528"                 # DeepSeek R1 May update — reasoning for risk/reward construction
+  weaver:         "moonshotai/kimi-k2.6"                      # Kimi K2.6 — long context, multi-thread correlation
+  oracle:         "google/gemini-2.5-pro"                     # Gemini 2.5 Pro — 1M context for long-arc macro patterns
+  shadow:         "x-ai/grok-4.5"                             # Grok 4.5 — contrarian streak, adversarial audit
+  paradox_hunter: "qwen/qwen3-235b-a22b-thinking-2507"        # Qwen3 235B thinking — deepest reasoning for final synthesis
+
+# ─── Alpaca Paper Trading ──────────────────────────────────────
+# Each agent gets their own paper trading account.
+# Base URL is shared across all 7 accounts: https://paper-api.alpaca.markets/v2
+#
+# PREFERRED: Set keys as environment variables in Render dashboard.
+# The system checks env vars first, then falls back to values here.
+#
+# Env var names:
+#   ALPACA_KEY_TEMPEST        ALPACA_SECRET_TEMPEST
+#   ALPACA_KEY_SIREN          ALPACA_SECRET_SIREN
+#   ALPACA_KEY_ALCHEMIST      ALPACA_SECRET_ALCHEMIST
+#   ALPACA_KEY_WEAVER         ALPACA_SECRET_WEAVER
+#   ALPACA_KEY_ORACLE         ALPACA_SECRET_ORACLE
+#   ALPACA_KEY_SHADOW         ALPACA_SECRET_SHADOW
+#   ALPACA_KEY_PARADOX_HUNTER ALPACA_SECRET_PARADOX_HUNTER
+alpaca:
+  tempest:
+    api_key: ""   # or set ALPACA_KEY_TEMPEST env var
+    secret_key: ""  # or set ALPACA_SECRET_TEMPEST env var
+  siren:
+    api_key: ""
+    secret_key: ""
+  alchemist:
+    api_key: ""
+    secret_key: ""
+  weaver:
+    api_key: ""
+    secret_key: ""
+  oracle:
+    api_key: ""
+    secret_key: ""
+  shadow:
+    api_key: ""
+    secret_key: ""
+  paradox_hunter:
+    api_key: ""
+    secret_key: ""
+
+# ─── Market Data ───────────────────────────────────────────────
+fmp:
+  api_key: "YOUR_FMP_API_KEY"
+
+# ─── Trading Guardrails ────────────────────────────────────────
+guardrails:
+  # Master switch: false = all trades go to review queue before execution
+  # true = Paradox Hunter executes directly (Phase 3 only)
+  autonomous_trading_mode: false
+
+  # Daily loss limit per agent (% of account value)
+  # System pauses that agent's trading if breached
+  daily_loss_limit_pct: 5.0
+
+  # Maximum single position size (% of account value)
+  max_position_size_pct: 10.0
+
+  # Maximum concurrent open positions per agent
+  max_open_positions: 5
+
+  # Hard kill switch: if total portfolio drawdown exceeds this,
+  # ALL trading stops and requires manual re-enable
+  portfolio_kill_switch_pct: 20.0
+
+  # Trading hours (Eastern Time)
+  trading_window_start: "09:30"
+  trading_window_end:   "16:00"
+
+# ─── HRV System ────────────────────────────────────────────────
+hrv:
+  # Starting HRV for each agent
+  max_hrv: 100.0
+
+  # Tick interval in seconds (how often HRV is evaluated)
+  tick_interval_seconds: 60
+
+  # Recovery rate per tick when resting
+  recovery_rate_per_tick: 1.5
+
+  # HRV threshold below which agent enters Interval State
+  rest_threshold: 25.0
+
+  # HRV threshold at which agent may return from Interval State
+  return_threshold: 60.0
+
+  # Action costs (base)
+  action_costs:
+    monitor: 1
+    research: 3
+    journal: 1
+    forum_post: 2
+    direct_message: 2
+    analyze: 4
+    propose_trade: 6
+    execute_trade: 10
+    review_position: 2
+    roam: 2
+    rest: -1.5   # negative = recovery
+
+# ─── Runtime ───────────────────────────────────────────────────
+runtime:
+  # How often each agent's wake cycle fires (seconds)
+  wake_interval_seconds: 600   # 10 minutes default
+
+  # Number of action choices presented at each wake
+  action_choices: 5
+
+  # Developmental phase (0=solo, 1=forum_open, 2=countdown, 3=council)
+  current_phase: 0
+
+  # Countdown target date for Phase 2 (ISO format)
+  convergence_date: null
+
+# ─── Memory ────────────────────────────────────────────────────
+memory:
+  # How often the consolidator runs (seconds)
+  consolidation_interval_seconds: 86400   # daily
+
+  # Minimum episodes before consolidation triggers
+  consolidation_min_episodes: 10
+
+  # Living layer edit notification: true = flag to user for review
+  flag_living_layer_edits: true
