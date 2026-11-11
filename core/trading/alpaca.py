@@ -35,7 +35,9 @@ class AlpacaClient:
         creds = get_alpaca_creds(agent_id)
         self.api_key    = creds["api_key"]
         self.api_secret = creds["api_secret"]
-        self.base_url   = creds.get("base_url", ALPACA_PAPER_BASE)
+        # Endpoint paths already carry /v2. Accept either configured base form
+        # without producing /v2/v2/positions (or changing any account setting).
+        self.base_url   = creds.get("base_url", ALPACA_PAPER_BASE).rstrip("/").removesuffix("/v2")
         self._headers   = {
             "APCA-API-KEY-ID":     self.api_key,
             "APCA-API-SECRET-KEY": self.api_secret,
