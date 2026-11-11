@@ -1,0 +1,19 @@
+{
+  "workspace": {
+    "id": "8f04613c-18b9-4bba-8605-50c68dd9c7db"
+  },
+  "entities": {
+    "collections": [
+      "../postman/collections/Treeez_56639319-6781b21f-d630-4d3d-8bbd-77410d11ab8d.postman_collection.json",
+      "../postman/collections/My Collection_56639319-aebcf7de-98fd-495a-a8de-300a47b69f59.postman_collection.json"
+    ],
+    "environments": [
+      "../postman/environments/New Environment_56639319-5c42a5cf-7a38-4cff-ba03-39ff5b3c66f2.postman_environment.json",
+      "../postman/environments/New Environment_56639319-6b70a7b5-fbe4-4bdc-ad02-93081a21c07a.postman_environment.json",
+      "../postman/environments/New Environment_56639319-f1f6e312-d360-4e23-a2e7-c71b757d774d.postman_environment.json"
+    ],
+    "specs": [],
+    "flows": [],
+    "globals": []
+  }
+}
