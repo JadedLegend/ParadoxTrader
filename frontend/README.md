@@ -17,6 +17,8 @@ The default mode uses labeled local fixtures for agent and portfolio examples an
 
 Library search returns bounded excerpts with original filenames, hashes, and page/paragraph/line locators. The extracted corpus loads lazily rather than entering every dashboard view or agent wake. Originals remain byte-for-byte in the private repository. A static frontend build contains this private extracted collection; do not publicly distribute it without deciding which sources can be shared.
 
+Costs shows clearly labeled synthetic request examples with separate reported, estimated token-only, and unknown figures. It is a read-only local screen in default preview, not an account balance or actual spending report. The prepared backend ledger records request metadata when independently operated; no provider connection is needed to inspect the UI. See [operating-cost notes](../docs/OPERATING_COSTS.md) for coverage, privacy, and optional explicit rates.
+
 Only the exact build-time setting `VITE_RUNTIME_MODE=connected` restores existing backend requests. A `VITE_API_URL` by itself does not enable them. There is no in-app mode switch. Connected operation requires separate configuration and execution-safety work; it is not deployed or enabled by this milestone. Never put private provider/broker keys in `VITE_*` variables.
 
 ## Checks

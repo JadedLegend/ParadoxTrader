@@ -21,8 +21,15 @@ sonar is the faster/cheaper variant for lighter queries.
 Docs: https://docs.perplexity.ai
 """
 
+import logging
+import math
 import os
+import re
+import time
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Optional
+from uuid import uuid4
 
 try:
     import requests
@@ -33,11 +40,135 @@ except ImportError:
 PERPLEXITY_BASE = "https://api.perplexity.ai"
 
 # Model options:
-#   sonar-pro       — deep research, cited sources, slower (~$3/1M tokens)
-#   sonar           — fast, cited, lighter queries (~$1/1M tokens)
-#   sonar-reasoning — chain-of-thought + citations (~$5/1M tokens)
+#   sonar-pro       — deep research, cited sources, slower
+#   sonar           — fast, cited, lighter queries
+#   sonar-reasoning — chain-of-thought + citations
 DEFAULT_MODEL = "sonar-pro"
 FAST_MODEL = "sonar"
+
+
+_logger = logging.getLogger(__name__)
+_SAFE_MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+\-]{0,127}\Z")
+_DECIMAL = re.compile(r"[+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
+
+
+def _warn(category: str) -> None:
+    try:
+        _logger.warning(category)
+    except Exception:
+        pass
+
+
+def _token_count(value):
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _usd_cost(value):
+    """An explicit provider USD scalar, never a locally assumed rate."""
+    if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
+        return None
+    try:
+        text = str(value)
+        if len(text) > 128 or not _DECIMAL.fullmatch(text):
+            return None
+        amount = Decimal(text)
+        if not amount.is_finite() or amount < 0:
+            return None
+        if not amount:
+            return "0"
+        if not -100 <= amount.adjusted() <= 100:
+            return None
+        normalized = format(amount, "f")
+        if len(normalized) > 200:
+            return None
+        return normalized.rstrip("0").rstrip(".") if "." in normalized else normalized
+    except (InvalidOperation, ValueError, OverflowError):
+        return None
+
+
+def _usage_metadata(data) -> dict:
+    """Pure adapter for accepted response fields, not a claim about billing."""
+    data = data if isinstance(data, dict) else {}
+    usage = data.get("usage")
+    usage = usage if isinstance(usage, dict) else {}
+    prompt_details = usage.get("prompt_tokens_details")
+    prompt_details = prompt_details if isinstance(prompt_details, dict) else {}
+    completion_details = usage.get("completion_tokens_details")
+    completion_details = completion_details if isinstance(completion_details, dict) else {}
+    cost = usage.get("cost")
+    if isinstance(cost, dict):
+        cost = cost.get("total_cost")
+    metadata = {
+        "input_tokens": _token_count(usage.get("prompt_tokens")),
+        "output_tokens": _token_count(usage.get("completion_tokens")),
+        "total_tokens": _token_count(usage.get("total_tokens")),
+        "cached_input_tokens": _token_count(prompt_details.get("cached_tokens")),
+        "reasoning_tokens": _token_count(completion_details.get("reasoning_tokens")),
+        "provider_cost_usd": _usd_cost(cost),
+    }
+    for subset, parent in (("cached_input_tokens", "input_tokens"), ("reasoning_tokens", "output_tokens")):
+        if metadata[subset] is not None and metadata[parent] is not None and metadata[subset] > metadata[parent]:
+            metadata[subset] = None
+    response_model = data.get("model")
+    if isinstance(response_model, str) and _SAFE_MODEL.fullmatch(response_model):
+        metadata["response_model"] = response_model
+    return metadata
+
+
+def _record_attempt(event: dict, started: float) -> None:
+    try:
+        elapsed = (time.perf_counter() - started) * 1000
+        event["duration_ms"] = max(0.0, elapsed) if math.isfinite(elapsed) else 0.0
+        from core.usage.context import current_usage_context
+        from core.usage import record_usage
+
+        context = current_usage_context()
+        event["activity"] = context.get("activity", "unattributed")
+        event["wake_id"] = context.get("wake_id")
+        if not record_usage(event):
+            _warn("usage_recording_failed")
+    except Exception:
+        _warn("usage_recording_failed")
+
+
+def _request(payload: dict, headers: dict, timeout: int, agent_id: Optional[str]) -> dict:
+    """One HTTP attempt and one best-effort event, including unsuccessful calls."""
+    event = {
+        "event_id": str(uuid4()), "call_id": str(uuid4()),
+        "agent_id": agent_id, "provider": "perplexity", "model": payload["model"],
+        "attempt": 1, "created_at": datetime.now(timezone.utc).isoformat(),
+        "outcome": "transport_error", "http_status": None,
+        **_usage_metadata(None),
+    }
+    started = time.perf_counter()
+    try:
+        resp = requests.post(
+            f"{PERPLEXITY_BASE}/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=timeout,
+        )
+        status = resp.status_code
+        if isinstance(status, int) and not isinstance(status, bool) and 100 <= status <= 599:
+            event["http_status"] = status
+        http_error = event["http_status"] is not None and not 200 <= status < 300
+        event["outcome"] = "http_error" if http_error else "invalid_response"
+        try:
+            data = resp.json()
+        except Exception:
+            resp.raise_for_status()
+            raise
+        event.update(_usage_metadata(data))
+        resp.raise_for_status()
+        if http_error:
+            raise ValueError("Perplexity returned a non-success HTTP status")
+        content = data["choices"][0]["message"]["content"]
+        if not isinstance(content, str):
+            raise ValueError("Perplexity returned invalid response content")
+        event["outcome"] = "success"
+        return data
+    finally:
+        _record_attempt(event, started)
 
 
 def _get_key() -> str:
@@ -144,14 +275,7 @@ def research(
     }
 
     try:
-        resp = requests.post(
-            f"{PERPLEXITY_BASE}/chat/completions",
-            json=payload,
-            headers=headers,
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        data = _request(payload, headers, 60, agent_id)
 
         answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         citations = data.get("citations", [])
@@ -196,14 +320,7 @@ def quick_search(query: str, agent_id: Optional[str] = None) -> dict:
     }
 
     try:
-        resp = requests.post(
-            f"{PERPLEXITY_BASE}/chat/completions",
-            json=payload,
-            headers=headers,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        data = _request(payload, headers, 30, agent_id)
         answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         citations = data.get("citations", [])
         return {

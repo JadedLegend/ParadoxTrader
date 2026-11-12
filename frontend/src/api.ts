@@ -3,6 +3,7 @@ import { createApiClient, resolveApiMode } from './data/client'
 import { readFixture } from './preview/readFixture'
 import type { AgentSummary, PositionSnapshot } from './data/contracts'
 import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
+import type { UsageSummaryResponse, UsageEventsResponse } from './usage/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -46,3 +47,8 @@ export const searchLibrary = (q: string, document_id?: string, limit = 3, max_ch
   `/api/library/search?q=${encodeURIComponent(q)}&limit=${limit}&max_chars=${max_chars}${document_id ? `&document_id=${encodeURIComponent(document_id)}` : ''}`)
 export const getLibrarySection = (section_id: string, offset = 0, max_chars = 1200) => request<LibrarySectionResponse>('GET',
   `/api/library/sections/${encodeURIComponent(section_id)}?offset=${offset}&max_chars=${max_chars}`)
+
+export const getUsageSummary = (agent_id?: string) => request<UsageSummaryResponse>('GET',
+  `/api/usage/summary${agent_id ? `?agent_id=${encodeURIComponent(agent_id)}` : ''}`)
+export const getUsageEvents = (agent_id?: string, limit = 50, offset = 0) => request<UsageEventsResponse>('GET',
+  `/api/usage/events?limit=${limit}&offset=${offset}${agent_id ? `&agent_id=${encodeURIComponent(agent_id)}` : ''}`)
