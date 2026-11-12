@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { getInbox, sendDM, getSelfDefinition } from '../api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { IS_PREVIEW, getInbox, sendDM, getSelfDefinition } from '../api'
 
 const AGENTS = ['tempest','siren','alchemist','weaver','oracle','shadow','paradox_hunter']
 
@@ -28,22 +28,22 @@ function timeAgo(iso: string) {
 function AgentNameBadge({ name }: { name: string }) {
   const [open, setOpen] = useState(false)
   const [defData, setDefData] = useState<{ self_definition: string } | null>(null)
+  const [error, setError] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   const agentId = name.toLowerCase().replace(/ /g, '_')
   const isAgent = AGENTS.includes(agentId)
   const color = AGENT_COLORS[agentId] || 'var(--text)'
 
-  const handleClick = async () => {
-    if (!isAgent) return
-    if (!open && !defData) {
-      try {
-        const d = await getSelfDefinition(agentId)
-        setDefData(d)
-      } catch { setDefData({ self_definition: '' }) }
-    }
-    setOpen(o => !o)
-  }
+  useEffect(() => {
+    if (!open || !isAgent) return
+    let cancelled = false
+    setDefData(null)
+    setError('')
+    getSelfDefinition(agentId).then(d => { if (!cancelled) setDefData(d) })
+      .catch(() => { if (!cancelled) setError('Could not load this definition. Close and reopen to retry.') })
+    return () => { cancelled = true }
+  }, [open, agentId, isAgent])
 
   useEffect(() => {
     if (!open) return
@@ -60,15 +60,16 @@ function AgentNameBadge({ name }: { name: string }) {
 
   return (
     <div ref={ref} style={{position:'relative', display:'inline-block'}}>
-      <span
+      <button
         className="msg-from"
-        style={{color, cursor:'pointer', textDecoration:'underline dotted', textUnderlineOffset:3}}
-        onClick={handleClick}
+        style={{color, cursor:'pointer', textDecoration:'underline dotted', textUnderlineOffset:3, background:'none', border:0, padding:0, fontFamily:'inherit'}}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
         title="Click to see definition"
       >
         {name.replace('_', ' ')}
-      </span>
-      {open && defData && (
+      </button>
+      {open && (
         <div style={{
           position:'absolute', top:'100%', left:0, zIndex:100,
           background:'var(--bg2)', border:`1px solid ${color}`,
@@ -78,7 +79,7 @@ function AgentNameBadge({ name }: { name: string }) {
           <div style={{fontSize:11, fontWeight:700, color, marginBottom:6, textTransform:'uppercase', letterSpacing:1}}>
             {name.replace('_', ' ')}
           </div>
-          {defData.self_definition ? (
+          {error ? <div className="error-msg" role="alert">{error}</div> : !defData ? <div className="loading">Loading definition...</div> : defData.self_definition ? (
             <div style={{fontSize:12, color:'var(--text)', lineHeight:1.7, fontStyle:'italic'}}>
               {defData.self_definition}
             </div>
@@ -107,42 +108,70 @@ export default function Inbox() {
   const [recipient, setRecipient] = useState('tempest')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [loadedInbox, setLoadedInbox] = useState<string | null>(null)
+  const alive = useRef(true)
+  const request = useRef(0)
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    const current = ++request.current
     try {
       const data = await getInbox(selected)
+      if (!alive.current || current !== request.current || selectedRef.current !== selected) return
       setMsgs(data.messages || [])
       setUnread(data.unread_count || 0)
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
-  }
+      setLoadedInbox(selected)
+      setError('')
+    } catch { if (alive.current && current === request.current && selectedRef.current === selected) setError('Could not load this inbox. Displayed messages may be stale; use Refresh to retry.') }
+    finally { if (alive.current && current === request.current && selectedRef.current === selected) setLoading(false) }
+  }, [selected])
 
-  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t) }, [selected])
+  useEffect(() => {
+    alive.current = true
+    setLoading(true)
+    setMsgs([])
+    setUnread(0)
+    setLoadedInbox(null)
+    setError('')
+    void load()
+    const timer = IS_PREVIEW ? null : setInterval(load, 20000)
+    return () => { alive.current = false; if (timer) clearInterval(timer) }
+  }, [load])
 
   const handleSend = async () => {
-    if (!content.trim()) return
+    if (IS_PREVIEW || !content.trim() || sending) return
     setSending(true)
     try {
       await sendDM('user', recipient, content)
+      if (!alive.current || selectedRef.current !== selected) return
       setContent('')
-      load()
-    } finally { setSending(false) }
+      await load()
+    } catch { if (alive.current) setError('Could not confirm message delivery. Your draft is retained; refresh the inbox before retrying to avoid duplicates.') }
+    finally { if (alive.current) setSending(false) }
   }
 
   return (
     <div>
-      <div className="page-header">
-        <div className="page-title">Messages</div>
-        <div className="page-sub">Direct messages — click an agent name to see their self-definition</div>
+      <div className="page-header flex-between">
+        <div>
+          <div className="page-title">Messages</div>
+          <div className="page-sub">Direct messages — click an agent name to see their self-definition</div>
+        </div>
+        <button className="btn btn-ghost" onClick={load}>Refresh</button>
       </div>
+
+      {IS_PREVIEW && <div className="notice">Fixture messages only. Sending is disabled in preview; no direct message is delivered.</div>}
+      {error && <div className="error-msg" role="alert">{error}</div>}
 
       {/* Inbox selector */}
       <div className="flex gap-8 mb-16" style={{flexWrap:'wrap'}}>
-        <button className={`btn ${selected === 'user' ? 'btn-primary' : 'btn-ghost'}`} style={{fontSize:12}} onClick={() => setSelected('user')}>
+        <button className={`btn ${selected === 'user' ? 'btn-primary' : 'btn-ghost'}`} style={{fontSize:12}} disabled={sending} onClick={() => setSelected('user')}>
           My Inbox {unread > 0 && selected === 'user' && <span className="msg-unread" style={{marginLeft:6}}>{unread}</span>}
         </button>
         {AGENTS.map(a => (
-          <button key={a} className={`btn ${selected === a ? 'btn-primary' : 'btn-ghost'}`} style={{fontSize:12}} onClick={() => setSelected(a)}>
+          <button key={a} className={`btn ${selected === a ? 'btn-primary' : 'btn-ghost'}`} style={{fontSize:12}} disabled={sending} onClick={() => setSelected(a)}>
             {a.replace('_',' ')}
           </button>
         ))}
@@ -151,13 +180,14 @@ export default function Inbox() {
       {/* Messages */}
       <div className="card mb-16" style={{minHeight:200, maxHeight:400, overflowY:'auto'}}>
         {loading ? <div className="loading">Loading...</div> :
+         loadedInbox !== selected ? null :
          msgs.length === 0 ? <div className="empty-state">No messages.</div> :
          msgs.map(m => (
           <div key={m.id} className="msg-item">
             <div className="msg-meta">
-              <AgentNameBadge name={m.sender} />
+              <AgentNameBadge key={`from-${m.sender}`} name={m.sender} />
               <span style={{color:'var(--text3)', fontSize:11}}>→</span>
-              <AgentNameBadge name={m.recipient} />
+              <AgentNameBadge key={`to-${m.recipient}`} name={m.recipient} />
               <span className="msg-time">{timeAgo(m.created_at)}</span>
               {!m.read && <span className="msg-unread">unread</span>}
             </div>
@@ -171,7 +201,7 @@ export default function Inbox() {
         <div className="card-title">Send a Message</div>
         <div className="input-group">
           <label className="input-label">To</label>
-          <select className="select" value={recipient} onChange={e => setRecipient(e.target.value)}>
+          <select aria-label="Message recipient" className="select" value={recipient} disabled={IS_PREVIEW || sending} onChange={e => setRecipient(e.target.value)}>
             {AGENTS.map(a => <option key={a} value={a}>{a.replace('_',' ')}</option>)}
           </select>
         </div>
@@ -180,12 +210,14 @@ export default function Inbox() {
           <textarea
             className="input"
             rows={4}
-            placeholder="Write your message..."
+            aria-label="Message content"
+            disabled={IS_PREVIEW || sending}
+            placeholder={IS_PREVIEW ? 'Sending disabled in preview' : 'Write your message...'}
             value={content}
             onChange={e => setContent(e.target.value)}
           />
         </div>
-        <button className="btn btn-primary" onClick={handleSend} disabled={sending || !content.trim()}>
+        <button className="btn btn-primary" onClick={handleSend} disabled={IS_PREVIEW || sending || !content.trim()}>
           {sending ? 'Sending...' : 'Send'}
         </button>
       </div>

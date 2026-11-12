@@ -271,7 +271,7 @@ def send_dm(req: DMRequest):
 
 
 @app.get("/api/queue")
-def get_trade_queue():
+def get_pending_trades():
     queue = get_trade_queue()
     return {"trades": queue.get_pending()}
 
@@ -301,6 +301,12 @@ def market_snapshot():
 
 @app.get("/api/agents")
 def get_all_agents():
+    """Read profiles and existing HRV states without initializing agents.
+
+    Missing HRV and capacity remain unknown (None); model names are profile
+    preferences, not resolved provider configuration. No config/model calls,
+    wake, scheduler, or profile/state writes belong in this handler.
+    """
     result = []
     store = get_hrv_store()
     hrv_states = {s.agent_id: s for s in store.get_all_states()}
@@ -314,14 +320,16 @@ def get_all_agents():
                 "name": soul.get("name", agent_id),
                 "epistemic_role": soul.get("epistemic_role", ""),
                 "core_drive": soul.get("core_drive", ""),
-                "model": soul.get("model", ""),
+                "model": soul.get("model_preference") or soul.get("model", ""),
                 "current_focus": living.get("current_focus", ""),
                 "curiosity_questions": living.get("curiosity_questions", []),
                 "hrv": round(hrv.hrv, 1) if hrv else None,
+                "max_hrv": hrv.max_hrv if hrv else None,
+                "hrv_status": "ok" if hrv else "not_initialized",
                 "in_interval": hrv.in_interval if hrv else False,
             })
-        except Exception as e:
-            result.append({"agent_id": agent_id, "error": str(e)})
+        except Exception:
+            result.append({"agent_id": agent_id, "error": "profile_unavailable"})
     return {"agents": result}
 
 
@@ -402,29 +410,16 @@ def update_self_definition(agent_id: str, req: SelfDefinitionRequest):
 
 @app.get("/api/agents/positions")
 def get_all_positions():
+    """Delegate read-only position snapshots to the shared runtime helper.
+
+    Return {"positions": {agent_id: snapshot}} unchanged. Each snapshot has
+    status (ok/error/not_configured), a positions list, and observed_at. An
+    empty list confirms no positions only when status is ok; failures remain
+    unknown. The helper owns credential lookup and safe error categories;
+    this wrapper neither reads config nor constructs broker clients.
     """
-    Aggregate open Alpaca positions across all 7 agents.
-    Returns a map of agent_id -> list of positions.
-    Used for cross-agent position visibility (map of attention).
-    """
-    from core.trading.alpaca import AlpacaClient
-    result = {}
-    cfg = load_config_yaml()
-    agent_keys = cfg.get("alpaca_accounts", {})
-    for agent_id in AGENTS:
-        keys = agent_keys.get(agent_id, {})
-        api_key = keys.get("api_key") or os.environ.get(f"ALPACA_{agent_id.upper()}_API_KEY")
-        api_secret = keys.get("api_secret") or os.environ.get(f"ALPACA_{agent_id.upper()}_API_SECRET")
-        if not api_key or not api_secret:
-            result[agent_id] = {"error": "no_credentials"}
-            continue
-        try:
-            client = AlpacaClient(api_key=api_key, api_secret=api_secret)
-            positions = client.get_positions()
-            result[agent_id] = positions
-        except Exception as e:
-            result[agent_id] = {"error": str(e)}
-    return {"positions": result}
+    from core.runtime import agent_loop
+    return {"positions": agent_loop.get_cross_agent_positions(AGENTS)}
 
 
 @app.post("/api/agents/{agent_id}/innermost")
