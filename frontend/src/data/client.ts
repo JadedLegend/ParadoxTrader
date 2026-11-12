@@ -13,8 +13,9 @@ export function createApiClient(mode: ApiMode, readFixture: FixtureReader, trans
       if (method !== 'GET') {
         throw new Error('Preview is read-only. No backend action was sent.')
       }
-      // Clone examples so callers cannot change the shared fixture by reference.
-      return structuredClone(readFixture(path)) as T
+      // Local source-library modules can load lazily. Never fall through to
+      // transport on a local read error, and never share mutable source objects.
+      return structuredClone(await readFixture(path)) as T
     }
     return await transport(method, path, payload) as T
   }

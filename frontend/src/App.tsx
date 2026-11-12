@@ -1,4 +1,4 @@
-import { Component } from 'react'
+import { Component, lazy, Suspense } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import Dashboard from './views/Dashboard'
@@ -10,6 +10,8 @@ import Config from './views/Config'
 import WakeChoices from './views/WakeChoices'
 import { IS_PREVIEW } from './api'
 import './styles.css'
+
+const Library = lazy(() => import('./views/Library'))
 
 class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -23,7 +25,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 const NAV = [
   ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
-  ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
+  ['/library', 'Library'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 
 export default function App() {
@@ -39,12 +41,14 @@ export default function App() {
         <main className="main-content" id="main" tabIndex={-1}>
           <div className={`mode-banner ${IS_PREVIEW ? 'preview-mode' : 'connected-mode'}`} role="note">
             <strong>{IS_PREVIEW ? 'Fixture preview' : 'Connected frontend'}</strong>
-            <span>{IS_PREVIEW ? 'Local examples only. No agents, providers, accounts, or schedules are running through this preview.' : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
+            <span>{IS_PREVIEW ? 'Local agent and portfolio examples; Library reads imported source text. No agents, providers, accounts, or schedules are running through this preview.' : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
           </div>
           <ScreenBoundary>
+            <Suspense fallback={<div className="loading" role="status">Loading library screen...</div>}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/choices" element={<WakeChoices />} />
+              <Route path="/library" element={<Library />} />
               <Route path="/forum" element={<Forum />} />
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/agents" element={<Agents />} />
@@ -52,6 +56,7 @@ export default function App() {
               <Route path="/config" element={<Config />} />
               <Route path="*" element={<div className="card"><h1 className="page-title">Page not found</h1><Link to="/" className="btn btn-ghost mt-16">Return to dashboard</Link></div>} />
             </Routes>
+            </Suspense>
           </ScreenBoundary>
         </main>
       </div>

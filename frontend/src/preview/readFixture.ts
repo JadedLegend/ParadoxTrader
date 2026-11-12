@@ -7,6 +7,28 @@ export function readFixture(path: string): unknown {
   const url = new URL(path, 'https://preview.invalid')
   const route = url.pathname
   const meta = { kind: 'fixture', observed_at: fixture.observed_at }
+  if (route.startsWith('/api/library/')) {
+    // These are actual imported sources, not invented agent activity. The
+    // corpus is loaded only after an explicit library read, never on each wake.
+    const section = route.match(/^\/api\/library\/sections\/([^/]+)$/)
+    if (route !== '/api/library/documents' && route !== '/api/library/search' && !section) {
+      throw new Error('No local library route is available. No backend fallback was attempted.')
+    }
+    const integer = (name: string, fallback: number) => {
+      const value = url.searchParams.get(name)
+      if (value === null) return fallback
+      if (!/^-?\d+$/.test(value)) throw new Error(`Invalid library ${name}.`)
+      const parsed = Number(value)
+      if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid library ${name}.`)
+      return parsed
+    }
+    return import('../library/client').then(async (library): Promise<unknown> => {
+      if (route === '/api/library/documents') return library.listDocuments(integer('limit', 50), integer('offset', 0))
+      if (route === '/api/library/search') return library.queryLibrary(url.searchParams.get('q') ?? '',
+        url.searchParams.get('document_id') || undefined, integer('limit', 3), integer('max_chars', 600))
+      return library.readSection(decodeURIComponent(section![1]), integer('offset', 0), integer('max_chars', 1200))
+    })
+  }
   if (route === '/api/status' || route === '/api/agents') return { ...meta, agents: fixture.agents }
   if (route === '/api/agents/positions') return { ...meta, positions: fixture.positions }
   if (route === '/api/snapshot') return { ...meta, error: 'Market feeds are not connected in this preview.' }

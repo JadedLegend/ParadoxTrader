@@ -13,7 +13,9 @@ npm run dev
 
 Open the local address Vite prints. **Do not start the Python API or engine for this preview.** The API's existing startup lifecycle starts its scheduler if independently launched.
 
-The default mode uses labeled local fixtures for all reads and blocks all backend writes. No environment file, accounts, or keys are needed. Inspect the Wake Choices page to select an agent and demonstrate a choice window. Your demonstration is local UI state, not an agent decision or executed activity.
+The default mode uses labeled local fixtures for agent and portfolio examples and reads the actual imported collection locally on the Library page. All backend writes remain blocked. No environment file, accounts, or keys are needed. Inspect Wake Choices to select an agent and demonstrate a choice window. Your demonstration is local UI state, not an agent decision or executed activity.
+
+Library search returns bounded excerpts with original filenames, hashes, and page/paragraph/line locators. The extracted corpus loads lazily rather than entering every dashboard view or agent wake. Originals remain byte-for-byte in the private repository. A static frontend build contains this private extracted collection; do not publicly distribute it without deciding which sources can be shared.
 
 Only the exact build-time setting `VITE_RUNTIME_MODE=connected` restores existing backend requests. A `VITE_API_URL` by itself does not enable them. There is no in-app mode switch. Connected operation requires separate configuration and execution-safety work; it is not deployed or enabled by this milestone. Never put private provider/broker keys in `VITE_*` variables.
 
@@ -31,6 +33,7 @@ Frontend interaction tests run in an isolated DOM with network calls blocked. Th
 ```sh
 python3 -B -m unittest discover -s tests -v
 python3 -B scripts/build_ui_fixtures.py --check
+python3 -B scripts/import_library.py --check
 ```
 
 To regenerate public persona/menu examples, run the fixture script without `--check`. It does not read configured credentials or private agent records.
