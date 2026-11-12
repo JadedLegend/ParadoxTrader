@@ -32,6 +32,9 @@ def build_fixture():
         from core.memory.engine import ThresholdMemory
         from core.trading.lineage import LineageStore
         from core.library.store import LibraryStore
+        from core.memory.compost import CompostStore
+        from core.runtime.rehearsal.witness import WitnessStore
+        from api.rehearsal import _journal_sources, _witness_account
 
         store = RehearsalStore(tmp)
         manifest = cli.manifest_for()
@@ -39,7 +42,32 @@ def build_fixture():
         # generated evidence have deterministic order. All seven share a cohort.
         manifest['limits']['max_parallelism'] = 1
         store.prepare(manifest, run_id=RUN_ID)
-        transport = OpenRouterTransport('offline-scripted-not-a-credential', http_post=ScriptedHTTP())
+        path = store.run_path(RUN_ID)
+        compost = CompostStore(path / 'memory' / 'tempest.sqlite3', 'tempest')
+        seeded = []
+        # Explicit scripted pre-existing collection; not claimed as a model turn.
+        for index in range(6):
+            destination = ('idea', 'orientation', 'trading')[index % 3]
+            note = compost.append_note(f'fixture-compost-{index}',
+                f'Scripted compost {index + 1}: a question can remain open; this is not a live agent account.',
+                channels=[destination], note_kind='compost', source_mode='offline')
+            seeded.append(note['id'])
+        compost.prepare_distillation('fixture-distillation', seeded)
+        compost.apply_distillation('fixture-distillation',
+            'Scripted distillation: the questions share a timing concern, while their differences remain open. The originals remain linked.',
+            channels=['idea', 'orientation'], release=True, source_mode='offline')
+        compost.append_note('fixture-active-return',
+            'Scripted active compost: leave room to return to a question without an obligation to resolve it.',
+            channels=['orientation'], note_kind='compost', source_mode='offline')
+        class CompostExampleHTTP(ScriptedHTTP):
+            def __call__(self, *args, **kwargs):
+                response = super().__call__(*args, **kwargs)
+                messages = kwargs.get('json', {}).get('messages', [])
+                text = '\n'.join(str(message.get('content', '')) for message in messages)
+                if 'REHEARSAL CHOICE' in text and 'Stable owner ID: siren' in text and self.counts['siren'] == 2:
+                    response.payload['choices'][0]['message']['content'] = json.dumps({'action': 'journal', 'journal_mode': 'witness'})
+                return response
+        transport = OpenRouterTransport('offline-scripted-not-a-credential', http_post=CompostExampleHTTP())
         result = RehearsalController(store, RUN_ID, transport=transport, repo_root=ROOT).run()
         if result['status'] != 'completed':
             problems = [(job['agent_id'], job['round'], job['status'], job['failure_code'])
@@ -68,16 +96,37 @@ def build_fixture():
                     record = next(row for row in rows if row['id'] == record_id)
                 elif kind == 'library':
                     record = LibraryStore(corpus_path=path / 'library_corpus.json', db_path=path / 'library.sqlite3').read_section(record_id, max_chars=1200)
+                elif kind == 'witness':
+                    record = _witness_account(WitnessStore(path / 'witness.sqlite3').get_account(record_id, owner), owner)
                 else:
                     raise AssertionError('Unsupported private fixture record')
                 records[f'{owner}|{kind}|{record_id}'] = {'run_id': RUN_ID, 'agent_id': owner, 'kind': kind, 'id': record_id, 'record': record}
         decisions = {job['wake_id']: {'run_id': RUN_ID, 'agent_id': job['agent_id'],
                     'wake_id': job['wake_id'], 'decision': store.get_decision_details(RUN_ID, job['wake_id'])}
                     for job in jobs}
+        journal_rows = {}
+        for owner in OWNERS:
+            memory = CompostStore(path / 'memory' / (owner + '.sqlite3'), owner)
+            rows = {}
+            for channel in ('trading', 'idea', 'orientation', 'unclassified'):
+                for row in memory.list_notes(channel=channel, state='all', limit=20)['notes']:
+                    rows[row['id']] = row
+            journal_rows[owner] = sorted(rows.values(), key=lambda row: row['id'])
+        witness = WitnessStore(path / 'witness.sqlite3')
+        witness_rows = {scope: witness.list_accounts(scope, limit=20)['accounts']
+                        for scope in (*OWNERS, 'steward')}
+        source_headers = {}
+        for owner in OWNERS:
+            idea, _ = _journal_sources(store, RUN_ID, owner, 'idea', 'all', 20, 0)
+            trading, _ = _journal_sources(store, RUN_ID, owner, 'trading', 'all', 20, 0)
+            by_id = {row['id']: row for row in (*idea, *trading)}
+            source_headers[owner] = list(by_id.values())
         fixture = {'kind': 'fixture', 'observed_at': STAMP,
-                   'provenance': 'Scripted temporary stores; serial example dispatch, normalized IDs/timestamps and input hashes. Not real model output.',
+                   'provenance': 'Scripted temporary stores; serial dispatch, explicit pre-existing scripted compost, normalized IDs/timestamps/hashes. Not real model output.',
                    'runs': [result], 'jobs': {RUN_ID: jobs}, 'requests': {RUN_ID: requests},
-                   'records': {RUN_ID: records}, 'decisions': {RUN_ID: decisions}}
+                   'records': {RUN_ID: records}, 'decisions': {RUN_ID: decisions},
+                   'journals': {RUN_ID: journal_rows}, 'witnesses': {RUN_ID: witness_rows},
+                   'sources': {RUN_ID: source_headers}}
 
         import re
         uuid_pattern = re.compile(r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b')
@@ -145,6 +194,15 @@ def build_fixture():
                         request['input_sha256'] = hashlib.sha256(raw).hexdigest()
                         request['input_bytes'] = bounded_input(request['messages'])
                         request_metadata[request['request_id']]['input_bytes'] = request['input_bytes']
+        for accounts in normalized['witnesses'][RUN_ID].values():
+            for account in accounts:
+                # Explicit synthetic digest after normalizing the source refs.
+                snapshot = {key: value for key, value in account.items() if key not in ('source_digest', 'source_facts')}
+                account['source_digest'] = hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        witness_digests = {account['id']: account['source_digest'] for accounts in normalized['witnesses'][RUN_ID].values() for account in accounts}
+        for record in normalized['records'][RUN_ID].values():
+            if record['kind'] == 'witness':
+                record['record']['source_digest'] = witness_digests[record['id']]
         return normalized
 
 

@@ -27,6 +27,8 @@ Sessions shows an actual-controller, explicitly scripted seven-owner example wit
 
 The screen is read-only and cannot start models. The separate `scripts/rehearsal.py` commissioning CLI uses isolated run stores; real starts require frozen exact assignments, catalog readiness, a chosen budget, a dedicated process key and explicit arming. The dedicated read-only API does not start the ordinary scheduler. See [session-control notes](../docs/REHEARSAL.md) for stop/recovery controls and [decision continuity](../docs/DECISION_CONTINUITY.md) for preserved choices and source context.
 
+Journals provides separate trading, idea and orientation destinations, with Unclassified preserved for older notes. Optional compost originals, chosen distillations, released-source links and private witness accounts are readable without any write or release control. The witness records source-backed activity in its own ledger; exact agent notes remain separately attributed. The local example includes explicitly scripted pre-existing compost and shares the same temporary session source as Sessions. See [compost/witness notes](../docs/COMPOST_WITNESS.md) for active versus archived context and current scope.
+
 Only the exact build-time setting `VITE_RUNTIME_MODE=connected` restores existing backend requests. A `VITE_API_URL` by itself does not enable them. There is no in-app mode switch. Connected operation requires separate configuration and execution-safety work; it is not deployed or enabled by this milestone. Never put private provider/broker keys in `VITE_*` variables.
 
 ## Checks
@@ -46,6 +48,7 @@ python3 -B scripts/build_ui_fixtures.py --check
 python3 -B scripts/import_library.py --check
 python3 -B scripts/build_lineage_fixture.py --check
 python3 -B scripts/build_rehearsal_fixture.py --check
+python3 -B scripts/build_compost_fixture.py --check
 ```
 
 To regenerate public persona/menu examples, run the fixture script without `--check`. It does not read configured credentials or private agent records.

@@ -75,7 +75,7 @@ class RehearsalReadAPI(unittest.TestCase):
         self.factory.assert_not_called()
         self.assertFalse(self.app.router.on_startup)
         self.assertFalse(self.app.router.on_shutdown)
-        self.assertEqual([route.methods for route in self.app.routes], [{'GET'}] * 6)
+        self.assertEqual([route.methods for route in self.app.routes], [{'GET'}] * 8)
         source = Path(rehearsal.__file__).read_text()
         for forbidden in ('from api.app', 'import api.app', 'from core.runtime.scheduler', 'from core.runtime.agent_loop', 'from core.runtime.rehearsal.provider'):
             self.assertNotIn(forbidden, source)

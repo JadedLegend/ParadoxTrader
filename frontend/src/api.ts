@@ -6,6 +6,7 @@ import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionRes
 import type { UsageSummaryResponse, UsageEventsResponse } from './usage/contracts'
 import type { LineageListResponse, LineageDetailResponse } from './lineage/contracts'
 import type { RunSummary, RunListResponse, JobListResponse, RequestListResponse, PrivateRecordResponse, DecisionResponse } from './rehearsal/contracts'
+import type { JournalResponse, WitnessResponse } from './journals/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -70,3 +71,12 @@ export const getRehearsalRecord = (run_id: string, agent_id: string, kind: strin
   `/api/rehearsals/${encodeURIComponent(run_id)}/records?agent_id=${encodeURIComponent(agent_id)}&kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(String(id))}`)
 export const getRehearsalDecision = (run_id: string, agent_id: string, wake_id: string) => request<DecisionResponse>('GET',
   `/api/rehearsals/${encodeURIComponent(run_id)}/decisions?agent_id=${encodeURIComponent(agent_id)}&wake_id=${encodeURIComponent(wake_id)}`)
+
+export const getJournalNotes = (run_id: string, params: { agent_id: string, channel?: string, state?: string, limit?: number, offset?: number, note_id?: number }) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))
+  return request<JournalResponse>('GET', `/api/rehearsals/${encodeURIComponent(run_id)}/journals?${query}`)
+}
+export const getWitnessAccounts = (run_id: string, params: { agent_id?: string, limit?: number, offset?: number } = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))
+  return request<WitnessResponse>('GET', `/api/rehearsals/${encodeURIComponent(run_id)}/witness?${query}`)
+}
