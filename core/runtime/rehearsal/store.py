@@ -8,6 +8,7 @@ reservations remain charged even when the result is unknown (or fails).
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal, localcontext
+import hashlib
 import json
 import math
 import os
@@ -35,6 +36,9 @@ _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
 _TERMINAL = frozenset({"completed", "failed", "stopped", "uncertain"})
 _OUTCOMES = frozenset({"success", "http_error", "transport_error", "invalid_response", "failed", "uncertain", "not_sent"})
 _TOKEN_FIELDS = ("input_tokens", "output_tokens", "cached_input_tokens", "reasoning_tokens", "total_tokens")
+_FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "unknown"})
+# Keep the provider's conservative bounded_input accounting without importing it.
+_INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
     "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "library.sqlite3",
     "library_corpus.json", "profiles/snapshot.json",
@@ -119,6 +123,127 @@ def _dump(value):
 
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+
+
+def _bounded_json(value, field, cap):
+    def strict(item, depth=0):
+        if depth > 32:
+            raise ValueError()
+        if type(item) is dict:
+            if any(type(key) is not str for key in item):
+                raise ValueError()
+            for child in item.values():
+                strict(child, depth + 1)
+        elif type(item) is list:
+            for child in item:
+                strict(child, depth + 1)
+        elif type(item) not in (str, int, float, bool, type(None)):
+            raise ValueError()
+    try:
+        strict(value)
+        serialized = _dump(value)
+        serialized.encode("utf-8")
+    except (UnicodeError, ValueError, TypeError, RecursionError):
+        raise RehearsalError(f"invalid {field}") from None
+    if len(serialized) > cap:
+        raise RehearsalError(f"invalid {field}")
+    return serialized
+
+
+def _message_input(messages):
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 12:
+        raise RehearsalError("invalid request messages")
+    normalized = []
+    for message in messages:
+        if (not isinstance(message, dict) or set(message) != {"role", "content"}
+                or not isinstance(message["role"], str)
+                or message["role"] not in ("system", "user", "assistant")
+                or not isinstance(message["content"], str)
+                or len(message["content"]) > 24000):
+            raise RehearsalError("invalid request messages")
+        normalized.append({"role": message["role"], "content": message["content"]})
+    try:
+        literal = _dump(normalized)
+        encoded = literal.encode("utf-8")
+    except (UnicodeError, ValueError, TypeError):
+        raise RehearsalError("invalid request messages") from None
+    size = len(encoded) + _INPUT_PROTOCOL_BYTES + _INPUT_MESSAGE_BYTES * len(normalized)
+    if size > 24000:
+        raise RehearsalBudgetExceeded("request input limit exceeded")
+    return literal, hashlib.sha256(encoded).hexdigest(), size
+
+
+def _decision_metadata(value):
+    keys = {"schema_version", "offered_actions", "action_costs", "constraints",
+            "admission_snapshot", "model", "continuity"}
+    if not isinstance(value, dict) or set(value) != keys:
+        raise RehearsalError("invalid decision metadata")
+    _integer(value["schema_version"], "schema_version", 1, 1)
+    if value["offered_actions"] != list(CAPABILITIES):
+        raise RehearsalError("invalid offered_actions")
+    costs = value["action_costs"]
+    if not isinstance(costs, list) or not 1 <= len(costs) <= len(CAPABILITIES):
+        raise RehearsalError("invalid action_costs")
+    seen = set()
+    for cost in costs:
+        if (not isinstance(cost, dict)
+                or set(cost) != {"action", "max_requests", "reservation_ceiling_usd", "basis"}
+                or not isinstance(cost["action"], str) or cost["action"] not in CAPABILITIES
+                or cost["action"] in seen or cost["basis"] != "catalog_upper_bound"):
+            raise RehearsalError("invalid action_costs")
+        seen.add(cost["action"])
+        maximum = 1 if cost["action"] == "rest" else 2
+        _integer(cost["max_requests"], "action max_requests", maximum, maximum)
+        if not isinstance(cost["reservation_ceiling_usd"], str):
+            raise RehearsalError("invalid reservation_ceiling_usd")
+        _money(cost["reservation_ceiling_usd"], "reservation_ceiling_usd")
+    limits = value["constraints"]
+    if not isinstance(limits, dict) or set(limits) != set(DEFAULT_LIMITS) | {"budget_usd"}:
+        raise RehearsalError("invalid constraints")
+    for name, cap in DEFAULT_LIMITS.items():
+        _integer(limits[name], name, 1, cap)
+    if not isinstance(limits["budget_usd"], str):
+        raise RehearsalError("invalid budget_usd")
+    _money(limits["budget_usd"], "budget_usd")
+    snapshot = value["admission_snapshot"]
+    if (not isinstance(snapshot, dict) or set(snapshot) != {"reserved_usd", "remaining_budget_usd",
+            "request_count", "remaining_requests", "is_reservation"}
+            or snapshot["is_reservation"] is not False):
+        raise RehearsalError("invalid admission_snapshot")
+    for name in ("reserved_usd", "remaining_budget_usd"):
+        if not isinstance(snapshot[name], str):
+            raise RehearsalError("invalid admission_snapshot")
+        _money(snapshot[name], name)
+    _integer(snapshot["request_count"], "request_count", 0, 28)
+    _integer(snapshot["remaining_requests"], "remaining_requests", 0, 28)
+    model = value["model"]
+    if (not isinstance(model, dict) or set(model) != {"requested_model", "context_length",
+            "max_completion_tokens", "catalog_source"}
+            or model["catalog_source"] not in (None, "synthetic", "openrouter")):
+        raise RehearsalError("invalid decision model")
+    _model(model["requested_model"])
+    for name in ("context_length", "max_completion_tokens"):
+        _integer(model[name], name, 1, 100_000_000)
+    continuity = value["continuity"]
+    if (not isinstance(continuity, dict) or set(continuity) != {"status", "refs", "truncated", "chars"}
+            or not isinstance(continuity["status"], str)
+            or continuity["status"] not in ("empty", "available", "included", "unavailable", "truncated")
+            or type(continuity["truncated"]) is not bool):
+        raise RehearsalError("invalid continuity")
+    _integer(continuity["chars"], "continuity chars", 0, 8000)
+    refs = continuity["refs"]
+    if not isinstance(refs, list) or len(refs) > 128:
+        raise RehearsalError("invalid continuity refs")
+    for ref in refs:
+        if (not isinstance(ref, dict) or not {"kind", "id"} <= set(ref)
+                or set(ref) - {"kind", "id", "wake_id", "agent_id"}):
+            raise RehearsalError("invalid continuity ref")
+        _refs([{"kind": ref["kind"], "id": ref["id"]}])
+        if "wake_id" in ref:
+            _safe(ref["wake_id"], "source wake_id")
+        if "agent_id" in ref and ref["agent_id"] not in OWNERS:
+            raise RehearsalError("invalid source owner")
+    return _bounded_json(value, "decision metadata", 16000)
 
 
 def _validate_manifest(raw):
@@ -280,7 +405,7 @@ CREATE TABLE jobs (
  requested_model TEXT NOT NULL, response_model TEXT, provider TEXT,
  request_count INTEGER NOT NULL DEFAULT 0, duration_ms REAL NOT NULL DEFAULT 0,
  record_refs TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL,
- choice TEXT, output TEXT
+ choice TEXT, output TEXT, decision_metadata TEXT, private_context TEXT
 );
 CREATE TABLE requests (
  request_id TEXT PRIMARY KEY, wake_id TEXT NOT NULL REFERENCES jobs(wake_id),
@@ -289,7 +414,11 @@ CREATE TABLE requests (
  reserved_usd TEXT NOT NULL, created_at TEXT NOT NULL, finished_at TEXT,
  outcome TEXT NOT NULL DEFAULT 'in_flight', response_model TEXT, provider TEXT,
  duration_ms REAL NOT NULL DEFAULT 0, usage TEXT NOT NULL, failure_code TEXT,
- dispatched INTEGER NOT NULL DEFAULT 0, controller_token TEXT NOT NULL
+ dispatched INTEGER NOT NULL DEFAULT 0, controller_token TEXT NOT NULL, finish_reason TEXT
+);
+CREATE TABLE request_inputs (
+ request_id TEXT PRIMARY KEY REFERENCES requests(request_id),
+ messages TEXT NOT NULL, input_sha256 TEXT NOT NULL
 );
 CREATE TRIGGER immutable_manifest BEFORE UPDATE OF run_id,manifest,created_at ON runs
  BEGIN SELECT RAISE(ABORT,'immutable run'); END;
@@ -303,6 +432,19 @@ CREATE TRIGGER immutable_request BEFORE UPDATE OF request_id,wake_id,agent_id,ac
  BEGIN SELECT RAISE(ABORT,'immutable request'); END;
 CREATE TRIGGER no_delete_requests BEFORE DELETE ON requests
  BEGIN SELECT RAISE(ABORT,'append only requests'); END;
+CREATE TRIGGER immutable_decision_metadata BEFORE UPDATE OF decision_metadata ON jobs
+ WHEN OLD.decision_metadata IS NOT NULL
+ BEGIN SELECT RAISE(ABORT,'immutable decision metadata'); END;
+CREATE TRIGGER immutable_private_context BEFORE UPDATE OF private_context ON jobs
+ WHEN OLD.private_context IS NOT NULL
+ BEGIN SELECT RAISE(ABORT,'immutable private context'); END;
+CREATE TRIGGER no_delete_decision_context BEFORE DELETE ON jobs
+ WHEN OLD.decision_metadata IS NOT NULL OR OLD.private_context IS NOT NULL
+ BEGIN SELECT RAISE(ABORT,'immutable decision context'); END;
+CREATE TRIGGER immutable_request_inputs BEFORE UPDATE ON request_inputs
+ BEGIN SELECT RAISE(ABORT,'immutable request input'); END;
+CREATE TRIGGER no_delete_request_inputs BEFORE DELETE ON request_inputs
+ BEGIN SELECT RAISE(ABORT,'append only request inputs'); END;
 """
 
 
@@ -476,11 +618,74 @@ class RehearsalStore:
             raise RehearsalStopped("rehearsal deadline exceeded")
 
     @staticmethod
+    def _context_schema(connection):
+        """Add nullable storage only in an explicit write transaction.
+
+        No historical record is reshaped or backfilled. Readers never call this.
+        Individual execute calls preserve the caller's atomic transaction (unlike
+        executescript, which would implicitly commit the controller checks).
+        """
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
+        for column in ("decision_metadata", "private_context"):
+            if column not in columns:
+                connection.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT")
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(requests)")}
+        if "finish_reason" not in columns:
+            connection.execute("ALTER TABLE requests ADD COLUMN finish_reason TEXT")
+        connection.execute("CREATE TABLE IF NOT EXISTS request_inputs (request_id TEXT PRIMARY KEY REFERENCES requests(request_id), messages TEXT NOT NULL, input_sha256 TEXT NOT NULL)")
+        for column in ("decision_metadata", "private_context"):
+            connection.execute(f"CREATE TRIGGER IF NOT EXISTS immutable_{column} BEFORE UPDATE OF {column} ON jobs WHEN OLD.{column} IS NOT NULL BEGIN SELECT RAISE(ABORT,'immutable decision context'); END")
+        connection.execute("CREATE TRIGGER IF NOT EXISTS no_delete_decision_context BEFORE DELETE ON jobs WHEN OLD.decision_metadata IS NOT NULL OR OLD.private_context IS NOT NULL BEGIN SELECT RAISE(ABORT,'immutable decision context'); END")
+        connection.execute("CREATE TRIGGER IF NOT EXISTS immutable_request_inputs BEFORE UPDATE ON request_inputs BEGIN SELECT RAISE(ABORT,'immutable request input'); END")
+        connection.execute("CREATE TRIGGER IF NOT EXISTS no_delete_request_inputs BEFORE DELETE ON request_inputs BEGIN SELECT RAISE(ABORT,'append only request inputs'); END")
+
+    @staticmethod
+    def _context_value(row):
+        if "decision_metadata" not in row.keys() or row["decision_metadata"] is None:
+            return None
+        return json.loads(row["decision_metadata"])
+
+    @staticmethod
+    def _owner_job(job):
+        if (job["agent_id"] not in OWNERS or type(job["round"]) is not int
+                or job["round"] not in (1, 2)
+                or job["wake_id"] != f"{job['agent_id']}-r{job['round']}"):
+            raise RehearsalConflict("job owner linkage is invalid")
+
+    @classmethod
+    def _local_context_refs(cls, connection, job, refs):
+        """Validate refs against earlier linked jobs, never foreign memory DBs."""
+        for ref in refs:
+            if "agent_id" in ref and ref["agent_id"] != job["agent_id"]:
+                raise RehearsalConflict("context reference is not owner local")
+            sources = connection.execute("SELECT wake_id,agent_id,round,record_refs FROM jobs WHERE agent_id=? AND round<?", (job["agent_id"], job["round"])).fetchall()
+            matched = False
+            for source in sources:
+                cls._owner_job(source)
+                if "wake_id" in ref and ref["wake_id"] != source["wake_id"]:
+                    continue
+                if {"kind": ref["kind"], "id": ref["id"]} in json.loads(source["record_refs"]):
+                    matched = True
+                    break
+            if not matched:
+                raise RehearsalConflict("context reference is not owner local")
+
+    @staticmethod
     def _public_job(row):
         fields = ("wake_id", "agent_id", "round", "status", "action", "failure_code", "requested_model",
                   "response_model", "provider", "request_count", "duration_ms", "record_refs", "updated_at")
         result = {field: row[field] for field in fields}
         result["record_refs"] = json.loads(result["record_refs"])
+        result["decision_context"] = RehearsalStore._context_value(row)
+        result["selection_origin"] = None if result["decision_context"] is None else "none"
+        if result["decision_context"] is not None and "choice" in row.keys() and row["choice"] is not None:
+            try:
+                choice = json.loads(row["choice"])
+                _choice(choice)
+                if choice["action"] == row["action"]:
+                    result["selection_origin"] = "model"
+            except (RehearsalError, ValueError, TypeError):
+                pass
         return result
 
     @classmethod
@@ -631,6 +836,125 @@ class RehearsalStore:
             value = self._job(connection, wake_id)["choice"]
             return None if value is None else json.loads(value)
 
+    def commit_decision_context(self, run_id, wake_id, token, *, metadata, private_context):
+        """Freeze actual pre-choice evidence; never manufacture historical offers."""
+        serialized = _decision_metadata(metadata)
+        if type(private_context) is not dict:
+            raise RehearsalError("invalid private context")
+        private = _bounded_json(private_context, "private context", 8000)
+        # Work on the validated frozen values, not caller-owned mutable objects.
+        metadata, private_context = json.loads(serialized), json.loads(private)
+        with self._connection(run_id, write=True) as connection:
+            run = self._run(connection)
+            self._token(run, token)
+            job = self._job(connection, wake_id)
+            self._owner_job(job)
+            if self._context_value(job) is not None:
+                if job["decision_metadata"] == serialized and job["private_context"] == private:
+                    return
+                raise RehearsalConflict("decision context is immutable")
+            self._active(run, token)
+            if (job["status"] != "running" or job["choice"] is not None
+                    or job["output"] is not None or job["action"] is not None
+                    or connection.execute("SELECT 1 FROM requests WHERE wake_id=? LIMIT 1", (wake_id,)).fetchone()):
+                raise RehearsalConflict("decision context requires a new claimed choice")
+            manifest = json.loads(run["manifest"])
+            frozen_model = next(item for item in manifest["catalog_snapshot"]["models"]
+                                if item["id"] == job["requested_model"])
+            expected_model = {"requested_model": job["requested_model"],
+                              "context_length": frozen_model["context_length"],
+                              "max_completion_tokens": frozen_model["max_completion_tokens"],
+                              "catalog_source": manifest["catalog_snapshot"].get("source")}
+            if metadata["constraints"] != manifest["limits"] or metadata["model"] != expected_model:
+                raise RehearsalConflict("decision context disagrees with frozen assignment")
+            self._local_context_refs(connection, job, metadata["continuity"]["refs"])
+
+            def check_private(item):
+                if isinstance(item, list):
+                    for child in item:
+                        check_private(child)
+                elif isinstance(item, dict):
+                    if any(key.lower() in {"headers", "authorization", "api_key", "reasoning",
+                                           "output", "response", "innermost", "controller_token"}
+                           for key in item):
+                        raise RehearsalError("invalid private context fields")
+                    if "agent_id" in item and item["agent_id"] != job["agent_id"]:
+                        raise RehearsalConflict("context reference is not owner local")
+                    if "wake_id" in item:
+                        source = self._job(connection, item["wake_id"])
+                        self._owner_job(source)
+                        if source["agent_id"] != job["agent_id"] or source["round"] >= job["round"]:
+                            raise RehearsalConflict("context reference is not owner local")
+                    if {"kind", "id"} <= set(item):
+                        _refs([{"kind": item["kind"], "id": item["id"]}])
+                        ref = {key: item[key] for key in ("kind", "id", "wake_id", "agent_id") if key in item}
+                        self._local_context_refs(connection, job, [ref])
+                    for child in item.values():
+                        check_private(child)
+
+            check_private(private_context)
+            self._context_schema(connection)
+            connection.execute("UPDATE jobs SET decision_metadata=?,private_context=?,updated_at=? WHERE wake_id=?",
+                               (serialized, private, _now(), wake_id))
+
+    def get_decision_context(self, run_id, wake_id):
+        with self._connection(run_id) as connection:
+            job = self._job(connection, wake_id)
+            self._owner_job(job)
+            return self._context_value(job)
+
+    def get_decision_details(self, run_id, wake_id):
+        """Private owner-scoped evidence; absence on legacy reads causes no DDL."""
+        with self._connection(run_id) as connection:
+            job = self._job(connection, wake_id)
+            self._owner_job(job)
+            metadata = self._context_value(job)
+            if metadata is None or "private_context" not in job.keys() or job["private_context"] is None:
+                return None
+            snapshots = []
+            exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='request_inputs'").fetchone()
+            if exists:
+                rows = connection.execute("SELECT r.*,i.messages,i.input_sha256 FROM requests r JOIN request_inputs i ON i.request_id=r.request_id WHERE r.wake_id=? AND r.agent_id=? ORDER BY r.rowid", (wake_id, job["agent_id"])).fetchall()
+                for row in rows:
+                    if row["requested_model"] != job["requested_model"]:
+                        continue
+                    snapshot = {field: row[field] for field in ("request_id", "wake_id", "agent_id", "activity", "requested_model", "input_bytes", "max_output_tokens", "input_sha256")}
+                    snapshot["messages"] = json.loads(row["messages"])
+                    snapshot["input_coverage"] = "complete"
+                    snapshots.append(snapshot)
+            return {"metadata": metadata, "private_context": json.loads(job["private_context"]), "requests": snapshots}
+
+    def commit_request_context(self, run_id, request_id, token, messages):
+        """Capture literal final role/content inputs before dispatch, once only."""
+        _uuid(request_id, "request_id")
+        literal, digest, size = _message_input(messages)
+        with self._connection(run_id, write=True) as connection:
+            run = self._run(connection)
+            self._token(run, token)
+            request = connection.execute("SELECT * FROM requests WHERE request_id=?", (request_id,)).fetchone()
+            if request is None:
+                raise RehearsalError("request not found")
+            job = self._job(connection, request["wake_id"])
+            self._owner_job(job)
+            if (request["controller_token"] != token or request["agent_id"] != job["agent_id"]
+                    or request["requested_model"] != job["requested_model"]):
+                raise RehearsalConflict("request does not match current claimed job")
+            exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='request_inputs'").fetchone()
+            previous = connection.execute("SELECT messages,input_sha256 FROM request_inputs WHERE request_id=?", (request_id,)).fetchone() if exists else None
+            if previous is not None:
+                if previous["messages"] == literal and previous["input_sha256"] == digest:
+                    return
+                raise RehearsalConflict("request input is immutable")
+            self._active(run, token)
+            if job["status"] != "running" or request["dispatched"] or request["outcome"] != "in_flight" or request["finished_at"] is not None:
+                raise RehearsalConflict("request input requires an undispatched claimed request")
+            if size != request["input_bytes"]:
+                raise RehearsalConflict("request input disagrees with admission accounting")
+            if size > json.loads(run["manifest"])["limits"]["max_input_bytes"]:
+                raise RehearsalBudgetExceeded("request input limit exceeded")
+            self._context_schema(connection)
+            connection.execute("INSERT INTO request_inputs(request_id,messages,input_sha256) VALUES(?,?,?)", (request_id, literal, digest))
+
     def commit_output(self, run_id, wake_id, token, content):
         if not isinstance(content, str):
             raise RehearsalError("invalid output")
@@ -746,10 +1070,12 @@ class RehearsalStore:
                 raise RehearsalConflict("request is already dispatched or finished")
             connection.execute("UPDATE requests SET dispatched=1 WHERE request_id=?", (request_id,))
 
-    def finish_request(self, run_id, request_id, *, outcome, response_model=None, provider=None, duration_ms=0, usage=None, failure_code=None):
+    def finish_request(self, run_id, request_id, *, outcome, response_model=None, provider=None, duration_ms=0, usage=None, failure_code=None, finish_reason=None):
         _uuid(request_id, "request_id")
         if not isinstance(outcome, str) or outcome not in _OUTCOMES:
             raise RehearsalError("invalid outcome")
+        finish_reason = None if finish_reason is None else (
+            finish_reason if isinstance(finish_reason, str) and finish_reason in _FINISH_REASONS else "unknown")
         response_model = None if response_model is None else _model(response_model)
         provider = _safe(provider, "provider", nullable=True, label=True)
         failure_code = _safe(failure_code, "failure_code", nullable=True)
@@ -760,16 +1086,18 @@ class RehearsalStore:
             row = connection.execute("SELECT * FROM requests WHERE request_id=?", (request_id,)).fetchone()
             if row is None:
                 raise RehearsalError("request not found")
-            values = (outcome, response_model, provider, duration_ms, serialized, failure_code)
+            values = (outcome, response_model, provider, duration_ms, serialized, failure_code, finish_reason)
             if outcome == "not_sent" and row["dispatched"]:
                 raise RehearsalConflict("dispatched request cannot be not sent")
             previous = tuple(row[field] for field in ("outcome", "response_model", "provider", "duration_ms", "usage", "failure_code"))
+            previous += (row["finish_reason"] if "finish_reason" in row.keys() else None,)
             if row["outcome"] != "in_flight":
                 if previous == values:
                     return
                 raise RehearsalConflict("request result is immutable")
+            self._context_schema(connection)
             now = _now()
-            connection.execute("UPDATE requests SET outcome=?,response_model=?,provider=?,duration_ms=?,usage=?,failure_code=?,finished_at=? WHERE request_id=?", (*values, now, request_id))
+            connection.execute("UPDATE requests SET outcome=?,response_model=?,provider=?,duration_ms=?,usage=?,failure_code=?,finish_reason=?,finished_at=? WHERE request_id=?", (*values, now, request_id))
             connection.execute("UPDATE jobs SET response_model=COALESCE(?,response_model),provider=COALESCE(?,provider),duration_ms=duration_ms+?,updated_at=? WHERE wake_id=?",
                                (response_model, provider, duration_ms, now, row["wake_id"]))
 
@@ -786,6 +1114,7 @@ class RehearsalStore:
             events = []
             for row in rows:
                 result = {field: row[field] for field in ("request_id", "wake_id", "agent_id", "activity", "requested_model", "input_bytes", "max_output_tokens", "reserved_usd", "created_at", "finished_at", "outcome", "response_model", "provider", "duration_ms", "failure_code")}
+                result["finish_reason"] = row["finish_reason"] if "finish_reason" in row.keys() else None
                 result.update(json.loads(row["usage"]))
                 events.append(result)
             return {"events": events, "total": total, "limit": limit, "offset": offset}

@@ -18,7 +18,7 @@ async function mountApp(path: string) {
 const routes = [
   ['/', 'Dashboard'], ['/choices', 'Room to choose'], ['/agents', 'Agents'],
   ['/library', 'Library'], ['/costs', 'Operating costs'], ['/inquiries', 'Inquiry History'],
-  ['/rehearsal', 'Rehearsal'],
+  ['/rehearsal', 'Sessions'],
   ['/forum', 'Forum'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 

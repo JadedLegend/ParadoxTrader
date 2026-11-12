@@ -5,7 +5,7 @@ import type { AgentSummary, PositionSnapshot } from './data/contracts'
 import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
 import type { UsageSummaryResponse, UsageEventsResponse } from './usage/contracts'
 import type { LineageListResponse, LineageDetailResponse } from './lineage/contracts'
-import type { RunSummary, RunListResponse, JobListResponse, RequestListResponse, PrivateRecordResponse } from './rehearsal/contracts'
+import type { RunSummary, RunListResponse, JobListResponse, RequestListResponse, PrivateRecordResponse, DecisionResponse } from './rehearsal/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -68,3 +68,5 @@ export const getRehearsalRequests = (run_id: string, agent_id?: string, limit = 
   `/api/rehearsals/${encodeURIComponent(run_id)}/requests?limit=${limit}&offset=${offset}${agent_id ? `&agent_id=${encodeURIComponent(agent_id)}` : ''}`)
 export const getRehearsalRecord = (run_id: string, agent_id: string, kind: string, id: string | number) => request<PrivateRecordResponse>('GET',
   `/api/rehearsals/${encodeURIComponent(run_id)}/records?agent_id=${encodeURIComponent(agent_id)}&kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(String(id))}`)
+export const getRehearsalDecision = (run_id: string, agent_id: string, wake_id: string) => request<DecisionResponse>('GET',
+  `/api/rehearsals/${encodeURIComponent(run_id)}/decisions?agent_id=${encodeURIComponent(agent_id)}&wake_id=${encodeURIComponent(wake_id)}`)

@@ -28,7 +28,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 const NAV = [
   ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
-  ['/rehearsal', 'Rehearsal'], ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
+  ['/rehearsal', 'Sessions'], ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 
 export default function App() {
