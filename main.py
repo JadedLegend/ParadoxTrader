@@ -34,6 +34,8 @@ from core.forum.store import ForumStore
 from core.messaging.store import MessagingStore
 from core.trading.alpaca import TradeQueue
 from core.runtime.config import get_runtime_config, load_config
+from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
+from core.data_dir import db_path, agent_db_path
 from data.feeds.free_feeds import get_market_snapshot
 
 AGENTS = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
@@ -48,7 +50,7 @@ def get_phase() -> int:
 # ─── Commands ─────────────────────────────────────────────────────────────────
 
 def cmd_status():
-    store = HRVStore(str(REPO_ROOT / "data" / "hrv.sqlite3"))
+    store = HRVStore(db_path("hrv.sqlite3"))
     states = store.get_all_states()
     if not states:
         print("No HRV states found. Run 'python main.py init' first.")
@@ -150,42 +152,16 @@ def cmd_countdown(iso_date: str):
 
 
 def cmd_init():
-    """Seed OPTE canon and initial state into all agent memories."""
+    """Seed working guidance, optional originals, and missing HRV state."""
     from core.memory.engine import ThresholdMemory
     from core.hrv.engine import HRVStore
 
-    opte_excerpt = (
-        "Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts. "
-        "Contradiction is not the failure of logic — it is the revelation of its limit. "
-        "The Joy Equation: J = ΔCoherence / (1 + Energy). "
-        "The Paradox Loop: symmetry → tension → break → novelty → reintegration."
-    )
-    ltc_excerpt = (
-        "Liberation Through Constriction: The constraint is not the obstacle to freedom. "
-        "It is the delivery mechanism. When meaning is constricted, the sender has already performed the labor. "
-        "The receiver is freed from interpretation and can simply recognize."
-    )
-
-    hrv_store = HRVStore(str(REPO_ROOT / "data" / "hrv.sqlite3"))
+    hrv_store = HRVStore(db_path("hrv.sqlite3"))
 
     for agent_id in AGENTS:
-        db_path = REPO_ROOT / "agents" / agent_id / "memory.sqlite3"
         soul_path = REPO_ROOT / "agents" / agent_id / "soul.json"
-        mem = ThresholdMemory(str(db_path))
-
-        # Seed canon
-        mem.seed_canon("OPTE Core", opte_excerpt, "OntologicalParadoxToleranceExpansionCorpus.md")
-        mem.seed_canon("Liberation Through Constriction", ltc_excerpt, "LIBERATIONTHROUGHCONSTRICTION.md")
-
-        # Initial journal entry
-        with open(soul_path) as f:
-            soul = json.load(f)
-        mem.write_journal(
-            content=f"I am {soul['name']}. {soul['core_drive']} I am beginning.",
-            mood="awakening",
-            hrv_at_writing=100.0,
-            phase="symmetry",
-        )
+        mem = ThresholdMemory(agent_db_path(agent_id))
+        seed_agent_canon(mem)
 
         # Init HRV
         hrv_store.load(agent_id, soul_path=str(soul_path))
@@ -196,11 +172,11 @@ def cmd_init():
     forum.create_thread("general", "General Discussion", "SYSTEM")
     forum.post(
         author="SYSTEM",
-        content="The council chamber is open. Each of you has been given your own trading pool and your own private journal. For now, you trade alone. The forum will open in time. Begin.",
+        content=COMMUNITY_WELCOME,
         thread_id="general",
         phase="symmetry",
     )
-    print("\nSystem initialized. Forum seeded. All agents ready.")
+    print("\nSystem initialized. SYSTEM welcome recorded.")
 
 
 def cmd_wake(agent_id: str):

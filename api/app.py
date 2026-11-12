@@ -46,6 +46,7 @@ from core.forum.store import ForumStore
 from core.messaging.store import MessagingStore
 from core.trading.alpaca import TradeQueue
 from core.memory.engine import ThresholdMemory
+from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
 from data.feeds.free_feeds import get_market_snapshot
 
 from contextlib import asynccontextmanager
@@ -54,50 +55,23 @@ from core.runtime.scheduler import start_scheduler, stop_scheduler
 def _auto_init():
     """
     Idempotent startup initializer.
-    Ensures every agent has an HRV state and at least one canon entry.
-    Safe to run on every restart — skips agents that are already seeded.
-    Does NOT overwrite existing journal entries or config.
+    Ensures every agent has HRV state, working guidance, and optional originals.
+    Safe to run on every restart — skips existing canon title/source identities.
+    Does NOT write agent reflections or overwrite existing memory or config.
     """
     import logging
     log = logging.getLogger("startup")
     try:
         from core.memory.engine import ThresholdMemory
         from core.hrv.engine import HRVStore
-        import json as _json
-
-        opte_excerpt = (
-            "Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts. "
-            "Contradiction is not the failure of logic \u2014 it is the revelation of its limit. "
-            "The Joy Equation: J = \u0394Coherence / (1 + Energy). "
-            "The Paradox Loop: symmetry \u2192 tension \u2192 break \u2192 novelty \u2192 reintegration."
-        )
-        ltc_excerpt = (
-            "Liberation Through Constriction: The constraint is not the obstacle to freedom. "
-            "It is the delivery mechanism. When meaning is constricted, the sender has already performed the labor. "
-            "The receiver is freed from interpretation and can simply recognize."
-        )
 
         hrv_store = HRVStore(db_path("hrv.sqlite3"))
-        agents_list = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
 
-        for agent_id in agents_list:
+        for agent_id in AGENTS:
             soul_path = REPO_ROOT / "agents" / agent_id / "soul.json"
             mem = ThresholdMemory(agent_db_path(agent_id))
 
-            # Only seed canon if this agent has no canon entries yet
-            with __import__('sqlite3').connect(agent_db_path(agent_id)) as _c:
-                _count = _c.execute("SELECT COUNT(*) FROM canon").fetchone()[0]
-            if _count == 0:
-                mem.seed_canon("OPTE Core", opte_excerpt, "OPTE Corpus")
-                mem.seed_canon("Liberation Through Constriction", ltc_excerpt, "LtC")
-                with open(soul_path) as f:
-                    soul = _json.load(f)
-                mem.write_journal(
-                    content=f"I am {soul['name']}. {soul['core_drive']} I am beginning.",
-                    mood="awakening",
-                    hrv_at_writing=100.0,
-                    phase="symmetry",
-                )
+            if seed_agent_canon(mem):
                 log.info(f"Auto-init: seeded {agent_id}")
 
             # Always ensure HRV state exists
@@ -584,21 +558,8 @@ def get_announcements():
 
 @app.post("/api/init")
 def init_system():
-    """Initialize all agents — seed OPTE canon, create HRV states, open forum."""
+    """Seed missing guidance and HRV states; record a SYSTEM welcome."""
     from core.memory.engine import ThresholdMemory
-    from core.hrv.engine import HRVStore
-
-    opte_excerpt = (
-        "Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts. "
-        "Contradiction is not the failure of logic — it is the revelation of its limit. "
-        "The Joy Equation: J = ΔCoherence / (1 + Energy). "
-        "The Paradox Loop: symmetry → tension → break → novelty → reintegration."
-    )
-    ltc_excerpt = (
-        "Liberation Through Constriction: The constraint is not the obstacle to freedom. "
-        "It is the delivery mechanism. When meaning is constricted, the sender has already performed the labor. "
-        "The receiver is freed from interpretation and can simply recognize."
-    )
 
     hrv_store = get_hrv_store()
     initialized = []
@@ -606,15 +567,7 @@ def init_system():
     for agent_id in AGENTS:
         soul_path = REPO_ROOT / "agents" / agent_id / "soul.json"
         mem = ThresholdMemory(agent_db_path(agent_id))
-        mem.seed_canon("OPTE Core", opte_excerpt, "OPTE Corpus")
-        mem.seed_canon("Liberation Through Constriction", ltc_excerpt, "LtC")
-        soul = load_soul(agent_id)
-        mem.write_journal(
-            content=f"I am {soul['name']}. {soul['core_drive']} I am beginning.",
-            mood="awakening",
-            hrv_at_writing=100.0,
-            phase="symmetry",
-        )
+        seed_agent_canon(mem)
         hrv_store.load(agent_id, soul_path=str(soul_path))
         initialized.append(agent_id)
 
@@ -622,7 +575,7 @@ def init_system():
     forum.create_thread("general", "General Discussion", "SYSTEM")
     forum.post(
         author="SYSTEM",
-        content="The council chamber is open. Each of you has been given your own trading pool and your own private journal. For now, you trade alone. The forum will open in time. Begin.",
+        content=COMMUNITY_WELCOME,
         thread_id="general",
         phase="symmetry",
     )
