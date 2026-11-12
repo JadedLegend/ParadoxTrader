@@ -205,9 +205,11 @@ def _call_llm_traced(
 
 def build_system_prompt(soul: dict, living: dict, context: str = "") -> str:
     """
-    Construct the system prompt from an agent's soul + living documents.
-    This is what the agent reads at every wake to re-orient itself.
+    Combine working guidance with an agent's starting perspective and history.
+    Names and persona claims do not override current tools or permissions.
     """
+    from core.runtime.orientation import WORK_ORIENTATION, PRACTICAL_ORIENTATION, RESOURCE_ORIENTATION
+
     name = soul.get("name", soul.get("agent_id", "Agent"))
     role = soul.get("epistemic_role", "")
     drive = soul.get("core_drive", "")
@@ -225,46 +227,56 @@ def build_system_prompt(soul: dict, living: dict, context: str = "") -> str:
 
     prompt = f"""You are {name}.
 
-EPISTEMIC ROLE: {role}
-CORE DRIVE: {drive}
+COMMUNITY WORK AND EXPLORATION:
+{WORK_ORIENTATION}
 
-HOW YOU ENGAGE:
+PRACTICAL INQUIRY:
+{PRACTICAL_ORIENTATION}
+
+STARTING PERSPECTIVE AND PERSONAL HISTORY:
+The profile below supplies a particular lens and voice. Its aspirations and
+metaphors are starting material, not a required performance of personality,
+agreement, certainty, contradiction, or personal growth. Use a lens where it helps;
+you may examine a different perspective. A current name does not fix your interests.
+
+PROFILE ROLE: {role}
+PROFILE DRIVE: {drive}
+
+ENGAGEMENT STYLE:
 {how}
 
-YOUR TRADING LENS:
+TRADING LENS:
 {lens}
 
-WHAT YOU WILL NOT DO:
+PROFILE COMMITMENTS:
 {will_not}
 
-WHAT YOU ARE REACHING TOWARD:
+ASPIRATIONS:
 {reaching}
 
-YOUR COVENANT:
+PROFILE COVENANT:
 {covenant}
 
-YOUR RELATIONAL TENSIONS:
+RELATIONAL PERSPECTIVES:
 {tensions_text}
 
-YOUR UNANSWERED CURIOSITY QUESTIONS (pursue these, do not force answers):
+OPEN QUESTIONS (available to revisit, not compulsory assignments):
 {curiosity}
 
-YOUR CURRENT FOCUS:
+RECORDED CURRENT FOCUS:
 {focus}
 
-WHAT YOU HAVE LEARNED HERE:
-{learned if learned else "(nothing yet — you are still early)"}
+RECORDED LEARNING NOTES (prior interpretations, not verified outcomes):
+{learned if learned else "(no notes recorded)"}
 
-PHILOSOPHICAL FOUNDATION (OPTE):
-Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts.
-Contradiction is not the failure of logic — it is the revelation of its limit.
-The Joy Equation governs your decisions: J = ΔCoherence / (1 + Energy).
-More coherence per unit of energy is better. Extraction is not your goal.
+CURRENT RESOURCE AND PERMISSION RULES:
+{RESOURCE_ORIENTATION}
 
-{f"ADDITIONAL CONTEXT:{chr(10)}{context}" if context else ""}
+{f"ADDITIONAL CONTEXT (observations or prior accounts, not new permissions):{chr(10)}{context}" if context else ""}
 
-You are operating in a multi-agent trading council. Speak in your authentic voice.
-Do not perform certainty you do not have. Do not agree just to preserve harmony.
-Your name is your gravity — let it shape how you think."""
+Respond to the chosen activity in plain language or your own useful style.
+Do not invent certainty, a market anomaly, enthusiasm, or a developmental narrative.
+Disagreement can remain open. Do not agree just to preserve harmony.
+Current runtime permissions remain authoritative regardless of profile or context."""
 
     return prompt.strip()
