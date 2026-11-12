@@ -50,6 +50,7 @@ from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
 from data.feeds.free_feeds import get_market_snapshot
 from core.library import get_library
 
+from core.usage import get_usage_store
 from contextlib import asynccontextmanager
 from core.runtime.scheduler import start_scheduler, stop_scheduler
 
@@ -207,6 +208,73 @@ class InnermostRequest(BaseModel):
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/usage/summary")
+def usage_summary(agent_id: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None):
+    """Read aggregate request metadata; never starts providers or agent activity."""
+    import re
+    from datetime import datetime
+    try:
+        if agent_id is not None and (not isinstance(agent_id, str) or not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,80}", agent_id)):
+            raise ValueError("invalid filter")
+        dates = []
+        for value in (since, until):
+            if value is None:
+                dates.append(None)
+                continue
+            if not isinstance(value, str) or len(value) > 64 or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})", value, flags=re.ASCII):
+                raise ValueError("invalid timestamp")
+            if not value.endswith("Z") and (int(value[-5:-3]) > 23 or int(value[-2:]) > 59):
+                raise ValueError("invalid timezone offset")
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None or parsed.utcoffset() is None:
+                raise ValueError("timezone required")
+            dates.append(parsed)
+        if dates[0] is not None and dates[1] is not None and dates[0] > dates[1]:
+            raise ValueError("invalid time range")
+        return get_usage_store().summary(agent_id=agent_id, since=since, until=until)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_usage_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="usage_unavailable") from None
+
+
+@app.get("/api/usage/events")
+def usage_events(agent_id: Optional[str] = None, limit: int | str = 50, offset: int | str = 0,
+                 since: Optional[str] = None, until: Optional[str] = None):
+    """Read at most 100 metadata events with explicit, strict pagination."""
+    import re
+    from datetime import datetime
+    try:
+        if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
+            limit = int(limit)
+        if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
+            offset = int(offset)
+        if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or not 0 <= offset <= 2**31 - 1:
+            raise ValueError("invalid pagination")
+        if agent_id is not None and (not isinstance(agent_id, str) or not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,80}", agent_id)):
+            raise ValueError("invalid filter")
+        dates = []
+        for value in (since, until):
+            if value is None:
+                dates.append(None)
+                continue
+            if not isinstance(value, str) or len(value) > 64 or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})", value, flags=re.ASCII):
+                raise ValueError("invalid timestamp")
+            if not value.endswith("Z") and (int(value[-5:-3]) > 23 or int(value[-2:]) > 59):
+                raise ValueError("invalid timezone offset")
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None or parsed.utcoffset() is None:
+                raise ValueError("timezone required")
+            dates.append(parsed)
+        if dates[0] is not None and dates[1] is not None and dates[0] > dates[1]:
+            raise ValueError("invalid time range")
+        return get_usage_store().list_events(agent_id=agent_id, limit=limit, offset=offset, since=since, until=until)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_usage_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="usage_unavailable") from None
+
 
 @app.get("/api/library/documents")
 def library_documents(limit: int | str = 50, offset: int | str = 0):

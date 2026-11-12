@@ -7,6 +7,12 @@ export function readFixture(path: string): unknown {
   const url = new URL(path, 'https://preview.invalid')
   const route = url.pathname
   const meta = { kind: 'fixture', observed_at: fixture.observed_at }
+  if (route.startsWith('/api/usage/')) {
+    if (route !== '/api/usage/summary' && route !== '/api/usage/events') {
+      throw new Error('No local usage route is available. No backend fallback was attempted.')
+    }
+    return import('../usage/fixture').then(usage => usage.readUsageFixture(path))
+  }
   if (route.startsWith('/api/library/')) {
     // These are actual imported sources, not invented agent activity. The
     // corpus is loaded only after an explicit library read, never on each wake.

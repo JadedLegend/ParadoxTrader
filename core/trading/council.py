@@ -26,6 +26,7 @@ from core.messaging.store import MessagingStore
 from core.memory.engine import ThresholdMemory
 from core.runtime.llm import call_llm, build_system_prompt
 from core.trading.alpaca import submit_trade
+from core.usage.attribution import attribute_activity
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 AGENTS = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
@@ -67,6 +68,7 @@ Risk Note:     {proposal.get('risk_note', 'Not stated')}
 
 # ─── Council Response ─────────────────────────────────────────────────────────
 
+@attribute_activity("council_response")
 def get_council_response(
     agent_id: str,
     trade_brief: str,
@@ -116,6 +118,7 @@ Do not perform certainty you do not have. Speak in your authentic voice."""}],
 
 # ─── Multi-Lens Synthesis ─────────────────────────────────────────────────────
 
+@attribute_activity("council_synthesis")
 def synthesize_council(
     trade_brief: str,
     council_responses: list[dict],

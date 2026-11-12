@@ -12,6 +12,7 @@ import { IS_PREVIEW } from './api'
 import './styles.css'
 
 const Library = lazy(() => import('./views/Library'))
+const Costs = lazy(() => import('./views/Costs'))
 
 class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -25,7 +26,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 const NAV = [
   ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
-  ['/library', 'Library'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
+  ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 
 export default function App() {
@@ -44,11 +45,12 @@ export default function App() {
             <span>{IS_PREVIEW ? 'Local agent and portfolio examples; Library reads imported source text. No agents, providers, accounts, or schedules are running through this preview.' : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
           </div>
           <ScreenBoundary>
-            <Suspense fallback={<div className="loading" role="status">Loading library screen...</div>}>
+            <Suspense fallback={<div className="loading" role="status">Loading screen...</div>}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/choices" element={<WakeChoices />} />
               <Route path="/library" element={<Library />} />
+              <Route path="/costs" element={<Costs />} />
               <Route path="/forum" element={<Forum />} />
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/agents" element={<Agents />} />

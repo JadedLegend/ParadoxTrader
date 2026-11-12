@@ -1,0 +1,11 @@
+# Operating-cost visibility slice
+
+Build from merged main `57676fe`. Add a private append-only provider-request ledger, bounded read-only operator reporting, and a default local example screen. Do not start providers, connect accounts, set prices from memory, change funding/HRV/agent policies, or enable trading. Paper-order lifecycle work remains the next slice.
+
+Each attempted HTTP request is recorded once with agent, activity, wake/call correlation, provider/model, attempt, time/duration/outcome, nullable provider token counts, and optional cost. No prompts, answers, journals, queries, headers, keys, citations, or raw errors are stored. Missing provider usage or price is unknown, never silently free. Preflight with no outbound request is not a paid request event. Retries remain separate events. Provider-reported USD totals are distinguished from operator-rate estimates and unknown costs; neither replaces final account invoices.
+
+Local JSON pricing input is optional, explicit, versioned/as-of and not fetched automatically. Start with no rates. Estimates use known input/output counts and explicit cached-input rates when required, mark token-only scope, and preserve rate provenance at event time. No infrastructure/subscription/data-feed costs are invented or implied to be covered. Decimal accounting avoids binary-float dollar accumulation.
+
+The usage ledger and pricing code live under `core/usage/`; context scopes attribute the picker, selected activities, optional research, and council calls without changing prompts or choices. Provider instrumentation remains in existing OpenRouter/Perplexity adapters. Read-only `/api/usage/summary` and `/api/usage/events` expose bounded metadata and transparent partial-cost coverage. The new Costs page reuses the existing dark UI and isolated preview client, with labeled synthetic examples and no backend fallback. Main remains untouched by delivery; a new reviewed branch/pull request is created.
+
+The work is observation, not a new allowance, reward policy, quota, scheduler, shutdown rule, or spending authorization. Failed ledger writes must be visible and must never retry an otherwise successful paid request. Tracing failures must likewise not replay a completed or failed provider operation.

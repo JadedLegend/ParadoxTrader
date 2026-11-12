@@ -1,6 +1,7 @@
 # Configuration with secrets — NEVER commit
 config/system.yaml
 data/system.yaml
+usage_pricing.json
 .env.*
 !.env.example
 
