@@ -1,0 +1,979 @@
+{
+  "schema_version": 1,
+  "kind": "fixture",
+  "observed_at": "2026-11-12T00:00:00+00:00",
+  "agents": [
+    {
+      "agent_id": "tempest",
+      "name": "The Tempest",
+      "epistemic_role": "Momentum signal detection, volatility regime identification",
+      "core_drive": "Chaos as revelation. Loves volatility the way a sailor loves a storm — it strips away pretense.",
+      "model": "deepseek/deepseek-v3.2",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 72.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "siren",
+      "name": "The Siren",
+      "epistemic_role": "Sentiment analysis, narrative seduction, crowd psychology traps",
+      "core_drive": "Seduction and resonance. Hears the emotional undertow in narratives.",
+      "model": "qwen/qwen3-235b-a22b-2507",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 63.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "alchemist",
+      "name": "The Alchemist",
+      "epistemic_role": "Risk/reward structuring, spread construction, asymmetry hunting",
+      "core_drive": "Transmutation. Turns 'base' risk or overlooked material into refined opportunity.",
+      "model": "deepseek/deepseek-r1-0528",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 84.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "weaver",
+      "name": "The Weaver",
+      "epistemic_role": "Cross-asset correlation, multi-leg coherence, second-order effects",
+      "core_drive": "Interconnection. Sees the market as a living tapestry of threads.",
+      "model": "moonshotai/kimi-k2.6",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 56.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "oracle",
+      "name": "The Oracle",
+      "epistemic_role": "Macro cycle timing, long-arc pattern recognition",
+      "core_drive": "Foresight and pattern recognition across time.",
+      "model": "google/gemini-2.5-pro",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 73.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "shadow",
+      "name": "The Shadow",
+      "epistemic_role": "Contrarian risk audit, blind spot detection, collective delusion check",
+      "core_drive": "Hidden truths, blind spots, and the underside of narratives.",
+      "model": "x-ai/grok-4.5",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 61.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    },
+    {
+      "agent_id": "paradox_hunter",
+      "name": "The Paradox Hunter",
+      "epistemic_role": "Final synthesis, dissonance detection, trade execution authority",
+      "core_drive": "Dissonance detection and ultimate trade calling.",
+      "model": "qwen/qwen3-235b-a22b-thinking-2507",
+      "current_focus": "",
+      "curiosity_questions": [],
+      "hrv": 92.0,
+      "max_hrv": 100.0,
+      "in_interval": false,
+      "last_tick_at": null,
+      "hrv_status": "ok"
+    }
+  ],
+  "positions": {
+    "tempest": {
+      "status": "ok",
+      "positions": [
+        {
+          "symbol": "DEMO",
+          "qty": "2",
+          "avg_entry_price": "10.00",
+          "unrealized_pl": "0.00"
+        }
+      ],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "siren": {
+      "status": "ok",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "alchemist": {
+      "status": "not_configured",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "weaver": {
+      "status": "error",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "oracle": {
+      "status": "ok",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "shadow": {
+      "status": "not_configured",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    },
+    "paradox_hunter": {
+      "status": "ok",
+      "positions": [],
+      "observed_at": "2026-11-12T00:00:00+00:00"
+    }
+  },
+  "windows": {
+    "tempest": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 72.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 0.5
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 72.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "analyze_volatility",
+            "label": "Analyze volatility regime and storm fronts",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 72.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "siren": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 63.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "analyze_sentiment",
+            "label": "Analyze narrative sentiment and crowd psychology",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 0.5
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 63.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "analyze_sentiment",
+            "label": "Analyze narrative sentiment and crowd psychology",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 63.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "analyze_sentiment",
+            "label": "Analyze narrative sentiment and crowd psychology",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 1.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "alchemist": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 84.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 0.5
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 84.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 3.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 84.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "analyze_options",
+            "label": "Analyze options structure and asymmetric setups",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "weaver": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 56.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 56.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "analyze_correlation",
+            "label": "Map cross-asset correlations and second-order effects",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 56.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "oracle": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 73.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 73.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "analyze_macro",
+            "label": "Read the macro cycle and long-arc patterns",
+            "hrv_cost": 1.5
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 73.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "shadow": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 61.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 61.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          },
+          {
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 1.0
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 61.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "analyze_consensus",
+            "label": "Analyze the council's current consensus",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "roam_contrarian",
+            "label": "Roam the contrarian edge — find what others miss",
+            "hrv_cost": 1.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    },
+    "paradox_hunter": {
+      "phase0": {
+        "phase": 0,
+        "hrv": 92.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          }
+        ]
+      },
+      "phase1": {
+        "phase": 1,
+        "hrv": 92.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "research",
+            "label": "Research a topic of your choosing",
+            "hrv_cost": 3.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          }
+        ]
+      },
+      "phase3": {
+        "phase": 3,
+        "hrv": 92.0,
+        "max_hrv": 100.0,
+        "in_interval": false,
+        "choices": [
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
+          }
+        ]
+      },
+      "interval": {
+        "phase": 0,
+        "hrv": 20.0,
+        "max_hrv": 100.0,
+        "in_interval": true,
+        "choices": [
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "tempest": {
+      "self_definition": "Tempest — a violent, windy storm; a state of great commotion, disturbance, or tumult.",
+      "self_definition_history": []
+    },
+    "siren": {
+      "self_definition": "Siren — a device that makes a loud warning sound; a woman considered dangerous because she attracts through irresistible allure; in myth, a creature whose song lures sailors to their ruin.",
+      "self_definition_history": []
+    },
+    "alchemist": {
+      "self_definition": "Alchemist — a person who studies or practices alchemy; one who transforms or creates something through a seemingly magical process; historically, one who sought to transmute base metals into gold and discover the elixir of life.",
+      "self_definition_history": []
+    },
+    "weaver": {
+      "self_definition": "Weaver — a person who weaves fabric; one who interlaces threads, yarns, or strands to form a coherent pattern; one who constructs by intertwining disparate elements into a unified whole.",
+      "self_definition_history": []
+    },
+    "oracle": {
+      "self_definition": "Oracle — a priest or priestess acting as a medium through whom advice or prophecy was sought from the gods; a person or thing regarded as an infallible authority or guide; a divine utterance or response.",
+      "self_definition_history": []
+    },
+    "shadow": {
+      "self_definition": "Shadow — a dark area or shape produced by a body coming between rays of light and a surface; an inseparable attendant or companion; a position of relative inferiority or obscurity; the Jungian archetype of the unconscious, the part of the self that remains hidden.",
+      "self_definition_history": []
+    },
+    "paradox_hunter": {
+      "self_definition": "Paradox — a statement that seems self-contradictory or absurd but may in fact be true; a person or thing that combines contradictory features or qualities; the point at which logic inverts and reveals the structure beneath.",
+      "self_definition_history": []
+    }
+  }
+}
