@@ -5,6 +5,7 @@ import type { AgentSummary, PositionSnapshot } from './data/contracts'
 import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
 import type { UsageSummaryResponse, UsageEventsResponse } from './usage/contracts'
 import type { LineageListResponse, LineageDetailResponse } from './lineage/contracts'
+import type { RunSummary, RunListResponse, JobListResponse, RequestListResponse, PrivateRecordResponse } from './rehearsal/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -58,3 +59,12 @@ export const getLineageInquiries = (agent_id = 'alchemist', limit = 50, offset =
   `/api/lineage/inquiries?agent_id=${encodeURIComponent(agent_id)}&limit=${limit}&offset=${offset}`)
 export const getLineageInquiry = (inquiry_id: string, agent_id = 'alchemist') => request<LineageDetailResponse>('GET',
   `/api/lineage/inquiries/${encodeURIComponent(inquiry_id)}?agent_id=${encodeURIComponent(agent_id)}`)
+
+export const getRehearsalRuns = (limit = 20, offset = 0) => request<RunListResponse>('GET',
+  `/api/rehearsals?limit=${limit}&offset=${offset}`)
+export const getRehearsalRun = (run_id: string) => request<RunSummary>('GET', `/api/rehearsals/${encodeURIComponent(run_id)}`)
+export const getRehearsalJobs = (run_id: string) => request<JobListResponse>('GET', `/api/rehearsals/${encodeURIComponent(run_id)}/jobs`)
+export const getRehearsalRequests = (run_id: string, agent_id?: string, limit = 50, offset = 0) => request<RequestListResponse>('GET',
+  `/api/rehearsals/${encodeURIComponent(run_id)}/requests?limit=${limit}&offset=${offset}${agent_id ? `&agent_id=${encodeURIComponent(agent_id)}` : ''}`)
+export const getRehearsalRecord = (run_id: string, agent_id: string, kind: string, id: string | number) => request<PrivateRecordResponse>('GET',
+  `/api/rehearsals/${encodeURIComponent(run_id)}/records?agent_id=${encodeURIComponent(agent_id)}&kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(String(id))}`)

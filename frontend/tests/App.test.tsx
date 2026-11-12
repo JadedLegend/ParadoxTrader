@@ -18,15 +18,16 @@ async function mountApp(path: string) {
 const routes = [
   ['/', 'Dashboard'], ['/choices', 'Room to choose'], ['/agents', 'Agents'],
   ['/library', 'Library'], ['/costs', 'Operating costs'], ['/inquiries', 'Inquiry History'],
+  ['/rehearsal', 'Rehearsal'],
   ['/forum', 'Forum'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 
 describe('App fixture-mode smoke coverage', () => {
-  it.each(routes)('%s renders its local screen with all ten navigation links', async (path, title) => {
+  it.each(routes)('%s renders its local screen with all eleven navigation links', async (path, title) => {
     const { main } = await mountApp(path)
     expect(within(main).getByText(title, { exact: true })).toBeTruthy()
     const nav = screen.getByRole('navigation', { name: 'Main navigation' })
-    expect(within(nav).getAllByRole('link')).toHaveLength(10)
+    expect(within(nav).getAllByRole('link')).toHaveLength(11)
     expect(within(nav).getByRole('link', { name: 'Wake Choices' }).getAttribute('href')).toBe('/choices')
     expect(within(nav).getByRole('link', { name: 'Library' }).getAttribute('href')).toBe('/library')
     expect(within(nav).getByRole('link', { name: 'Costs' }).getAttribute('href')).toBe('/costs')

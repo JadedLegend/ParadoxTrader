@@ -1,0 +1,35 @@
+# Rehearsal component contracts
+
+Fixed owners: tempest, siren, alchemist, weaver, oracle, shadow, paradox_hunter. `run_id` canonical UUID; `wake_id` stable safe ID per owner/round. Run root explicit path; run directory `<root>/<run_id>`; no traversal, symlink escape or caller-selected arbitrary filename. Files: `control.sqlite3`, `trade_queue.sqlite3`, `usage.sqlite3`, `memory/<owner>.sqlite3`, `profiles/<owner>_{soul,living}.json` and run-local library index. No original writes or global config/data path changes.
+
+## Manifest
+
+`{schema_version:1, mode:'offline'|'real', agent_models:{all7:exactID}, limits:{wakes_per_agent:2,max_requests:28,max_output_tokens:1024,max_input_bytes:24000,max_runtime_seconds:900,request_timeout_seconds:60,max_parallelism:3,budget_usd:string}, catalog_snapshot:{models:[{id,context_length,max_completion_tokens,supported_parameters,pricing:{prompt,completion,request}}]}, capabilities:['rest','journal','inquire','library','roam']}`. Production validation can reject unsupported pricing overrides/additional nonzero units or unknown model/caps; no assumed catalog ID. Live input catalog usual `{data:[...]}` converted to frozen allowlist. Metadata rates are USD per token/request, not per-million. Catalog contains no key/content; profile snapshot handling belongs controller.
+
+## Store (agent 1 owns store.py and store tests)
+
+`RehearsalStore(root)` methods:
+- `prepare(manifest, *, run_id=None) -> run summary`; `run_path(run_id)->Path` safely resolved; `get_run(run_id)->summary`; `list_runs(limit=20,offset=0)->{runs,total,limit,offset}`.
+- `get_manifest(run_id)->dict`; `list_jobs(run_id)->list`; job fields `{wake_id,agent_id,round,status,action,failure_code,requested_model,response_model,provider,request_count,duration_ms,record_refs,updated_at}`.
+- `begin(run_id, *, resume=False)->controller_token` explicit single-controller; `end(run_id,token)->summary`; `request_stop(run_id)->summary`; `assert_active(run_id,token)` checks stop/deadline.
+- `claim_job(run_id,wake_id,token)->job|None`; `commit_choice(run_id,wake_id,token,choice)->None`; `get_choice(run_id,wake_id)->dict|None` private strict choice; `commit_output(run_id,wake_id,token,content)->None`; `get_output(run_id,wake_id)->str|None` private validated returned activity content (not hidden reasoning).
+- `finish_job(run_id,wake_id,token, *, status='completed',action=None,failure_code=None,record_refs=None)`; `finish_job` cannot replace terminal completed work.
+- `reserve_request(run_id,wake_id,token, *, agent_id,activity,model,input_bytes,max_output_tokens,reserved_usd)->request_id`. Atomic stop/deadline/global attempts/USD admission and bounded inputs. Reservations consumed conservatively, never released as free on unknown outcome.
+- `finish_request(run_id,request_id, *, outcome,response_model=None,provider=None,duration_ms=0,usage=None,failure_code=None)` does not require active run (inflight returns after stop). Request table metadata only; `list_requests(run_id,limit=50,offset=0,agent_id=None)->{events,total,limit,offset}`.
+- `recover(run_id)` explicit operator recovery: submitted unfinished requests become uncertain; no silent resend. Reset safe committed jobs for local replay only; preserve output/choice/checkpoints. No automatic timed controller lease takeover authorizing paid replay.
+
+Summary `{run_id,mode,status,created_at,started_at,ended_at,stop_requested,limits,agent_models,request_count,reserved_usd,known_cost_usd,unknown_cost_requests,agents:[{agent_id,pending,completed,failed,stopped,uncertain}],capabilities}`. Statuses prepared/running/completed/partial/stopped/uncertain. Private read refs `{kind:'journal'|'episode'|'inquiry'|'library',id:...}`; no journal/content in job/event summary. Typed exceptions `RehearsalError`, `RehearsalConflict`, `RehearsalStopped`, `RehearsalBudgetExceeded` exported from store.
+
+## Provider/controller (agent 2 owns provider.py/controller.py and tests)
+
+`validate_manifest(manifest)->dict` pure common strict validator exported from provider.py; store may validate minimally locally and lazy-import validator if needed. `catalog_snapshot(model_map, catalog)->dict` accepts API catalog, validates/normalizes selected only; offline uses explicitly synthetic metadata, no pretending verified real availability. `OpenRouterTransport(api_key, *, http_post=None)` explicit real arming, no env/config fallback. `generate` has one HTTP attempt, redirects disabled, exact frozen model, required parameters, capped price/no fallback, no tracing/tools. Record all attempts with store reservation + existing run-local UsageStore; missing costs unknown. Safe errors never include key/header/body/query.
+
+`RehearsalController(store,run_id,*,transport,repo_root=None)` with `.run(resume=False)->summary`; transport callback injectable offline; no live default. Dispatcher uses allowed choices only, prepares profile snapshots, shared cohort and two rounds, existing inquiry/private memories/library. It owns global controller token and passes reservation/generation metadata through provider. Choice JSON `{action:'rest'|'journal'|'inquire'|'library'|'roam', query?:bounded library query}` no fences/fallback action guessing. Choice validated before commit. Activity output persisted before effects. Inquiry uses `run_inquiry(... db_path=run.trade_queue, model_call=boundGenerate)` strict existing commands/replay. Owner memories need derived idempotency keys/checkpoint bridge, never non-idempotent double writes on output recovery.
+
+No imports broker/scheduler/ordinary agent_loop/research tools. `.run()` only expressly invoked through CLI/API outside default preview; no invocation during tests with actual providers. Literal model outputs—not reasoning—can stage privately; operational API omits staged content. HTTP unknown after reservation is uncertain, not automatically replayed on resume.
+
+## Frontend/read-only API (agent 3 owns api/rehearsal.py and frontend/rehearsal modules/view/tests)
+
+Dedicated `create_app(root, operator_token=None)` FastAPI with no startup side effects. Protected GET `/api/rehearsals?limit=&offset=`, `/{run_id}`, `/{run_id}/jobs`, `/{run_id}/requests?limit=&offset=&agent_id=`, `/{run_id}/records?agent_id=&kind=&id=` under `/api/rehearsals`. Root/token server supplied; missing/wrong auth fails before store read. Records are selected-owner protected; journal and episode IDs local int, inquiry UUID; no innermost route. No POST/start endpoints. Existing broad app is untouched in this slice. No API import from existing app.
+
+`frontend/src/rehearsal/contracts.ts`, `client.ts`, `fixture.json`; `Rehearsal.tsx` uses parent's typed wrappers (getRehearsalRuns/getRehearsalRun/getRehearsalJobs/getRehearsalRequests/getRehearsalRecord). `readRehearsalFixture(path)` local awaitable GET reader. View read-only (CLI controls documented); no live keys/model launcher. Default fixture initially seedable by implementer; parent regenerates via actual temporary controller once ready. Parent owns App.tsx/api.ts/readFixture.ts/styles.css/route manifest/smoke tests/CLI fixture builder/docs.

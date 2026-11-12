@@ -1,0 +1,1506 @@
+{
+  "jobs": {
+    "88888888-8888-4888-8888-888888888888": [
+      {
+        "action": "rest",
+        "agent_id": "tempest",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [],
+        "request_count": 1,
+        "requested_model": "deepseek/deepseek-v3.2",
+        "response_model": "deepseek/deepseek-v3.2",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "tempest-r1"
+      },
+      {
+        "action": "inquire",
+        "agent_id": "tempest",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+            "kind": "inquiry"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "deepseek/deepseek-v3.2",
+        "response_model": "deepseek/deepseek-v3.2",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "tempest-r2"
+      },
+      {
+        "action": "journal",
+        "agent_id": "siren",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": 1,
+            "kind": "journal"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "qwen/qwen3-235b-a22b-2507",
+        "response_model": "qwen/qwen3-235b-a22b-2507",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "siren-r1"
+      },
+      {
+        "action": "rest",
+        "agent_id": "siren",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [],
+        "request_count": 1,
+        "requested_model": "qwen/qwen3-235b-a22b-2507",
+        "response_model": "qwen/qwen3-235b-a22b-2507",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "siren-r2"
+      },
+      {
+        "action": "inquire",
+        "agent_id": "alchemist",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+            "kind": "inquiry"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "alchemist-r1"
+      },
+      {
+        "action": "inquire",
+        "agent_id": "alchemist",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+            "kind": "inquiry"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "alchemist-r2"
+      },
+      {
+        "action": "library",
+        "agent_id": "weaver",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "doc-04445b70bb10-s00106",
+            "kind": "library"
+          },
+          {
+            "id": "doc-04445b70bb10-s00002",
+            "kind": "library"
+          },
+          {
+            "id": "doc-c500cd2e2d45-s00026",
+            "kind": "library"
+          },
+          {
+            "id": 1,
+            "kind": "episode"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "moonshotai/kimi-k2.6",
+        "response_model": "moonshotai/kimi-k2.6",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "weaver-r1"
+      },
+      {
+        "action": "library",
+        "agent_id": "weaver",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "doc-04445b70bb10-s00106",
+            "kind": "library"
+          },
+          {
+            "id": "doc-04445b70bb10-s00002",
+            "kind": "library"
+          },
+          {
+            "id": "doc-c500cd2e2d45-s00026",
+            "kind": "library"
+          },
+          {
+            "id": 2,
+            "kind": "episode"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "moonshotai/kimi-k2.6",
+        "response_model": "moonshotai/kimi-k2.6",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "weaver-r2"
+      },
+      {
+        "action": "roam",
+        "agent_id": "oracle",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": 1,
+            "kind": "episode"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "google/gemini-2.5-pro",
+        "response_model": "google/gemini-2.5-pro",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "oracle-r1"
+      },
+      {
+        "action": "roam",
+        "agent_id": "oracle",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": 2,
+            "kind": "episode"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "google/gemini-2.5-pro",
+        "response_model": "google/gemini-2.5-pro",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "oracle-r2"
+      },
+      {
+        "action": "inquire",
+        "agent_id": "shadow",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+            "kind": "inquiry"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "x-ai/grok-4.5",
+        "response_model": "x-ai/grok-4.5",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "shadow-r1"
+      },
+      {
+        "action": "inquire",
+        "agent_id": "shadow",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+            "kind": "inquiry"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "x-ai/grok-4.5",
+        "response_model": "x-ai/grok-4.5",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "shadow-r2"
+      },
+      {
+        "action": "journal",
+        "agent_id": "paradox_hunter",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": 1,
+            "kind": "journal"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "round": 1,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "paradox_hunter-r1"
+      },
+      {
+        "action": "journal",
+        "agent_id": "paradox_hunter",
+        "duration_ms": 0,
+        "failure_code": null,
+        "provider": "scripted-offline",
+        "record_refs": [
+          {
+            "id": 2,
+            "kind": "journal"
+          }
+        ],
+        "request_count": 2,
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "round": 2,
+        "status": "completed",
+        "updated_at": "2026-11-12T00:00:00+00:00",
+        "wake_id": "paradox_hunter-r2"
+      }
+    ]
+  },
+  "kind": "fixture",
+  "observed_at": "2026-11-12T00:00:00+00:00",
+  "records": {
+    "88888888-8888-4888-8888-888888888888": {
+      "alchemist|inquiry|48631e9a-28fd-5183-926a-e9bf0f201512": {
+        "agent_id": "alchemist",
+        "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+        "kind": "inquiry",
+        "record": {
+          "entries": [
+            {
+              "agent_id": "alchemist",
+              "content": "This private example is supplied by the offline transport, not authored by a live model.",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "entry_id": "ba2d3845-209b-5c71-b02c-42f0c1c6801d",
+              "inquiry_id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "interpretation",
+              "source": "agent"
+            }
+          ],
+          "events": [
+            {
+              "agent_id": "alchemist",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "43b03057-f373-5ede-b7c3-a910554d17a5",
+              "inquiry_id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "inquiry_created",
+              "payload": {
+                "phase": 0,
+                "title": "A scripted example question",
+                "visibility": "owner"
+              }
+            },
+            {
+              "agent_id": "alchemist",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "770b7765-2abe-53ae-9311-8b4d954750ee",
+              "inquiry_id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "entry_added",
+              "payload": {
+                "entry_id": "ba2d3845-209b-5c71-b02c-42f0c1c6801d",
+                "kind": "interpretation",
+                "source": "agent"
+              }
+            }
+          ],
+          "fills": [],
+          "inquiry": {
+            "agent_id": "alchemist",
+            "created_at": "2026-11-12T00:00:00+00:00",
+            "inquiry_id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+            "phase": 0,
+            "state": "open",
+            "title": "A scripted example question",
+            "updated_at": "2026-11-12T00:00:00+00:00",
+            "visibility": "owner"
+          },
+          "orders": [],
+          "positions": [],
+          "proposals": [],
+          "reviews": [],
+          "status": "ok",
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "alchemist|inquiry|ac083aec-d24b-53c2-ab1a-543392527b6a": {
+        "agent_id": "alchemist",
+        "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+        "kind": "inquiry",
+        "record": {
+          "entries": [
+            {
+              "agent_id": "alchemist",
+              "content": "This private example is supplied by the offline transport, not authored by a live model.",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "entry_id": "eaa4ea51-9e18-5015-b109-42927016d2e5",
+              "inquiry_id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+              "kind": "interpretation",
+              "source": "agent"
+            }
+          ],
+          "events": [
+            {
+              "agent_id": "alchemist",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "b018ef4e-eecc-596d-9b6c-6674aa9ebbee",
+              "inquiry_id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+              "kind": "inquiry_created",
+              "payload": {
+                "phase": 0,
+                "title": "A scripted example question",
+                "visibility": "owner"
+              }
+            },
+            {
+              "agent_id": "alchemist",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "fa8854b9-512a-53cb-aa5f-e4d154821cdd",
+              "inquiry_id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+              "kind": "entry_added",
+              "payload": {
+                "entry_id": "eaa4ea51-9e18-5015-b109-42927016d2e5",
+                "kind": "interpretation",
+                "source": "agent"
+              }
+            }
+          ],
+          "fills": [],
+          "inquiry": {
+            "agent_id": "alchemist",
+            "created_at": "2026-11-12T00:00:00+00:00",
+            "inquiry_id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+            "phase": 0,
+            "state": "open",
+            "title": "A scripted example question",
+            "updated_at": "2026-11-12T00:00:00+00:00",
+            "visibility": "owner"
+          },
+          "orders": [],
+          "positions": [],
+          "proposals": [],
+          "reviews": [],
+          "status": "ok",
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "oracle|episode|1": {
+        "agent_id": "oracle",
+        "id": 1,
+        "kind": "episode",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 1,
+          "phase": "symmetry",
+          "title": "Rehearsal roam"
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "oracle|episode|2": {
+        "agent_id": "oracle",
+        "id": 2,
+        "kind": "episode",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 2,
+          "phase": "symmetry",
+          "title": "Rehearsal roam"
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "paradox_hunter|journal|1": {
+        "agent_id": "paradox_hunter",
+        "id": 1,
+        "kind": "journal",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "hrv": null,
+          "id": 1,
+          "mood": "neutral",
+          "phase": "symmetry",
+          "private": true
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "paradox_hunter|journal|2": {
+        "agent_id": "paradox_hunter",
+        "id": 2,
+        "kind": "journal",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "hrv": null,
+          "id": 2,
+          "mood": "neutral",
+          "phase": "symmetry",
+          "private": true
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "shadow|inquiry|5538b1c7-0079-5e86-adec-4eacd453847f": {
+        "agent_id": "shadow",
+        "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+        "kind": "inquiry",
+        "record": {
+          "entries": [
+            {
+              "agent_id": "shadow",
+              "content": "This private example is supplied by the offline transport, not authored by a live model.",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "entry_id": "bd10f5b0-f55f-5c68-aa1b-3781d31a8f9c",
+              "inquiry_id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+              "kind": "interpretation",
+              "source": "agent"
+            }
+          ],
+          "events": [
+            {
+              "agent_id": "shadow",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "c440525c-760f-55a0-89b6-dcee0b38e00c",
+              "inquiry_id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+              "kind": "inquiry_created",
+              "payload": {
+                "phase": 0,
+                "title": "A scripted example question",
+                "visibility": "owner"
+              }
+            },
+            {
+              "agent_id": "shadow",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "6811ae9e-5b30-5ee5-8d26-91a0cb40c30b",
+              "inquiry_id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+              "kind": "entry_added",
+              "payload": {
+                "entry_id": "bd10f5b0-f55f-5c68-aa1b-3781d31a8f9c",
+                "kind": "interpretation",
+                "source": "agent"
+              }
+            }
+          ],
+          "fills": [],
+          "inquiry": {
+            "agent_id": "shadow",
+            "created_at": "2026-11-12T00:00:00+00:00",
+            "inquiry_id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+            "phase": 0,
+            "state": "open",
+            "title": "A scripted example question",
+            "updated_at": "2026-11-12T00:00:00+00:00",
+            "visibility": "owner"
+          },
+          "orders": [],
+          "positions": [],
+          "proposals": [],
+          "reviews": [],
+          "status": "ok",
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "shadow|inquiry|6c2ffb63-c91d-50f9-9776-693fc6d6e447": {
+        "agent_id": "shadow",
+        "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+        "kind": "inquiry",
+        "record": {
+          "entries": [
+            {
+              "agent_id": "shadow",
+              "content": "This private example is supplied by the offline transport, not authored by a live model.",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "entry_id": "6acc7c6c-3a3a-5631-a5d3-39475428ceed",
+              "inquiry_id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "interpretation",
+              "source": "agent"
+            }
+          ],
+          "events": [
+            {
+              "agent_id": "shadow",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "2e2b6d56-e034-56c8-951a-7d29dd9ae2c6",
+              "inquiry_id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "inquiry_created",
+              "payload": {
+                "phase": 0,
+                "title": "A scripted example question",
+                "visibility": "owner"
+              }
+            },
+            {
+              "agent_id": "shadow",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "752d9409-90ca-5236-b8f3-1c8523c176e0",
+              "inquiry_id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "entry_added",
+              "payload": {
+                "entry_id": "6acc7c6c-3a3a-5631-a5d3-39475428ceed",
+                "kind": "interpretation",
+                "source": "agent"
+              }
+            }
+          ],
+          "fills": [],
+          "inquiry": {
+            "agent_id": "shadow",
+            "created_at": "2026-11-12T00:00:00+00:00",
+            "inquiry_id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+            "phase": 0,
+            "state": "open",
+            "title": "A scripted example question",
+            "updated_at": "2026-11-12T00:00:00+00:00",
+            "visibility": "owner"
+          },
+          "orders": [],
+          "positions": [],
+          "proposals": [],
+          "reviews": [],
+          "status": "ok",
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "siren|journal|1": {
+        "agent_id": "siren",
+        "id": 1,
+        "kind": "journal",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "hrv": null,
+          "id": 1,
+          "mood": "neutral",
+          "phase": "symmetry",
+          "private": true
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "tempest|inquiry|5ebe7afd-dd7f-5bea-a6b1-71968dc81b31": {
+        "agent_id": "tempest",
+        "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+        "kind": "inquiry",
+        "record": {
+          "entries": [
+            {
+              "agent_id": "tempest",
+              "content": "This private example is supplied by the offline transport, not authored by a live model.",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "entry_id": "d6baf031-407a-5e6f-81ed-e7f643ffa175",
+              "inquiry_id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+              "kind": "interpretation",
+              "source": "agent"
+            }
+          ],
+          "events": [
+            {
+              "agent_id": "tempest",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "ddd925f1-8bad-54ca-90ad-90a24a5caee6",
+              "inquiry_id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+              "kind": "inquiry_created",
+              "payload": {
+                "phase": 0,
+                "title": "A scripted example question",
+                "visibility": "owner"
+              }
+            },
+            {
+              "agent_id": "tempest",
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "event_id": "d1db74f0-5828-5555-9c68-14d77c296f49",
+              "inquiry_id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+              "kind": "entry_added",
+              "payload": {
+                "entry_id": "d6baf031-407a-5e6f-81ed-e7f643ffa175",
+                "kind": "interpretation",
+                "source": "agent"
+              }
+            }
+          ],
+          "fills": [],
+          "inquiry": {
+            "agent_id": "tempest",
+            "created_at": "2026-11-12T00:00:00+00:00",
+            "inquiry_id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+            "phase": 0,
+            "state": "open",
+            "title": "A scripted example question",
+            "updated_at": "2026-11-12T00:00:00+00:00",
+            "visibility": "owner"
+          },
+          "orders": [],
+          "positions": [],
+          "proposals": [],
+          "reviews": [],
+          "status": "ok",
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "weaver|episode|1": {
+        "agent_id": "weaver",
+        "id": 1,
+        "kind": "episode",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 1,
+          "phase": "symmetry",
+          "title": "Rehearsal library"
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "weaver|episode|2": {
+        "agent_id": "weaver",
+        "id": 2,
+        "kind": "episode",
+        "record": {
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 2,
+          "phase": "symmetry",
+          "title": "Rehearsal library"
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "weaver|library|doc-04445b70bb10-s00002": {
+        "agent_id": "weaver",
+        "id": "doc-04445b70bb10-s00002",
+        "kind": "library",
+        "record": {
+          "document_id": "doc-04445b70bb10",
+          "filename": "ParadoxTradeReadMe.docx",
+          "locator": "DOCX paragraph 3 (main document, including tables) · extracted characters 1–41",
+          "next_offset": null,
+          "next_section_id": "doc-04445b70bb10-s00003",
+          "offset": 0,
+          "previous_section_id": "doc-04445b70bb10-s00001",
+          "section_id": "doc-04445b70bb10-s00002",
+          "sha256": "9f90a313e85b10ddde45a6056604c358984e3e8290ecbd0cc5a811bdb10e974e",
+          "status": "ok",
+          "text": "> \"Every contradiction contains a trade.\"",
+          "title": "Paradox Trade Read Me",
+          "total_chars": 41,
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "weaver|library|doc-04445b70bb10-s00106": {
+        "agent_id": "weaver",
+        "id": "doc-04445b70bb10-s00106",
+        "kind": "library",
+        "record": {
+          "document_id": "doc-04445b70bb10",
+          "filename": "ParadoxTradeReadMe.docx",
+          "locator": "DOCX paragraph 145 (main document, including tables) · extracted characters 1–42",
+          "next_offset": null,
+          "next_section_id": "doc-04445b70bb10-s00107",
+          "offset": 0,
+          "previous_section_id": "doc-04445b70bb10-s00105",
+          "section_id": "doc-04445b70bb10-s00106",
+          "sha256": "9f90a313e85b10ddde45a6056604c358984e3e8290ecbd0cc5a811bdb10e974e",
+          "status": "ok",
+          "text": "- Priority scores, contradiction detection",
+          "title": "Paradox Trade Read Me",
+          "total_chars": 42,
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      },
+      "weaver|library|doc-c500cd2e2d45-s00026": {
+        "agent_id": "weaver",
+        "id": "doc-c500cd2e2d45-s00026",
+        "kind": "library",
+        "record": {
+          "document_id": "doc-c500cd2e2d45",
+          "filename": "TheParadoxicalArchitectureofFinancialMarkets.docx",
+          "locator": "DOCX paragraph 26 (main document, including tables) · extracted characters 1–52",
+          "next_offset": null,
+          "next_section_id": "doc-c500cd2e2d45-s00027",
+          "offset": 0,
+          "previous_section_id": "doc-c500cd2e2d45-s00025",
+          "section_id": "doc-c500cd2e2d45-s00026",
+          "sha256": "16345430c94176aca77659baf8e4379559a54938ae36519756f5f99b3594f2b7",
+          "status": "ok",
+          "text": "An apparent contradiction invites several questions:",
+          "title": "The Paradoxical Architectureof Financial Markets",
+          "total_chars": 52,
+          "truncated": false
+        },
+        "run_id": "88888888-8888-4888-8888-888888888888"
+      }
+    }
+  },
+  "requests": {
+    "88888888-8888-4888-8888-888888888888": [
+      {
+        "activity": "choice",
+        "agent_id": "tempest",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14430,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+        "requested_model": "deepseek/deepseek-v3.2",
+        "reserved_usd": "0.016478",
+        "response_model": "deepseek/deepseek-v3.2",
+        "total_tokens": 80,
+        "wake_id": "tempest-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "tempest",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14430,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "226c9746-e674-5883-9569-d7d3c77a0a9d",
+        "requested_model": "deepseek/deepseek-v3.2",
+        "reserved_usd": "0.016478",
+        "response_model": "deepseek/deepseek-v3.2",
+        "total_tokens": 80,
+        "wake_id": "tempest-r2"
+      },
+      {
+        "activity": "inquire",
+        "agent_id": "tempest",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 15901,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "5c571809-24d1-5569-94e6-733ca5e28a7b",
+        "requested_model": "deepseek/deepseek-v3.2",
+        "reserved_usd": "0.017949",
+        "response_model": "deepseek/deepseek-v3.2",
+        "total_tokens": 80,
+        "wake_id": "tempest-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "siren",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14439,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+        "requested_model": "qwen/qwen3-235b-a22b-2507",
+        "reserved_usd": "0.016487",
+        "response_model": "qwen/qwen3-235b-a22b-2507",
+        "total_tokens": 80,
+        "wake_id": "siren-r1"
+      },
+      {
+        "activity": "journal",
+        "agent_id": "siren",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14292,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+        "requested_model": "qwen/qwen3-235b-a22b-2507",
+        "reserved_usd": "0.01634",
+        "response_model": "qwen/qwen3-235b-a22b-2507",
+        "total_tokens": 80,
+        "wake_id": "siren-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "siren",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14439,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "633bc361-a660-5c10-b188-8489948f5e61",
+        "requested_model": "qwen/qwen3-235b-a22b-2507",
+        "reserved_usd": "0.016487",
+        "response_model": "qwen/qwen3-235b-a22b-2507",
+        "total_tokens": 80,
+        "wake_id": "siren-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "alchemist",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14387,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "reserved_usd": "0.016435",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "total_tokens": 80,
+        "wake_id": "alchemist-r1"
+      },
+      {
+        "activity": "inquire",
+        "agent_id": "alchemist",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 15858,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "812913fe-1824-5618-a659-08eb82ac8f23",
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "reserved_usd": "0.017906",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "total_tokens": 80,
+        "wake_id": "alchemist-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "alchemist",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14387,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "86191524-fd75-5733-b118-1bc1da3264c1",
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "reserved_usd": "0.016435",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "total_tokens": 80,
+        "wake_id": "alchemist-r2"
+      },
+      {
+        "activity": "inquire",
+        "agent_id": "alchemist",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 16284,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "a81a57f4-eb1a-5943-a2be-84bcaf7d33e8",
+        "requested_model": "deepseek/deepseek-r1-0528",
+        "reserved_usd": "0.018332",
+        "response_model": "deepseek/deepseek-r1-0528",
+        "total_tokens": 80,
+        "wake_id": "alchemist-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "weaver",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14416,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+        "requested_model": "moonshotai/kimi-k2.6",
+        "reserved_usd": "0.016464",
+        "response_model": "moonshotai/kimi-k2.6",
+        "total_tokens": 80,
+        "wake_id": "weaver-r1"
+      },
+      {
+        "activity": "library",
+        "agent_id": "weaver",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 16150,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+        "requested_model": "moonshotai/kimi-k2.6",
+        "reserved_usd": "0.018198",
+        "response_model": "moonshotai/kimi-k2.6",
+        "total_tokens": 80,
+        "wake_id": "weaver-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "weaver",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14416,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "8203b0fd-c49b-5bc1-8d7c-e579ec038904",
+        "requested_model": "moonshotai/kimi-k2.6",
+        "reserved_usd": "0.016464",
+        "response_model": "moonshotai/kimi-k2.6",
+        "total_tokens": 80,
+        "wake_id": "weaver-r2"
+      },
+      {
+        "activity": "library",
+        "agent_id": "weaver",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 16150,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "930a2043-8856-5206-a840-ef6a64c7cb49",
+        "requested_model": "moonshotai/kimi-k2.6",
+        "reserved_usd": "0.018198",
+        "response_model": "moonshotai/kimi-k2.6",
+        "total_tokens": 80,
+        "wake_id": "weaver-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "oracle",
+        "cached_input_tokens": 0,
+        "cost_status": "unknown",
+        "cost_usd": null,
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14308,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+        "requested_model": "google/gemini-2.5-pro",
+        "reserved_usd": "0.016356",
+        "response_model": "google/gemini-2.5-pro",
+        "total_tokens": 80,
+        "wake_id": "oracle-r1"
+      },
+      {
+        "activity": "roam",
+        "agent_id": "oracle",
+        "cached_input_tokens": 0,
+        "cost_status": "unknown",
+        "cost_usd": null,
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14210,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+        "requested_model": "google/gemini-2.5-pro",
+        "reserved_usd": "0.016258",
+        "response_model": "google/gemini-2.5-pro",
+        "total_tokens": 80,
+        "wake_id": "oracle-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "oracle",
+        "cached_input_tokens": 0,
+        "cost_status": "unknown",
+        "cost_usd": null,
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14308,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "f09fd15b-a11c-5ec0-9b9f-0b863a937820",
+        "requested_model": "google/gemini-2.5-pro",
+        "reserved_usd": "0.016356",
+        "response_model": "google/gemini-2.5-pro",
+        "total_tokens": 80,
+        "wake_id": "oracle-r2"
+      },
+      {
+        "activity": "roam",
+        "agent_id": "oracle",
+        "cached_input_tokens": 0,
+        "cost_status": "unknown",
+        "cost_usd": null,
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14210,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "e48dbf50-5062-5aa4-8e0b-efefe16180ee",
+        "requested_model": "google/gemini-2.5-pro",
+        "reserved_usd": "0.016258",
+        "response_model": "google/gemini-2.5-pro",
+        "total_tokens": 80,
+        "wake_id": "oracle-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "shadow",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14308,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+        "requested_model": "x-ai/grok-4.5",
+        "reserved_usd": "0.016356",
+        "response_model": "x-ai/grok-4.5",
+        "total_tokens": 80,
+        "wake_id": "shadow-r1"
+      },
+      {
+        "activity": "inquire",
+        "agent_id": "shadow",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 15779,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+        "requested_model": "x-ai/grok-4.5",
+        "reserved_usd": "0.017827",
+        "response_model": "x-ai/grok-4.5",
+        "total_tokens": 80,
+        "wake_id": "shadow-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "shadow",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14308,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "c21db26c-a6df-54bb-a5c9-f920d88a4b3b",
+        "requested_model": "x-ai/grok-4.5",
+        "reserved_usd": "0.016356",
+        "response_model": "x-ai/grok-4.5",
+        "total_tokens": 80,
+        "wake_id": "shadow-r2"
+      },
+      {
+        "activity": "inquire",
+        "agent_id": "shadow",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 16205,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "c85490e5-571e-5d03-a409-b2d1762fa128",
+        "requested_model": "x-ai/grok-4.5",
+        "reserved_usd": "0.018253",
+        "response_model": "x-ai/grok-4.5",
+        "total_tokens": 80,
+        "wake_id": "shadow-r2"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "paradox_hunter",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14357,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "8291c741-2a00-5152-ba92-d636b987f569",
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "reserved_usd": "0.016405",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "total_tokens": 80,
+        "wake_id": "paradox_hunter-r1"
+      },
+      {
+        "activity": "journal",
+        "agent_id": "paradox_hunter",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14210,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "reserved_usd": "0.016258",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "total_tokens": 80,
+        "wake_id": "paradox_hunter-r1"
+      },
+      {
+        "activity": "choice",
+        "agent_id": "paradox_hunter",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14357,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "302767dd-2dd3-5e89-b52f-5957f858c72a",
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "reserved_usd": "0.016405",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "total_tokens": 80,
+        "wake_id": "paradox_hunter-r2"
+      },
+      {
+        "activity": "journal",
+        "agent_id": "paradox_hunter",
+        "cached_input_tokens": 0,
+        "cost_status": "reported",
+        "cost_usd": "0",
+        "created_at": "2026-11-12T00:00:00+00:00",
+        "duration_ms": 0,
+        "failure_code": null,
+        "finished_at": "2026-11-12T00:00:00+00:00",
+        "input_bytes": 14210,
+        "input_tokens": 60,
+        "max_output_tokens": 1024,
+        "outcome": "success",
+        "output_tokens": 20,
+        "provider": "scripted-offline",
+        "reasoning_tokens": 0,
+        "request_id": "09ed34f6-0f46-59e8-8fc9-e9a5da4bcde1",
+        "requested_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "reserved_usd": "0.016258",
+        "response_model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "total_tokens": 80,
+        "wake_id": "paradox_hunter-r2"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "agent_models": {
+        "alchemist": "deepseek/deepseek-r1-0528",
+        "oracle": "google/gemini-2.5-pro",
+        "paradox_hunter": "qwen/qwen3-235b-a22b-thinking-2507",
+        "shadow": "x-ai/grok-4.5",
+        "siren": "qwen/qwen3-235b-a22b-2507",
+        "tempest": "deepseek/deepseek-v3.2",
+        "weaver": "moonshotai/kimi-k2.6"
+      },
+      "agents": [
+        {
+          "agent_id": "tempest",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "siren",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "alchemist",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "weaver",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "oracle",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "shadow",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        }
+      ],
+      "capabilities": [
+        "rest",
+        "journal",
+        "inquire",
+        "library",
+        "roam"
+      ],
+      "created_at": "2026-11-12T00:00:00+00:00",
+      "ended_at": "2026-11-12T00:00:00+00:00",
+      "known_cost_usd": "0",
+      "limits": {
+        "budget_usd": "1E+1",
+        "max_input_bytes": 24000,
+        "max_output_tokens": 1024,
+        "max_parallelism": 3,
+        "max_requests": 28,
+        "max_runtime_seconds": 900,
+        "request_timeout_seconds": 60,
+        "wakes_per_agent": 2
+      },
+      "mode": "offline",
+      "request_count": 26,
+      "reserved_usd": "0.437997",
+      "run_id": "88888888-8888-4888-8888-888888888888",
+      "started_at": "2026-11-12T00:00:00+00:00",
+      "status": "completed",
+      "stop_requested": false,
+      "unknown_cost_requests": 4
+    }
+  ]
+}
