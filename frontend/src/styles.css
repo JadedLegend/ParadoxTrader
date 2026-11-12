@@ -363,3 +363,30 @@ a.btn { display: inline-block; text-decoration: none; }
 .lineage-list { list-style: none; padding: 0; margin: 0; }
 .lineage-inquiry[aria-pressed="true"] { border-color: var(--text2); background: var(--bg); }
 @media (max-width: 850px) { .lineage-layout > section:last-child { width: 100%; } }
+
+/* Finite rehearsal: metadata first, private records by deliberate selection. */
+.rehearsal-view { min-width: 0; }
+.rehearsal-toolbar { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; margin: 20px 0; }
+.rehearsal-toolbar label { display: flex; flex-direction: column; gap: 7px; font-size: 13px; color: var(--text2); }
+.rehearsal-toolbar select { min-width: 190px; max-width: 100%; }
+.rehearsal-summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.rehearsal-summary .card { flex: 1 1 190px; min-width: 0; }
+.rehearsal-metric { display: block; font-size: 22px; font-weight: 650; margin: 8px 0; }
+.rehearsal-members { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.rehearsal-member { flex: 1 1 190px; text-align: left; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); color: var(--text); }
+.rehearsal-member[aria-pressed="true"] { border-color: var(--accent); background: #1d2438; }
+.rehearsal-table-wrap { width: 100%; overflow-x: auto; }
+.rehearsal-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rehearsal-table th, .rehearsal-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.rehearsal-table td { overflow-wrap: anywhere; }
+.rehearsal-state { display: inline-block; font-size: 12px; padding: 3px 7px; border-radius: 5px; background: #242d40; }
+.rehearsal-private { margin-top: 18px; padding: 18px; border: 1px solid #394359; border-radius: 10px; }
+.rehearsal-private pre, .rehearsal-private .record-content { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.7; }
+.rehearsal-model { display: block; max-width: 24rem; overflow-wrap: anywhere; color: var(--text2); font-size: 12px; margin-top: 5px; }
+@media (max-width: 640px) {
+  .rehearsal-toolbar { align-items: stretch; }
+  .rehearsal-toolbar label { width: 100%; }
+  .rehearsal-toolbar select { width: 100%; }
+  .rehearsal-table { min-width: 600px; }
+  .rehearsal-private { padding: 12px; }
+}

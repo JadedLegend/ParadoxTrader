@@ -7,6 +7,9 @@ export function readFixture(path: string): unknown {
   const url = new URL(path, 'https://preview.invalid')
   const route = url.pathname
   const meta = { kind: 'fixture', observed_at: fixture.observed_at }
+  if (route === '/api/rehearsals' || route.startsWith('/api/rehearsals/')) {
+    return import('../rehearsal/client').then(rehearsal => rehearsal.readRehearsalFixture(path))
+  }
   if (route.startsWith('/api/lineage/')) {
     if (route !== '/api/lineage/inquiries' && !/^\/api\/lineage\/inquiries\/[^/]+$/.test(route)) {
       throw new Error('No local lineage route is available. No backend fallback was attempted.')

@@ -5,6 +5,11 @@ usage_pricing.json
 .env.*
 !.env.example
 
+# Isolated rehearsal state, private outputs and profile snapshots
+rehearsal-runs/
+.rehearsal-runs/
+data/rehearsals/
+
 # Agent memory databases — large, local only
 agents/*/memory.sqlite3
 *.sqlite3
