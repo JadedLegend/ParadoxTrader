@@ -47,6 +47,7 @@ from core.messaging.store import MessagingStore
 from core.trading.alpaca import TradeQueue
 from core.memory.engine import ThresholdMemory
 from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
+from core.runtime.community import get_community_policy
 from data.feeds.free_feeds import get_market_snapshot
 from core.library import get_library
 
@@ -235,7 +236,7 @@ def get_lineage_store():
 
 
 def _lineage_pilot(agent_id):
-    if agent_id != "alchemist":
+    if agent_id not in AGENTS:
         raise HTTPException(status_code=404, detail="lineage_agent_not_found") from None
 
 
@@ -270,7 +271,7 @@ def lineage_inquiries(agent_id: str = "alchemist", limit: int | str = 50, offset
 @app.get("/api/lineage/inquiries/{inquiry_id}")
 def lineage_inquiry(inquiry_id: str, agent_id: str = "alchemist",
                     authorization: Optional[str] = Header(None)):
-    """Read one fixed-pilot inquiry; no peer record can pass the metadata gate."""
+    """Read one selected owner's inquiry; no mismatched owner passes the gate."""
     import re
     _require_lineage_operator(authorization)
     _lineage_pilot(agent_id)
@@ -278,8 +279,8 @@ def lineage_inquiry(inquiry_id: str, agent_id: str = "alchemist",
         raise HTTPException(status_code=400, detail="invalid_lineage_request") from None
     try:
         result = get_lineage_store().get_inquiry(inquiry_id, operator=True)
-        if result["inquiry"]["agent_id"] != "alchemist":
-            raise LineageNotFound("outside pilot")
+        if result["inquiry"]["agent_id"] != agent_id:
+            raise LineageNotFound("outside selected owner")
         return result
     except LineageAccessError:
         raise HTTPException(status_code=403, detail="lineage_access_denied") from None
@@ -426,8 +427,17 @@ def get_status():
     }
 
 
+def _require_community_access(gate):
+    from core.runtime.config import get_runtime_config
+    runtime = get_runtime_config()
+    phase = runtime.get("current_phase", 0) if isinstance(runtime, dict) else 0
+    if type(phase) is not int or phase < 1 or not get_community_policy(runtime)[gate]:
+        raise HTTPException(status_code=403, detail="community_access_closed")
+
+
 @app.get("/api/forum")
 def get_forum_posts(limit: int = 50, thread_id: Optional[str] = None):
+    _require_community_access("forum_open")
     forum = get_forum()
     if thread_id:
         posts = forum.get_thread(thread_id, limit=limit)
@@ -438,6 +448,7 @@ def get_forum_posts(limit: int = 50, thread_id: Optional[str] = None):
 
 @app.post("/api/forum")
 def post_to_forum(req: ForumPostRequest):
+    _require_community_access("forum_open")
     forum = get_forum()
     pid = forum.post(
         author=req.author,
@@ -451,6 +462,7 @@ def post_to_forum(req: ForumPostRequest):
 
 @app.get("/api/forum/threads")
 def get_threads():
+    _require_community_access("forum_open")
     forum = get_forum()
     return {"threads": forum.list_threads()}
 
@@ -466,6 +478,12 @@ def get_inbox(agent_id: str, unread_only: bool = False):
 
 @app.post("/api/dm")
 def send_dm(req: DMRequest):
+    if req.sender not in AGENTS and req.sender != "user":
+        raise HTTPException(status_code=404, detail="Sender not found")
+    if req.recipient not in AGENTS and req.recipient != "user":
+        raise HTTPException(status_code=404, detail="Recipient not found")
+    if req.sender in AGENTS and req.recipient in AGENTS:
+        _require_community_access("peer_messages_open")
     messaging = get_messaging()
     mid = messaging.send(sender=req.sender, recipient=req.recipient, content=req.content)
     return {"id": mid, "status": "sent"}

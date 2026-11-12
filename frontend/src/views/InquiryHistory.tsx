@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { IS_PREVIEW, getLineageInquiries, getLineageInquiry } from '../api'
-import type { LineageDetailResponse, LineageEvent, LineageListResponse, OptionStructure } from '../lineage/contracts'
+import { LINEAGE_AGENTS } from '../lineage/contracts'
+import type { LineageAgentId, LineageDetailResponse, LineageEvent, LineageListResponse, OptionStructure } from '../lineage/contracts'
 
 const LIMIT = 50
 const MAX_OFFSET = 2 ** 31 - 1
@@ -47,13 +48,13 @@ function EventPayload({ event }: { event: LineageEvent }) {
     return `${label(key)}: ${text}`
   }).join(' · ')}</p> : null
 }
-function HistoryDetail({ data }: { data: LineageDetailResponse }) {
+function HistoryDetail({ data, agentName }: { data: LineageDetailResponse; agentName: string }) {
   const { inquiry } = data
   return <div className="lineage-detail">
     <header className="card">
       <h2>{bounded(inquiry.title, 240)}</h2>
       <p>Inquiry state: <strong>{label(inquiry.state)}</strong></p>
-      <p className="lineage-meta">Alchemist · Phase {inquiry.phase} · {label(inquiry.visibility)} visibility<br />
+      <p className="lineage-meta">{agentName} · Phase {inquiry.phase} · {label(inquiry.visibility)} visibility<br />
         Created <Timestamp value={inquiry.created_at} /> · Updated <Timestamp value={inquiry.updated_at} /></p>
       <p className="lineage-meta" title={inquiry.inquiry_id}>Inquiry {shortId(inquiry.inquiry_id)}</p>
     </header>
@@ -130,48 +131,67 @@ function HistoryDetail({ data }: { data: LineageDetailResponse }) {
 
 type ReadState<T> = { key: string; data: T | null; loading: boolean; error: boolean }
 export default function InquiryHistory() {
+  const [agentId, setAgentId] = useState<LineageAgentId>('alchemist')
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [listRetry, setListRetry] = useState(0)
   const [detailRetry, setDetailRetry] = useState(0)
-  const [listState, setListState] = useState<ReadState<LineageListResponse>>({ key: '0', data: null, loading: true, error: false })
+  const listKey = JSON.stringify([agentId, LIMIT, offset, listRetry])
+  const detailKey = JSON.stringify([agentId, selected, detailRetry])
+  const agentName = LINEAGE_AGENTS.find(agent => agent.id === agentId)!.name
+  const [listState, setListState] = useState<ReadState<LineageListResponse>>({ key: '', data: null, loading: true, error: false })
   const [detailState, setDetailState] = useState<ReadState<LineageDetailResponse>>({ key: '', data: null, loading: false, error: false })
   useEffect(() => {
     let cancelled = false
-    setListState({ key: String(offset), data: null, loading: true, error: false })
-    getLineageInquiries('alchemist', LIMIT, offset).then(data => {
-      if (!cancelled) setListState({ key: String(offset), data, loading: false, error: false })
+    setListState({ key: listKey, data: null, loading: true, error: false })
+    getLineageInquiries(agentId, LIMIT, offset).then(data => {
+      if (data.inquiries.some(inquiry => inquiry.agent_id !== agentId)) throw new Error('Inquiry owner mismatch')
+      if (!cancelled) setListState({ key: listKey, data, loading: false, error: false })
     }).catch(() => {
-      if (!cancelled) setListState({ key: String(offset), data: null, loading: false, error: true })
+      if (!cancelled) setListState({ key: listKey, data: null, loading: false, error: true })
     })
     return () => { cancelled = true }
-  }, [offset, listRetry])
+  }, [agentId, offset, listKey])
   useEffect(() => {
     if (!selected) return
     let cancelled = false
-    setDetailState({ key: selected, data: null, loading: true, error: false })
-    getLineageInquiry(selected, 'alchemist').then(data => {
-      if (!cancelled) setDetailState({ key: selected, data, loading: false, error: false })
+    setDetailState({ key: detailKey, data: null, loading: true, error: false })
+    getLineageInquiry(selected, agentId).then(data => {
+      if (data.inquiry.agent_id !== agentId || data.inquiry.inquiry_id !== selected) throw new Error('Inquiry owner mismatch')
+      if (!cancelled) setDetailState({ key: detailKey, data, loading: false, error: false })
     }).catch(() => {
-      if (!cancelled) setDetailState({ key: selected, data: null, loading: false, error: true })
+      if (!cancelled) setDetailState({ key: detailKey, data: null, loading: false, error: true })
     })
     return () => { cancelled = true }
-  }, [selected, detailRetry])
+  }, [agentId, selected, detailKey])
   // Key matching hides stale content immediately, before effect cleanup runs.
-  const listCurrent = listState.key === String(offset)
+  const listCurrent = listState.key === listKey
   const listLoading = !listCurrent || listState.loading
   const listError = listCurrent && listState.error
   const list = listCurrent && !listLoading && !listError ? listState.data : null
-  const detailCurrent = detailState.key === selected
+  const detailCurrent = selected !== null && detailState.key === detailKey
   const detailLoading = selected !== null && (!detailCurrent || detailState.loading)
   const detailError = selected !== null && detailCurrent && detailState.error
   const detail = detailCurrent && !detailLoading && !detailError ? detailState.data : null
   const nextDisabled = listLoading || !list || list.offset + LIMIT >= list.total || list.offset > MAX_OFFSET - LIMIT
   function changePage(nextOffset: number) { setSelected(null); setOffset(nextOffset) }
+  function changeAgent(value: string) {
+    const agent = LINEAGE_AGENTS.find(candidate => candidate.id === value)
+    if (!agent) return
+    setSelected(null)
+    setOffset(0)
+    setAgentId(agent.id)
+  }
   return <div>
     <div className="page-header"><h1 className="page-title">Inquiry History</h1>
       <p className="page-sub">Optional inquiry, proposal, and mock execution records — read only.</p></div>
-    <div className="notice">{IS_PREVIEW ? 'Alchemist · Mock lifecycle example' : 'Alchemist · Recorded mock lifecycle'}
+    <div className="usage-toolbar">
+      <label htmlFor="lineage-agent">Agent</label>
+      <select id="lineage-agent" className="select" value={agentId} onChange={event => changeAgent(event.target.value)}>
+        {LINEAGE_AGENTS.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+      </select>
+    </div>
+    <div className="notice">{agentName} · {IS_PREVIEW ? agentId === 'alchemist' ? 'Mock lifecycle example' : 'Mock private inquiry example' : 'Recorded inquiry history'}
       <p>Inquiries can remain open, pause, or be abandoned without proposing a trade. No live broker activity is shown.</p></div>
     <div className="lineage-layout">
       <section className="card lineage-sidebar" aria-label="Inquiries" aria-busy={listLoading}>
@@ -197,7 +217,7 @@ export default function InquiryHistory() {
         {detailLoading && <p role="status">Loading inquiry history…</p>}
         {detailError && <div className="error-msg" role="alert">Inquiry history unavailable. A failed read is not an empty history.
           {' '}<button className="btn btn-ghost" type="button" onClick={() => setDetailRetry(value => value + 1)}>Retry history</button></div>}
-        {detail && <HistoryDetail data={detail} />}
+        {detail && <HistoryDetail data={detail} agentName={agentName} />}
       </section>
     </div>
   </div>

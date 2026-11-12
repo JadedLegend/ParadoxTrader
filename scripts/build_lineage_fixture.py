@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 OUTPUT = REPO_ROOT / 'frontend' / 'src' / 'lineage' / 'fixture.json'
 AGENT = 'alchemist'
+AGENTS = ('tempest', 'siren', 'alchemist', 'weaver', 'oracle', 'shadow', 'paradox_hunter')
 STRUCTURE = {
     'symbol': 'DEMO270115C00100000', 'underlying': 'DEMO',
     'expiry': '2027-01-15', 'option_type': 'call', 'strike': '100',
@@ -130,7 +131,26 @@ def build_fixture():
         details = {item['inquiry_id']: store.get_inquiry(item['inquiry_id'], operator=True) for item in listing['inquiries']}
         assert len(details) == 4
         assert all(not value['orders'] and not value['proposals'] for key, value in details.items() if key != inquiry)
-        return {'mode': 'mock_demo', 'agent_id': AGENT, 'list': listing, 'details': details}
+        agent_lists = {AGENT: listing}
+        for aid in AGENTS:
+            if aid == AGENT:
+                continue
+            opened = store.create_inquiry(aid, 'A private question to explore', operation_key='arrival-question')
+            store.add_entry(opened, aid, 'observation',
+                'Local example: a question is available without a required trade or public introduction.',
+                source='operator', operation_key='arrival-observation')
+            store.add_entry(opened, aid, 'interpretation',
+                'Explore what interests me, keeping other explanations available.', operation_key='arrival-interpretation')
+            paused_question = store.create_inquiry(aid, 'Something to return to — paused', operation_key='arrival-paused')
+            store.set_inquiry_state(paused_question, aid, 'paused', reason='Leave room for another activity.', operation_key='arrival-pause')
+            own_list = store.list_inquiries(aid, operator=True)
+            agent_lists[aid] = own_list
+            for item in own_list['inquiries']:
+                own_detail = store.get_inquiry(item['inquiry_id'], operator=True)
+                assert own_detail['inquiry']['agent_id'] == aid
+                assert not own_detail['orders'] and not own_detail['proposals']
+                details[item['inquiry_id']] = own_detail
+        return {'mode': 'mock_demo', 'agent_id': AGENT, 'list': listing, 'agent_lists': agent_lists, 'details': details}
 
 
 def main():
@@ -141,11 +161,11 @@ def main():
     if args.check:
         if not OUTPUT.exists() or OUTPUT.read_text() != data:
             raise SystemExit('Lineage fixture differs from the current offline lifecycle.')
-        print('Lineage fixture matches the actual temporary one-agent mock lifecycle.')
+        print('Lineage fixture matches all seven private histories and the one-agent mock lifecycle.')
     else:
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         OUTPUT.write_text(data)
-        print('Generated one-agent mock lifecycle fixture: ' + str(OUTPUT))
+        print('Generated seven-owner history with the existing one-agent mock cycle: ' + str(OUTPUT))
 
 
 if __name__ == '__main__':
