@@ -4,6 +4,7 @@ import { readFixture } from './preview/readFixture'
 import type { AgentSummary, PositionSnapshot } from './data/contracts'
 import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
 import type { UsageSummaryResponse, UsageEventsResponse } from './usage/contracts'
+import type { LineageListResponse, LineageDetailResponse } from './lineage/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -52,3 +53,8 @@ export const getUsageSummary = (agent_id?: string) => request<UsageSummaryRespon
   `/api/usage/summary${agent_id ? `?agent_id=${encodeURIComponent(agent_id)}` : ''}`)
 export const getUsageEvents = (agent_id?: string, limit = 50, offset = 0) => request<UsageEventsResponse>('GET',
   `/api/usage/events?limit=${limit}&offset=${offset}${agent_id ? `&agent_id=${encodeURIComponent(agent_id)}` : ''}`)
+
+export const getLineageInquiries = (agent_id = 'alchemist', limit = 50, offset = 0) => request<LineageListResponse>('GET',
+  `/api/lineage/inquiries?agent_id=${encodeURIComponent(agent_id)}&limit=${limit}&offset=${offset}`)
+export const getLineageInquiry = (inquiry_id: string, agent_id = 'alchemist') => request<LineageDetailResponse>('GET',
+  `/api/lineage/inquiries/${encodeURIComponent(inquiry_id)}?agent_id=${encodeURIComponent(agent_id)}`)

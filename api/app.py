@@ -36,7 +36,7 @@ from typing import Optional
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -51,6 +51,7 @@ from data.feeds.free_feeds import get_market_snapshot
 from core.library import get_library
 
 from core.usage import get_usage_store
+from core.trading.lineage.errors import LineageAccessError, LineageNotFound
 from contextlib import asynccontextmanager
 from core.runtime.scheduler import start_scheduler, stop_scheduler
 
@@ -208,6 +209,87 @@ class InnermostRequest(BaseModel):
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
+def _require_lineage_operator(authorization):
+    """Server-owned capability, never a caller-selected role or phase."""
+    import hmac
+    token = os.environ.get("LINEAGE_OPERATOR_TOKEN", "")
+    if not token or not token.strip():
+        raise HTTPException(status_code=503, detail="lineage_operator_unavailable") from None
+    try:
+        expected = ("Bearer " + token).encode("utf-8")
+    except UnicodeError:
+        raise HTTPException(status_code=503, detail="lineage_operator_unavailable") from None
+    try:
+        provided = authorization.encode("utf-8") if isinstance(authorization, str) else b""
+    except UnicodeError:
+        provided = b""
+    if not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=403, detail="lineage_operator_required") from None
+
+
+def get_lineage_store():
+    """Resolve the existing queue-backed store only after read authorization."""
+    from core.trading.lineage import LineageStore
+    return LineageStore(db_path("trade_queue.sqlite3"))
+
+
+def _lineage_pilot(agent_id):
+    if agent_id != "alchemist":
+        raise HTTPException(status_code=404, detail="lineage_agent_not_found") from None
+
+
+def _lineage_integer(value, minimum, maximum):
+    if isinstance(value, str) and len(value) <= 10 and value.isascii() and value.isdecimal():
+        value = int(value)
+    if type(value) is not int or not minimum <= value <= maximum:
+        raise HTTPException(status_code=400, detail="invalid_lineage_request") from None
+    return value
+
+
+@app.get("/api/lineage/inquiries")
+def lineage_inquiries(agent_id: str = "alchemist", limit: int | str = 50, offset: int | str = 0,
+                      authorization: Optional[str] = Header(None)):
+    """Bounded operator metadata read; no agent, broker, or private-memory calls."""
+    _require_lineage_operator(authorization)
+    _lineage_pilot(agent_id)
+    limit = _lineage_integer(limit, 1, 50)
+    offset = _lineage_integer(offset, 0, 2**31 - 1)
+    try:
+        return get_lineage_store().list_inquiries(agent_id, operator=True, limit=limit, offset=offset)
+    except LineageAccessError:
+        raise HTTPException(status_code=403, detail="lineage_access_denied") from None
+    except LineageNotFound:
+        raise HTTPException(status_code=404, detail="lineage_inquiry_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_lineage_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="lineage_unavailable") from None
+
+
+@app.get("/api/lineage/inquiries/{inquiry_id}")
+def lineage_inquiry(inquiry_id: str, agent_id: str = "alchemist",
+                    authorization: Optional[str] = Header(None)):
+    """Read one fixed-pilot inquiry; no peer record can pass the metadata gate."""
+    import re
+    _require_lineage_operator(authorization)
+    _lineage_pilot(agent_id)
+    if not isinstance(inquiry_id, str) or not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", inquiry_id):
+        raise HTTPException(status_code=400, detail="invalid_lineage_request") from None
+    try:
+        result = get_lineage_store().get_inquiry(inquiry_id, operator=True)
+        if result["inquiry"]["agent_id"] != "alchemist":
+            raise LineageNotFound("outside pilot")
+        return result
+    except LineageAccessError:
+        raise HTTPException(status_code=403, detail="lineage_access_denied") from None
+    except LineageNotFound:
+        raise HTTPException(status_code=404, detail="lineage_inquiry_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_lineage_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="lineage_unavailable") from None
+
 
 @app.get("/api/usage/summary")
 def usage_summary(agent_id: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None):
@@ -396,16 +478,28 @@ def get_pending_trades():
 
 
 @app.post("/api/queue/{trade_id}/approve")
-def approve_trade(trade_id: int, req: TradeReviewRequest):
+def approve_trade(trade_id: int, req: TradeReviewRequest, authorization: Optional[str] = Header(default=None)):
     queue = get_trade_queue()
-    queue.approve(trade_id, req.notes)
+    entry = queue.get_entry(trade_id)
+    if entry and entry.get("lineage_proposal_id"):
+        _require_lineage_operator(authorization)
+        if len(req.notes) > 2000:
+            raise HTTPException(status_code=400, detail="invalid_lineage_review")
+    if not queue.approve(trade_id, req.notes):
+        raise HTTPException(status_code=409, detail="trade_review_conflict")
     return {"status": "approved", "id": trade_id}
 
 
 @app.post("/api/queue/{trade_id}/reject")
-def reject_trade(trade_id: int, req: TradeReviewRequest):
+def reject_trade(trade_id: int, req: TradeReviewRequest, authorization: Optional[str] = Header(default=None)):
     queue = get_trade_queue()
-    queue.reject(trade_id, req.notes)
+    entry = queue.get_entry(trade_id)
+    if entry and entry.get("lineage_proposal_id"):
+        _require_lineage_operator(authorization)
+        if len(req.notes) > 2000:
+            raise HTTPException(status_code=400, detail="invalid_lineage_review")
+    if not queue.reject(trade_id, req.notes):
+        raise HTTPException(status_code=409, detail="trade_review_conflict")
     return {"status": "rejected", "id": trade_id}
 
 

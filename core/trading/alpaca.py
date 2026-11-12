@@ -231,68 +231,7 @@ def check_guardrails(
 
 # ─── Trade Queue (for non-autonomous mode) ────────────────────────────────────
 
-import sqlite3
-from pathlib import Path
-
-QUEUE_DB = Path(__file__).parent.parent.parent / "data" / "trade_queue.sqlite3"
-
-QUEUE_SCHEMA = """
-CREATE TABLE IF NOT EXISTS trade_queue (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent_id TEXT NOT NULL,
-    proposal TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
-    reviewer_notes TEXT,
-    created_at TEXT NOT NULL,
-    reviewed_at TEXT
-);
-"""
-
-
-class TradeQueue:
-    def __init__(self, db_path: Optional[str] = None):
-        self.db_path = str(db_path or QUEUE_DB)
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db_path) as conn:
-            conn.executescript(QUEUE_SCHEMA)
-            conn.commit()
-
-    def enqueue(self, agent_id: str, proposal: dict) -> int:
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                "INSERT INTO trade_queue (agent_id, proposal, created_at) VALUES (?, ?, ?)",
-                (agent_id, json.dumps(proposal), now)
-            )
-            conn.commit()
-            return cur.lastrowid
-
-    def get_pending(self) -> list[dict]:
-        with sqlite3.connect(self.db_path) as conn:
-            rows = conn.execute(
-                "SELECT id, agent_id, proposal, status, created_at FROM trade_queue WHERE status='pending' ORDER BY created_at ASC"
-            ).fetchall()
-        return [{"id": r[0], "agent_id": r[1], "proposal": json.loads(r[2]), "status": r[3], "created_at": r[4]} for r in rows]
-
-    def approve(self, trade_id: int, notes: str = "") -> bool:
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE trade_queue SET status='approved', reviewer_notes=?, reviewed_at=? WHERE id=?",
-                (notes, now, trade_id)
-            )
-            conn.commit()
-        return True
-
-    def reject(self, trade_id: int, notes: str = "") -> bool:
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE trade_queue SET status='rejected', reviewer_notes=?, reviewed_at=? WHERE id=?",
-                (notes, now, trade_id)
-            )
-            conn.commit()
-        return True
+from core.trading.queue import QUEUE_DB, QUEUE_SCHEMA, TradeQueue
 
 
 def submit_trade(agent_id: str, proposal: dict) -> dict:
