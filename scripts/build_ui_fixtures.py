@@ -44,6 +44,10 @@ def build_fixture():
         from core.runtime import agent_loop as loop
         from core.hrv.engine import AgentHRVState
         stack.enter_context(mock.patch.object(loop, 'call_llm', side_effect=AssertionError('No fixture models')))
+        stack.enter_context(mock.patch.object(loop, 'get_community_policy', return_value={
+            'introduction_stage': 'settling', 'available_concepts': ['environment'],
+            'forum_open': True, 'peer_messages_open': True, 'share_peer_positions': False,
+        }))
         rng = random.getstate()
         stack.callback(random.setstate, rng)
         values = [72.0, 63.0, 84.0, 56.0, 73.0, 61.0, 92.0]

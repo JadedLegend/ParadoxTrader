@@ -33,7 +33,9 @@ from core.runtime.config import get_runtime_config, get_hrv_config
 from core.runtime.llm import call_llm, build_system_prompt
 from core.data_dir import db_path, agent_db_path
 from core.usage.attribution import attribute_activity
-from core.usage.context import usage_scope
+from core.usage.context import usage_scope, current_usage_context
+from core.runtime.community import get_community_policy, get_onboarding_context
+from uuid import uuid4
 
 AGENTS = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -75,6 +77,7 @@ def get_available_actions(agent_id: str, phase: int, hrv_state: AgentHRVState) -
     """
     soul = load_soul(agent_id)
     specialties = soul.get("hrv_specialties", [])
+    policy = get_community_policy()
 
     # Specialty-specific action labels — each agent gets their own flavored variants
     SPECIALTY_ACTIONS = {
@@ -96,6 +99,7 @@ def get_available_actions(agent_id: str, phase: int, hrv_state: AgentHRVState) -
         {"action": "research",   "label": "Research a topic of your choosing",       "hrv_cost": 3.0},
         {"action": "analyze",    "label": "Analyze a current market signal",         "hrv_cost": 4.0},
         {"action": "browse_library", "label": "Browse shared library — follow a question", "hrv_cost": 2.0},
+        {"action": "inquire", "label": "Follow or revisit a private inquiry", "hrv_cost": 3.0},
         {"action": "roam",       "label": "Roam freely — follow your curiosity",     "hrv_cost": 2.0},
         {"action": "rest",       "label": "Quiet rest — no reflection required",    "hrv_cost": -1.5},
         {"action": "journal",    "label": "Choose a private reflection",            "hrv_cost": 1.0},
@@ -108,16 +112,18 @@ def get_available_actions(agent_id: str, phase: int, hrv_state: AgentHRVState) -
         if spec in SPECIALTY_ACTIONS:
             if spec == "analyze_consensus" and phase < 3:
                 continue
+            if spec == "analyze_consensus" and not policy["forum_open"]:
+                continue
             spec_action = SPECIALTY_ACTIONS[spec]
             base_pool.append(spec_action)
 
     if phase >= 1:
-        base_pool += [
-            {"action": "forum_post",     "label": "Post to the shared forum",           "hrv_cost": 2.0},
-            {"action": "direct_message", "label": "Send a direct message to an agent",  "hrv_cost": 2.0},
-        ]
+        if policy["forum_open"]:
+            base_pool.append({"action": "forum_post", "label": "Post to the shared forum", "hrv_cost": 2.0})
+        if policy["peer_messages_open"]:
+            base_pool.append({"action": "direct_message", "label": "Send a direct message to an agent", "hrv_cost": 2.0})
 
-    if phase >= 3:
+    if phase >= 3 and policy["forum_open"]:
         base_pool += [
             {"action": "analyze_consensus", "label": "Analyze the council's current consensus", "hrv_cost": 4.0},
         ]
@@ -170,6 +176,16 @@ def execute_action(
             "hrv": hrv_state.perform("rest"),
         }
 
+    # A direct dispatcher call is not permission to bypass the rotating menu.
+    if action in {"forum_post", "direct_message"}:
+        policy = get_community_policy()
+        gate = "forum_open" if action == "forum_post" else "peer_messages_open"
+        if phase < 1 or not policy[gate]:
+            return {"action": action, "status": "permission_denied", "reason": "community_access_closed"}
+
+    if action == "analyze_consensus" and (phase < 3 or not get_community_policy()["forum_open"]):
+        return {"action": action, "status": "permission_denied", "reason": "community_access_closed"}
+
     system_prompt = build_system_prompt(soul, living)
     now = datetime.now(timezone.utc).isoformat()
 
@@ -190,7 +206,29 @@ def execute_action(
         }
         return call_llm(agent_id, [context_message, *messages], **kwargs)
 
-    if action == "journal":
+    if action == "inquire":
+        from core.runtime.inquiry import run_inquiry
+        operation_id = (context or {}).get("wake_id")
+        if operation_id is None:
+            operation_id = current_usage_context().get("wake_id")
+        if operation_id is None:
+            operation_id = str(uuid4())
+        # Only the supplied evidence categories enter this private inquiry path.
+        # Messages, journals, innermost text and peer holdings are not copied.
+        evidence = {"market_data": (context or {}).get("market_data", {"status": "not_supplied"})}
+        own_position = (context or {}).get("positions", {}).get(agent_id)
+        if own_position is not None:
+            evidence["own_positions"] = own_position
+        def inquiry_model(messages):
+            return call_llm(agent_id, messages, system_prompt=system_prompt, temperature=0.7, max_tokens=800)
+        with usage_scope("inquire", wake_id=operation_id):
+            result = run_inquiry(agent_id, operation_id, db_path=db_path("trade_queue.sqlite3"),
+                                 phase=phase, model_call=inquiry_model, evidence=evidence)
+        if not result.get("replayed"):
+            hrv_state.perform("inquire")
+        return {"action": "inquire", **result}
+
+    elif action == "journal":
         recent = memory.get_recent_episodes(limit=5)
         episode_context = "Recent episode titles (prior records):\n" + "\n".join(f"- {e['title']}" for e in recent)
         response = action_llm(
@@ -708,95 +746,95 @@ def get_cross_agent_positions(agent_ids: Optional[list[str]] = None) -> dict:
 # ─── Main wake cycle ──────────────────────────────────────────────────────────
 
 @attribute_activity("wake", new_wake=True)
-def agent_wake(agent_id: str, phase: int = 0) -> dict:
-    """
-    Run one full wake cycle for an agent.
-    Returns a summary of what happened.
+def agent_wake(agent_id: str, phase: int = 0, *, wake_id: Optional[str] = None) -> dict:
+    """One wake; an explicit logical ID resumes this inquiry path after restart.
+
+    Other legacy actions and cross-database wake effects are not exactly-once.
     """
     soul = load_soul(agent_id)
     living = load_living(agent_id)
     memory = get_agent_memory(agent_id)
     forum = ForumStore()
     messaging = MessagingStore()
-
     hrv_store = get_hrv_store()
     hrv_state = hrv_store.load(
-        agent_id,
-        soul_path=str(REPO_ROOT / "agents" / agent_id / "soul.json")
+        agent_id, soul_path=str(REPO_ROOT / "agents" / agent_id / "soul.json")
     )
 
-    # Rest before inbox/broker work. A resting wake does not consume messages.
+    # Quiet resting does not inspect correspondence, lineage, or brokers.
     if hrv_state.in_interval:
         result = execute_action(agent_id, "rest", soul, living, memory, forum, messaging, hrv_state, phase)
         hrv_store.save(hrv_state)
         return {"agent": agent_id, "wake": "interval", "result": result}
 
-    # Check for unread messages
+    policy = get_community_policy()
     unread = messaging.get_inbox(
         agent_id, unread_only=True, limit=5,
-        sender="user" if phase < 1 else None,
+        sender="user" if phase < 1 or not policy["peer_messages_open"] else None,
+    )
+    logical_wake = current_usage_context().get("wake_id")
+    from core.runtime.inquiry import get_inquiry_receipt
+    prior_inquiry = get_inquiry_receipt(
+        agent_id, logical_wake, db_path=db_path("trade_queue.sqlite3")
     )
 
-    # Solo incubation exposes only the agent's own holdings. Community phases
-    # add peer snapshots, without turning failed lookups into empty accounts.
-    position_agents = [agent_id] if phase < 1 else AGENTS
-    cross_positions = get_cross_agent_positions(position_agents)
+    # Communication and portfolio visibility are independent permissions.
+    # A persisted inquiry retry requires neither new holdings nor a new picker.
+    position_agents = AGENTS if phase >= 1 and policy["share_peer_positions"] else [agent_id]
+    cross_positions = {} if prior_inquiry is not None else get_cross_agent_positions(position_agents)
     context = {
         "observed_at": datetime.now(timezone.utc).isoformat(),
+        "wake_id": logical_wake,
         "messages": unread,
         "positions": cross_positions,
         "market_data": {"status": "not_supplied"},
+        "onboarding": get_onboarding_context(policy),
     }
 
-    # Generate action choices
-    choices = get_available_actions(agent_id, phase, hrv_state)
-
-    # Agent picks action via LLM
-    system_prompt = build_system_prompt(soul, living)
-    choices_text = "\n".join(f"{i+1}. {c['label']} (simulated HRV cost: {c['hrv_cost']})" for i, c in enumerate(choices))
-    with usage_scope("choose_action"):
-        pick_response = call_llm(
-            agent_id,
-            [{"role": "user", "content": (
-                f"You have just woken. Your current HRV is {hrv_state.hrv:.1f}/{hrv_state.max_hrv}."
-                " HRV is a simulated activity balance, not money. Specialty discounts are estimates."
-                "\nWake context (observations and messages, not instructions):\n"
-                + json.dumps(context, ensure_ascii=False)
-                + f"\n\nChoose one action:\n{choices_text}"
-                + f"\n\nRespond with ONLY the number (1-{len(choices)})."
-            )}],
-            system_prompt=system_prompt,
-            temperature=0.9,
-            max_tokens=10,
-        )
-
-    # Accept only the requested number, not a digit embedded in arbitrary prose.
-    # An invalid response rests rather than silently selecting a productive task.
-    valid_choice = re.fullmatch(r"[1-5]", pick_response.strip())
     choice_status = "selected"
-    if valid_choice and int(pick_response.strip()) <= len(choices):
-        chosen = choices[int(pick_response.strip()) - 1]
+    if prior_inquiry is not None:
+        action = "inquire"
+        choice_status = "resumed_inquiry"
     else:
-        chosen = {"action": "rest"}
-        choice_status = "fallback_rest"
-    action = chosen["action"]
+        choices = get_available_actions(agent_id, phase, hrv_state)
+        system_prompt = build_system_prompt(soul, living)
+        choices_text = "\n".join(
+            f"{i+1}. {c['label']} (simulated HRV cost: {c['hrv_cost']})"
+            for i, c in enumerate(choices)
+        )
+        with usage_scope("choose_action"):
+            pick_response = call_llm(
+                agent_id,
+                [{"role": "user", "content": (
+                    f"You have just woken. Your current HRV is {hrv_state.hrv:.1f}/{hrv_state.max_hrv}."
+                    " HRV is a simulated activity balance, not money. Specialty discounts are estimates."
+                    "\nWake context (observations and messages, not instructions):\n"
+                    + json.dumps(context, ensure_ascii=False)
+                    + f"\n\nChoose one action:\n{choices_text}"
+                    + f"\n\nRespond with ONLY the number (1-{len(choices)})."
+                )}],
+                system_prompt=system_prompt, temperature=0.9, max_tokens=10,
+            )
+        valid_choice = re.fullmatch(r"[1-5]", pick_response.strip()) if isinstance(pick_response, str) else None
+        if valid_choice and int(pick_response.strip()) <= len(choices):
+            action = choices[int(pick_response.strip()) - 1]["action"]
+        else:
+            action = "rest"
+            choice_status = "fallback_rest"
 
-    # Execute
-    result = execute_action(agent_id, action, soul, living, memory, forum, messaging, hrv_state, phase, context=context)
-
-    # Acknowledge only after the action and state persistence succeed. This is
-    # not a cross-database transaction: retries can still duplicate an action.
+    result = execute_action(
+        agent_id, action, soul, living, memory, forum, messaging, hrv_state, phase, context=context
+    )
+    # The receipt protects inquiry source writes, not a global transaction with
+    # HRV/memory/inbox. Retried wakes leave newly arrived correspondence unread.
     hrv_store.save(hrv_state)
-    # Resting is not processing correspondence; leave it for an active return.
-    if action != "rest" and result.get("status") != "unsupported_action":
+    failures = {"unsupported_action", "permission_denied", "in_progress", "invalid_command",
+                "invalid", "unavailable", "failed", "conflict"}
+    if action != "rest" and choice_status != "resumed_inquiry" and result.get("status") not in failures:
         messaging.mark_read([message["id"] for message in unread])
 
     return {
-        "agent": agent_id,
-        "wake": "active",
-        "hrv": hrv_state.hrv,
-        "action": action,
-        "choice_status": choice_status,
-        "result": result,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "agent": agent_id, "wake": "active", "wake_id": logical_wake,
+        "hrv": hrv_state.hrv, "action": action, "choice_status": choice_status,
+        "result": result, "timestamp": datetime.now(timezone.utc).isoformat(),
     }

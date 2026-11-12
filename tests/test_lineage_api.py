@@ -14,6 +14,7 @@ API_AST = ast.parse(API_SOURCE.read_text(encoding="utf-8"), filename=str(API_SOU
 NAMES = ("_require_lineage_operator", "_lineage_pilot", "_lineage_integer", "lineage_inquiries", "lineage_inquiry")
 ID = "12345678-1234-4234-8234-123456789abc"
 AUTH = "Bearer test-operator-credential"
+AGENTS = ("tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter")
 
 
 class HTTPException(Exception):
@@ -46,7 +47,7 @@ def extracted_handlers(accessor):
     header = mock.Mock(return_value=None)
     namespace = {"app": app, "HTTPException": HTTPException, "Header": header,
                  "get_lineage_store": accessor, "Optional": Optional, "os": os,
-                 "LineageAccessError": LineageAccessError, "LineageNotFound": LineageNotFound}
+                 "LineageAccessError": LineageAccessError, "LineageNotFound": LineageNotFound, "AGENTS": AGENTS}
     nodes = [copy.deepcopy(node) for node in API_AST.body
              if isinstance(node, ast.FunctionDef) and node.name in NAMES]
     module = ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[]))
@@ -111,11 +112,21 @@ class LineageReadAPI(unittest.TestCase):
             self.call("lineage_inquiries", authorization="Bearer opérator-密钥")
             compare.assert_called_once_with("Bearer opérator-密钥".encode("utf-8"), "Bearer opérator-密钥".encode("utf-8"))
 
-    def test_fixed_agent_only_and_validation_never_constructs_store(self):
-        for value in ("siren", "tempest", "alchemist ", "", "../alchemist", True, None, "alchemist&operator=true"):
+    def test_fixed_owner_allowlist_and_validation_never_constructs_store(self):
+        for value in ("outsider", "system", "alchemist ", "", "../alchemist", True, None, "alchemist&operator=true"):
             for name in ("lineage_inquiries", "lineage_inquiry"):
                 self.assert_http(name, 404, "lineage_agent_not_found", agent_id=value)
         self.accessor.assert_not_called()
+
+    def test_all_seven_operator_reads_match_the_selected_owner(self):
+        for aid in AGENTS:
+            self.call("lineage_inquiries", agent_id=aid)
+            self.store.list_inquiries.assert_called_with(aid, operator=True, limit=50, offset=0)
+            detail = {**self.detail_result, "inquiry": {**self.detail_result["inquiry"], "agent_id": aid}}
+            self.store.get_inquiry.return_value = detail
+            self.assertIs(self.call("lineage_inquiry", agent_id=aid), detail)
+            other = next(owner for owner in AGENTS if owner != aid)
+            self.assert_http("lineage_inquiry", 404, "lineage_inquiry_not_found", agent_id=other)
 
     def test_pagination_strict_and_bounded(self):
         for limit, offset in (("1", "0"), ("50", "2147483647"), (50, 0)):
@@ -167,7 +178,7 @@ class LineageReadAPI(unittest.TestCase):
             for field in ("operator", "viewer_agent_id", "phase"):
                 with self.assertRaises(TypeError):
                     self.call(name, **{field: "siren"})
-        forbidden = {"start_scheduler", "agent_wake", "get_agent_memory", "get_trade_queue", "load_config_yaml", "get_market_snapshot", "AGENTS", "_auto_init"}
+        forbidden = {"start_scheduler", "agent_wake", "get_agent_memory", "get_trade_queue", "load_config_yaml", "get_market_snapshot", "_auto_init"}
         for node in API_AST.body:
             if isinstance(node, ast.FunctionDef) and node.name in NAMES:
                 self.assertFalse({child.id for child in ast.walk(node) if isinstance(child, ast.Name)} & forbidden)

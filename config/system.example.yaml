@@ -131,6 +131,16 @@ runtime:
   # Countdown target date for Phase 2 (ISO format)
   convergence_date: null
 
+  # Independent community controls. A phase change does not open these gates.
+  # Stages and concept availability are adjustable invitations, not milestones.
+  # Suggested private adjustment windows are not automatic release timers.
+  community:
+    introduction_stage: settling   # settling, exploring, market
+    available_concepts: [environment]  # environment, inquiry, paradox, markets, options
+    forum_open: false
+    peer_messages_open: false
+    share_peer_positions: false
+
 # ─── Memory ────────────────────────────────────────────────────
 memory:
   # How often the consolidator runs (seconds)

@@ -1,6 +1,301 @@
 {
   "agent_id": "alchemist",
+  "agent_lists": {
+    "alchemist": {
+      "inquiries": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:00+00:00",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "phase": 0,
+          "state": "open",
+          "title": "A timing question, followed through",
+          "updated_at": "2026-11-12T12:00:22+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:23+00:00",
+          "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+          "phase": 0,
+          "state": "open",
+          "title": "Wait for a clearer horizon",
+          "updated_at": "2026-11-12T12:00:24+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:25+00:00",
+          "inquiry_id": "3690ca0e-12d0-4e6a-916e-adf62b45e23e",
+          "phase": 0,
+          "state": "paused",
+          "title": "Liquidity question — paused",
+          "updated_at": "2026-11-12T12:00:26+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:27+00:00",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "phase": 0,
+          "state": "open",
+          "title": "An alternative explanation, revisited",
+          "updated_at": "2026-11-12T12:00:31+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 4
+    },
+    "oracle": {
+      "inquiries": [
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:47+00:00",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:49+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:50+00:00",
+          "inquiry_id": "4a249226-6131-4ea4-b638-32a08e729224",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:00:51+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    },
+    "paradox_hunter": {
+      "inquiries": [
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:00:57+00:00",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:59+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:01:00+00:00",
+          "inquiry_id": "ebd79489-87d9-446b-b7df-0c6d6bc7617a",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:01:01+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    },
+    "shadow": {
+      "inquiries": [
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:52+00:00",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:54+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:55+00:00",
+          "inquiry_id": "ef73d5ae-290d-4fee-b7fd-6c12a78dd19f",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:00:56+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    },
+    "siren": {
+      "inquiries": [
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:37+00:00",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:39+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:40+00:00",
+          "inquiry_id": "fd1ad4b0-f32b-4e12-9f46-7973722daa1e",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:00:41+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    },
+    "tempest": {
+      "inquiries": [
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:32+00:00",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:34+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:35+00:00",
+          "inquiry_id": "fba6a204-c4cb-4cc1-abca-fdf46ac21b38",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:00:36+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    },
+    "weaver": {
+      "inquiries": [
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:42+00:00",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "phase": 0,
+          "state": "open",
+          "title": "A private question to explore",
+          "updated_at": "2026-11-12T12:00:44+00:00",
+          "visibility": "owner"
+        },
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:45+00:00",
+          "inquiry_id": "a0558c1e-7dbb-49f9-9fba-1720638ac2ca",
+          "phase": 0,
+          "state": "paused",
+          "title": "Something to return to — paused",
+          "updated_at": "2026-11-12T12:00:46+00:00",
+          "visibility": "owner"
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "status": "ok",
+      "total": 2
+    }
+  },
   "details": {
+    "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2": {
+      "entries": [
+        {
+          "agent_id": "shadow",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:53+00:00",
+          "entry_id": "b26d78b3-3730-4d2f-9cdd-48ea89d440e8",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "shadow",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:54+00:00",
+          "entry_id": "87b830c1-c561-46cc-a068-c8cd51b01093",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:52+00:00",
+          "event_id": "5f102a45-8afe-4a6c-9ac4-96df41bc6c75",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:53+00:00",
+          "event_id": "6981da87-5053-43df-b603-2be652996cdf",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "b26d78b3-3730-4d2f-9cdd-48ea89d440e8",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:54+00:00",
+          "event_id": "cff642aa-3197-4dd3-9b8a-abe2d7c37c74",
+          "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "87b830c1-c561-46cc-a068-c8cd51b01093",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "shadow",
+        "created_at": "2026-11-12T12:00:52+00:00",
+        "inquiry_id": "0cd53dfb-af23-4372-9dd2-e4cdd3823ab2",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:54+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
     "25ef886b-7907-4377-9d0e-688ef4281326": {
       "entries": [
         {
@@ -563,6 +858,283 @@
       "status": "ok",
       "truncated": false
     },
+    "40ea26ab-dbf6-478f-a236-c1a5e4e5e081": {
+      "entries": [
+        {
+          "agent_id": "tempest",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:33+00:00",
+          "entry_id": "0a7238d1-492b-4651-88ec-a77af75c687d",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "tempest",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:34+00:00",
+          "entry_id": "f6ad6778-5166-4596-91aa-c6d676b405ea",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:32+00:00",
+          "event_id": "86b54040-7116-4eda-9181-630d8f49a1da",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:33+00:00",
+          "event_id": "c7494f9f-9ed2-4e99-a633-11c45d0b4865",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "0a7238d1-492b-4651-88ec-a77af75c687d",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:34+00:00",
+          "event_id": "649397f5-5165-48c1-9f0d-b0a36fc7fb8b",
+          "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "f6ad6778-5166-4596-91aa-c6d676b405ea",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "tempest",
+        "created_at": "2026-11-12T12:00:32+00:00",
+        "inquiry_id": "40ea26ab-dbf6-478f-a236-c1a5e4e5e081",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:34+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "47597c98-e6e8-4dd6-a696-f39d7d25d71c": {
+      "entries": [
+        {
+          "agent_id": "weaver",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:43+00:00",
+          "entry_id": "affeab0a-8176-460d-8084-786dd0fcbdd7",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "weaver",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:44+00:00",
+          "entry_id": "9c17a0b7-bd70-48d4-becb-4c389b6b147e",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:42+00:00",
+          "event_id": "28e193a9-922b-4007-a7a9-ecd42db2dfa3",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:43+00:00",
+          "event_id": "13afd55c-d6b8-4c57-a2c5-bcd8e48846bf",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "affeab0a-8176-460d-8084-786dd0fcbdd7",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:44+00:00",
+          "event_id": "1ed97cde-f53f-4d46-ad0b-934cfe8bedf2",
+          "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "9c17a0b7-bd70-48d4-becb-4c389b6b147e",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "weaver",
+        "created_at": "2026-11-12T12:00:42+00:00",
+        "inquiry_id": "47597c98-e6e8-4dd6-a696-f39d7d25d71c",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:44+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "4a249226-6131-4ea4-b638-32a08e729224": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:50+00:00",
+          "event_id": "7a263ab6-eb8c-4862-abb4-4ccde12ce173",
+          "inquiry_id": "4a249226-6131-4ea4-b638-32a08e729224",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:51+00:00",
+          "event_id": "b6bf9f4d-ce85-46da-8cd6-b6470e0180a1",
+          "inquiry_id": "4a249226-6131-4ea4-b638-32a08e729224",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "oracle",
+        "created_at": "2026-11-12T12:00:50+00:00",
+        "inquiry_id": "4a249226-6131-4ea4-b638-32a08e729224",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:00:51+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "4a8f9149-6676-44b8-bea4-83c121f934bc": {
+      "entries": [
+        {
+          "agent_id": "siren",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:38+00:00",
+          "entry_id": "37940a15-b56e-463b-96c9-4860f92f8389",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "siren",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:39+00:00",
+          "entry_id": "c4493737-12a7-46df-a1ea-047db87027b6",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:37+00:00",
+          "event_id": "3efd66f2-188e-424e-8119-d6d62c724146",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:38+00:00",
+          "event_id": "7c157a12-2802-46e6-9f59-d90fe07d6fa8",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "37940a15-b56e-463b-96c9-4860f92f8389",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:39+00:00",
+          "event_id": "c50be5a1-038e-42c1-9e59-7fb0c5c0295d",
+          "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "c4493737-12a7-46df-a1ea-047db87027b6",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "siren",
+        "created_at": "2026-11-12T12:00:37+00:00",
+        "inquiry_id": "4a8f9149-6676-44b8-bea4-83c121f934bc",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:39+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
     "94807db7-eefd-499d-816d-23894b8811ca": {
       "entries": [
         {
@@ -610,6 +1182,206 @@
         "state": "open",
         "title": "Wait for a clearer horizon",
         "updated_at": "2026-11-12T12:00:24+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "9ad9901d-ad1c-4d37-9728-81acc42a05d9": {
+      "entries": [
+        {
+          "agent_id": "oracle",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:48+00:00",
+          "entry_id": "aba1dd80-55f7-490b-ac42-4521294a64af",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "oracle",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:49+00:00",
+          "entry_id": "2169e84d-f93c-4180-bcd3-1f075c43f2fe",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:47+00:00",
+          "event_id": "013c24ba-5243-470e-86a0-523653e0f4c9",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:48+00:00",
+          "event_id": "0dffbce3-94aa-400b-9492-317eb2208577",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "aba1dd80-55f7-490b-ac42-4521294a64af",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "oracle",
+          "created_at": "2026-11-12T12:00:49+00:00",
+          "event_id": "f4b6cbd9-6545-4c5a-8edb-227229c7f7e0",
+          "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "2169e84d-f93c-4180-bcd3-1f075c43f2fe",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "oracle",
+        "created_at": "2026-11-12T12:00:47+00:00",
+        "inquiry_id": "9ad9901d-ad1c-4d37-9728-81acc42a05d9",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:49+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "a0558c1e-7dbb-49f9-9fba-1720638ac2ca": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:45+00:00",
+          "event_id": "e44c6674-0d97-43f3-ab28-0914826bf8d8",
+          "inquiry_id": "a0558c1e-7dbb-49f9-9fba-1720638ac2ca",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "weaver",
+          "created_at": "2026-11-12T12:00:46+00:00",
+          "event_id": "cd707fd2-aaba-403d-95be-b5f4ea98653c",
+          "inquiry_id": "a0558c1e-7dbb-49f9-9fba-1720638ac2ca",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "weaver",
+        "created_at": "2026-11-12T12:00:45+00:00",
+        "inquiry_id": "a0558c1e-7dbb-49f9-9fba-1720638ac2ca",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:00:46+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "aafdc61c-23af-4490-8013-3cb796c6066e": {
+      "entries": [
+        {
+          "agent_id": "paradox_hunter",
+          "content": "Local example: a question is available without a required trade or public introduction.",
+          "created_at": "2026-11-12T12:00:58+00:00",
+          "entry_id": "d196f68f-b390-4df2-968c-28ab8325612e",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "content": "Explore what interests me, keeping other explanations available.",
+          "created_at": "2026-11-12T12:00:59+00:00",
+          "entry_id": "885d2f53-98e3-4363-8a2a-effcba287ed2",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:00:57+00:00",
+          "event_id": "d3ac321d-ab63-4561-be37-e933a2ae03cd",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A private question to explore",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:00:58+00:00",
+          "event_id": "50d4af1d-dd12-42e7-b821-5fc6fee2ac69",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "d196f68f-b390-4df2-968c-28ab8325612e",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:00:59+00:00",
+          "event_id": "3635aa9d-87c1-4d8b-80ba-ca477a079575",
+          "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "885d2f53-98e3-4363-8a2a-effcba287ed2",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "paradox_hunter",
+        "created_at": "2026-11-12T12:00:57+00:00",
+        "inquiry_id": "aafdc61c-23af-4490-8013-3cb796c6066e",
+        "phase": 0,
+        "state": "open",
+        "title": "A private question to explore",
+        "updated_at": "2026-11-12T12:00:59+00:00",
         "visibility": "owner"
       },
       "orders": [],
@@ -711,6 +1483,190 @@
         "state": "open",
         "title": "An alternative explanation, revisited",
         "updated_at": "2026-11-12T12:00:31+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "ebd79489-87d9-446b-b7df-0c6d6bc7617a": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:01:00+00:00",
+          "event_id": "fd11cae5-39c6-4088-9dcc-11b328d1426b",
+          "inquiry_id": "ebd79489-87d9-446b-b7df-0c6d6bc7617a",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "created_at": "2026-11-12T12:01:01+00:00",
+          "event_id": "7318b4bf-2935-49ba-bc30-9c32033dd4ad",
+          "inquiry_id": "ebd79489-87d9-446b-b7df-0c6d6bc7617a",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "paradox_hunter",
+        "created_at": "2026-11-12T12:01:00+00:00",
+        "inquiry_id": "ebd79489-87d9-446b-b7df-0c6d6bc7617a",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:01:01+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "ef73d5ae-290d-4fee-b7fd-6c12a78dd19f": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:55+00:00",
+          "event_id": "80934bd7-facb-4145-9d30-d3dad43da6d0",
+          "inquiry_id": "ef73d5ae-290d-4fee-b7fd-6c12a78dd19f",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T12:00:56+00:00",
+          "event_id": "8ba6dd60-c39a-4aa9-a5e8-151e7e058037",
+          "inquiry_id": "ef73d5ae-290d-4fee-b7fd-6c12a78dd19f",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "shadow",
+        "created_at": "2026-11-12T12:00:55+00:00",
+        "inquiry_id": "ef73d5ae-290d-4fee-b7fd-6c12a78dd19f",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:00:56+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "fba6a204-c4cb-4cc1-abca-fdf46ac21b38": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:35+00:00",
+          "event_id": "fbdd4212-7f1a-49f4-a93a-c18b68e2eacc",
+          "inquiry_id": "fba6a204-c4cb-4cc1-abca-fdf46ac21b38",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T12:00:36+00:00",
+          "event_id": "6ed92f35-5034-4dad-8e10-3c583b88a0a7",
+          "inquiry_id": "fba6a204-c4cb-4cc1-abca-fdf46ac21b38",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "tempest",
+        "created_at": "2026-11-12T12:00:35+00:00",
+        "inquiry_id": "fba6a204-c4cb-4cc1-abca-fdf46ac21b38",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:00:36+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "fd1ad4b0-f32b-4e12-9f46-7973722daa1e": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:40+00:00",
+          "event_id": "46ba75b4-eeb1-42d1-9a16-70144dbcb18a",
+          "inquiry_id": "fd1ad4b0-f32b-4e12-9f46-7973722daa1e",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Something to return to — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "siren",
+          "created_at": "2026-11-12T12:00:41+00:00",
+          "event_id": "90d6206c-fb86-4b11-b640-1c846edcc14e",
+          "inquiry_id": "fd1ad4b0-f32b-4e12-9f46-7973722daa1e",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Leave room for another activity.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "siren",
+        "created_at": "2026-11-12T12:00:40+00:00",
+        "inquiry_id": "fd1ad4b0-f32b-4e12-9f46-7973722daa1e",
+        "phase": 0,
+        "state": "paused",
+        "title": "Something to return to — paused",
+        "updated_at": "2026-11-12T12:00:41+00:00",
         "visibility": "owner"
       },
       "orders": [],

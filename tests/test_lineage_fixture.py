@@ -25,10 +25,13 @@ class LineageFixtureTests(unittest.TestCase):
         self.assertEqual(first['mode'], 'mock_demo')
         self.assertEqual(first['agent_id'], 'alchemist')
         self.assertEqual(first['list']['total'], 4)
+        self.assertEqual(set(first['agent_lists']), set(builder.AGENTS))
+        self.assertEqual(len(first['details']), 16)
 
     def test_three_inquiries_can_wait_pause_or_revisit_without_trade_proposals(self):
         data = builder.build_fixture()
-        untouched = [detail for detail in data['details'].values() if not detail['orders']]
+        untouched = [detail for detail in data['details'].values()
+                     if detail['inquiry']['agent_id'] == 'alchemist' and not detail['orders']]
         self.assertEqual(len(untouched), 3)
         self.assertTrue(all(not d['proposals'] and not d['fills'] and not d['positions'] for d in untouched))
         self.assertTrue(any(d['inquiry']['state'] == 'paused' for d in untouched))
@@ -71,3 +74,18 @@ class LineageFixtureTests(unittest.TestCase):
         self.assertEqual(existing, after)
         self.assertTrue(all(detail['inquiry']['phase'] == 0 and detail['inquiry']['visibility'] == 'owner'
                             for detail in fixture['details'].values()))
+
+    def test_each_owner_list_contains_only_private_owned_records_and_only_pilot_has_orders(self):
+        fixture = builder.build_fixture()
+        for aid, listing in fixture['agent_lists'].items():
+            self.assertEqual(listing['total'], 4 if aid == 'alchemist' else 2)
+            for item in listing['inquiries']:
+                detail = fixture['details'][item['inquiry_id']]
+                self.assertEqual(detail['inquiry']['agent_id'], aid)
+                self.assertEqual(detail['inquiry']['visibility'], 'owner')
+                self.assertEqual(detail['inquiry']['phase'], 0)
+                if aid != 'alchemist':
+                    self.assertEqual(detail['proposals'], [])
+                    self.assertEqual(detail['orders'], [])
+                    self.assertEqual(detail['fills'], [])
+                    self.assertEqual(detail['positions'], [])

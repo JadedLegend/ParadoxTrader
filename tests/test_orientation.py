@@ -114,9 +114,9 @@ class OrientationTests(OfflineCase):
         hunter = loop.load_soul("paradox_hunter")
         prompt = build_system_prompt(hunter, loop.load_living("paradox_hunter"))
         self.assert_orientation_in_prompt(prompt)
-        # Preserve the legacy role as a lens without making its authority claim
-        # an override of the explicit runtime permission boundary.
-        self.assertIn(hunter["epistemic_role"], prompt)
+        from core.runtime.community import get_identity_seed
+        self.assertIn(get_identity_seed("paradox_hunter")["attention"], prompt)
+        self.assertNotIn(hunter["epistemic_role"], prompt)
         self.assertIn(self.orientation.RESOURCE_ORIENTATION, prompt)
 
     def test_system_prompt_preserves_all_seven_names_role_lenses_as_starting_perspectives(self):
@@ -129,8 +129,10 @@ class OrientationTests(OfflineCase):
                 prompt = build_system_prompt(soul, living)
                 self.assert_orientation_in_prompt(prompt)
                 self.assertIn(soul["name"], prompt)
-                self.assertIn(soul["epistemic_role"], prompt)
-                self.assertIn(soul["trading_lens"], prompt)
+                from core.runtime.community import get_identity_seed
+                seed = get_identity_seed(aid)
+                self.assertIn(seed["attention"], prompt)
+                self.assertIn(seed["voice"], prompt)
                 self.assertRegex(prompt.lower(), r"optional|starting perspectives?")
                 self.assertRegex(prompt.lower(), r"(?:not|no).{0,80}authority|does not grant execution authority")
                 self.assertEqual(json.dumps([soul, living], sort_keys=True), before)

@@ -94,6 +94,10 @@ class OfflineCase(unittest.TestCase):
         self.patch(loop, "ForumStore", return_value=self.forum)
         self.patch(loop, "MessagingStore", return_value=self.messages)
         self.llm = self.patch(loop, "call_llm", return_value="observed offline test")
+        self.community = self.patch(loop, "get_community_policy", return_value={
+            "introduction_stage": "settling", "available_concepts": ["environment"],
+            "forum_open": True, "peer_messages_open": True, "share_peer_positions": True,
+        })
         self.patch(perplexity, "is_available", return_value=False)
         for name in ("research", "quick_search"):
             guard = self.patch(perplexity, name, side_effect=AssertionError("External research forbidden"))

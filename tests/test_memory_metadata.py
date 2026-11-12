@@ -223,7 +223,7 @@ class MemoryMetadataTests(OfflineCase):
 
     def test_episode_handler_parameters_cover_all_implemented_episode_actions(self):
         implemented = set(re.findall(r'(?:if|elif) action == "([^"]+)"', inspect.getsource(loop.execute_action)))
-        self.assertEqual(implemented - {"rest", "journal"}, set(EPISODE_ACTIONS))
+        self.assertEqual(implemented - {"rest", "journal", "inquire"}, set(EPISODE_ACTIONS))
 
 
 class AutomaticHandlerMetadataTests(OfflineCase):

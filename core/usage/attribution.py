@@ -23,7 +23,8 @@ def attribute_activity(activity=None, *, action_arg=None, new_wake=False):
                 label = kwargs.get('action', args[action_arg] if len(args) > action_arg else None)
             if not isinstance(label, str) or not _LABEL.fullmatch(label):
                 label = 'unsupported_action'
-            wake_id = str(uuid4()) if new_wake else None
+            supplied_wake = kwargs.get('wake_id')
+            wake_id = (str(uuid4()) if supplied_wake is None else supplied_wake) if new_wake else None
             with usage_scope(label, wake_id=wake_id):
                 return function(*args, **kwargs)
         return attributed

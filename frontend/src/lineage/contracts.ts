@@ -1,3 +1,15 @@
+// Stable private-history owners; display labels do not grant execution authority.
+export const LINEAGE_AGENTS = [
+  { id: 'tempest', name: 'Tempest' },
+  { id: 'siren', name: 'Siren' },
+  { id: 'alchemist', name: 'Alchemist' },
+  { id: 'weaver', name: 'Weaver' },
+  { id: 'oracle', name: 'Oracle' },
+  { id: 'shadow', name: 'Shadow' },
+  { id: 'paradox_hunter', name: 'ParadoxHunter' },
+] as const
+export type LineageAgentId = typeof LINEAGE_AGENTS[number]['id']
+
 // Decimal USD strings are projections from the store; the UI never sums them.
 export type DecimalUSD = string
 export type InquiryState = 'open' | 'paused' | 'abandoned'
@@ -138,5 +150,7 @@ export interface LineageFixture {
   mode: 'mock_demo'
   agent_id: 'alchemist'
   list: LineageListResponse
+  // Older examples only contain Alchemist's list; never reuse it for another owner.
+  agent_lists?: Record<LineageAgentId, LineageListResponse>
   details: Record<string, LineageDetailResponse>
 }
