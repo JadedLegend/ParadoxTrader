@@ -48,6 +48,7 @@ from core.trading.alpaca import TradeQueue
 from core.memory.engine import ThresholdMemory
 from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
 from data.feeds.free_feeds import get_market_snapshot
+from core.library import get_library
 
 from contextlib import asynccontextmanager
 from core.runtime.scheduler import start_scheduler, stop_scheduler
@@ -206,6 +207,56 @@ class InnermostRequest(BaseModel):
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/library/documents")
+def library_documents(limit: int | str = 50, offset: int | str = 0):
+    """Browse imported metadata only, without reading originals or agent stores."""
+    try:
+        # Accept decimal HTTP query strings; let the store reject every other type.
+        if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
+            limit = int(limit)
+        if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
+            offset = int(offset)
+        return get_library().list_documents(limit=limit, offset=offset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
+
+@app.get("/api/library/search")
+def library_search(q: str, document_id: Optional[str] = None, limit: int | str = 3, max_chars: int | str = 600):
+    """Search lexical source terms; identifiers are not filenames or file paths."""
+    try:
+        if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
+            limit = int(limit)
+        if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
+            max_chars = int(max_chars)
+        return get_library().search(q, document_id=document_id, limit=limit, max_chars=max_chars)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="library_document_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
+
+@app.get("/api/library/sections/{section_id}")
+def library_section(section_id: str, offset: int | str = 0, max_chars: int | str = 1200):
+    """Read a bounded section window while preserving its extraction locator."""
+    try:
+        if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
+            offset = int(offset)
+        if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
+            max_chars = int(max_chars)
+        return get_library().read_section(section_id, offset=offset, max_chars=max_chars)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="library_section_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
 
 @app.get("/api/status")
 def get_status():

@@ -18,6 +18,7 @@ from tests.test_agent_loop import OfflineCase, ThresholdMemory, loop
 EPISODE_ACTIONS = {
     "monitor": 1,
     "research": 2,
+    "browse_library": 2,
     "analyze": 1,
     "roam": 2,
     "forum_post": 1,
@@ -239,6 +240,18 @@ def _automatic_handler_test(action, llm_calls):
         legacy_before = full_episode_row(memory, legacy_id)
         marker = f"OFFLINE_AUTOMATIC_{action}"
         self.llm.return_value = marker
+        if action == "browse_library":
+            from core import library
+            from unittest import mock
+            source = {
+                "document_id": "doc-111111111111", "section_id": "doc-111111111111-s00001",
+                "title": "Offline source", "filename": "offline.md", "sha256": "1" * 64,
+                "locator": "Markdown lines 1–2", "offset": 0, "next_offset": None,
+                "truncated": False, "excerpt": "Source account for an optional interpretation.",
+            }
+            store = mock.Mock()
+            store.search.return_value = {"status": "ok", "query": marker, "results": [source]}
+            self.patch(library, "get_library", return_value=store)
         result = self.execute(action, phase=3)
         self.assertEqual(result["action"], action)
         self.assertNotEqual(result.get("status"), "unsupported_action")
@@ -247,7 +260,11 @@ def _automatic_handler_test(action, llm_calls):
         self.assertEqual(len(episodes), 2)
         fresh = [episode for episode in episodes if episode["id"] != legacy_id]
         self.assertEqual(len(fresh), 1)
-        self.assertEqual(fresh[0]["content"], marker)
+        if action == "browse_library":
+            self.assertTrue(fresh[0]["content"].startswith(marker + "\nLibrary sources: "))
+            self.assertIn("doc-111111111111-s00001", fresh[0]["content"])
+        else:
+            self.assertEqual(fresh[0]["content"], marker)
         self.assertEqual(metadata_row(memory, fresh[0]["id"]), (None, None, None))
         self.assertEqual(full_episode_row(memory, legacy_id), legacy_before)
         reopened = ThresholdMemory(memory.db_path)

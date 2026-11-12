@@ -2,6 +2,7 @@ import axios from 'axios'
 import { createApiClient, resolveApiMode } from './data/client'
 import { readFixture } from './preview/readFixture'
 import type { AgentSummary, PositionSnapshot } from './data/contracts'
+import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
@@ -39,3 +40,9 @@ export const updateSelfDefinition = (id: string, definition: string) => request<
 export const getAllPositions = () => request<{ positions: Record<string, PositionSnapshot> }>('GET', '/api/agents/positions')
 export const writeJournalEntry = (id: string, content: string) => request<any>('POST', `/api/agents/${id}/journal`, { content })
 export const writeInnermostEntry = (id: string, content: string) => request<any>('POST', `/api/agents/${id}/innermost`, { content })
+
+export const getLibraryDocuments = (limit = 50, offset = 0) => request<LibraryDocumentsResponse>('GET', `/api/library/documents?limit=${limit}&offset=${offset}`)
+export const searchLibrary = (q: string, document_id?: string, limit = 3, max_chars = 600) => request<LibrarySearchResponse>('GET',
+  `/api/library/search?q=${encodeURIComponent(q)}&limit=${limit}&max_chars=${max_chars}${document_id ? `&document_id=${encodeURIComponent(document_id)}` : ''}`)
+export const getLibrarySection = (section_id: string, offset = 0, max_chars = 1200) => request<LibrarySectionResponse>('GET',
+  `/api/library/sections/${encodeURIComponent(section_id)}?offset=${offset}&max_chars=${max_chars}`)

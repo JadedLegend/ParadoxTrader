@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Imported originals are immutable data, including line endings and deliberate
+# Markdown hard-break spaces. Do not normalize or rewrite their source bytes.
+library/originals/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

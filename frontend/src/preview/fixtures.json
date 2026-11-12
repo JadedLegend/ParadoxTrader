@@ -160,6 +160,11 @@
             "hrv_cost": 0.5
           },
           {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
             "action": "roam",
             "label": "Roam freely — follow your curiosity",
             "hrv_cost": 2.0
@@ -168,11 +173,6 @@
             "action": "journal",
             "label": "Choose a private reflection",
             "hrv_cost": 1.0
-          },
-          {
-            "action": "review_position",
-            "label": "Review your open positions",
-            "hrv_cost": 2.0
           },
           {
             "action": "rest",
@@ -198,19 +198,19 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "analyze_volatility",
-            "label": "Analyze volatility regime and storm fronts",
-            "hrv_cost": 1.5
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
           },
           {
             "action": "review_position",
             "label": "Review your open positions",
             "hrv_cost": 2.0
-          },
-          {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
           }
         ]
       },
@@ -221,18 +221,8 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 1.0
-          },
-          {
-            "action": "direct_message",
-            "label": "Send a direct message to an agent",
-            "hrv_cost": 2.0
-          },
-          {
-            "action": "forum_post",
-            "label": "Post to the shared forum",
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
             "hrv_cost": 2.0
           },
           {
@@ -241,9 +231,19 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "review_position",
-            "label": "Review your open positions",
+            "action": "forum_post",
+            "label": "Post to the shared forum",
             "hrv_cost": 2.0
+          },
+          {
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "roam_momentum",
+            "label": "Chase momentum — follow the storm's edge",
+            "hrv_cost": 1.0
           }
         ]
       },
@@ -269,14 +269,14 @@
         "in_interval": false,
         "choices": [
           {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
             "action": "analyze",
             "label": "Analyze a current market signal",
             "hrv_cost": 4.0
-          },
-          {
-            "action": "analyze_sentiment",
-            "label": "Analyze narrative sentiment and crowd psychology",
-            "hrv_cost": 1.5
           },
           {
             "action": "rest",
@@ -284,9 +284,9 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "review_position",
-            "label": "Review your open positions",
-            "hrv_cost": 2.0
+            "action": "analyze_sentiment",
+            "label": "Analyze narrative sentiment and crowd psychology",
+            "hrv_cost": 1.5
           },
           {
             "action": "journal",
@@ -302,9 +302,9 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "analyze_sentiment",
-            "label": "Analyze narrative sentiment and crowd psychology",
-            "hrv_cost": 1.5
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
           },
           {
             "action": "analyze",
@@ -322,8 +322,8 @@
             "hrv_cost": 1.0
           },
           {
-            "action": "roam",
-            "label": "Roam freely — follow your curiosity",
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
             "hrv_cost": 2.0
           }
         ]
@@ -335,9 +335,9 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "review_position",
-            "label": "Review your open positions",
-            "hrv_cost": 2.0
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 0.5
           },
           {
             "action": "analyze",
@@ -345,9 +345,9 @@
             "hrv_cost": 4.0
           },
           {
-            "action": "analyze_sentiment",
-            "label": "Analyze narrative sentiment and crowd psychology",
-            "hrv_cost": 1.5
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
           },
           {
             "action": "rest",
@@ -383,14 +383,14 @@
         "in_interval": false,
         "choices": [
           {
+            "action": "browse_library",
+            "label": "Browse shared library — follow a question",
+            "hrv_cost": 2.0
+          },
+          {
             "action": "rest",
             "label": "Quiet rest — no reflection required",
             "hrv_cost": -1.5
-          },
-          {
-            "action": "analyze",
-            "label": "Analyze a current market signal",
-            "hrv_cost": 4.0
           },
           {
             "action": "monitor",
@@ -403,9 +403,9 @@
             "hrv_cost": 2.0
           },
           {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 0.5
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
           }
         ]
       },
@@ -416,19 +416,9 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "roam",
-            "label": "Roam freely — follow your curiosity",
-            "hrv_cost": 2.0
-          },
-          {
-            "action": "monitor",
-            "label": "Monitor current market conditions",
-            "hrv_cost": 1.0
-          },
-          {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 3.0
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
           },
           {
             "action": "analyze",
@@ -436,9 +426,19 @@
             "hrv_cost": 4.0
           },
           {
-            "action": "rest",
-            "label": "Quiet rest — no reflection required",
-            "hrv_cost": -1.5
+            "action": "browse_library",
+            "label": "Browse shared library — follow a question",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 2.0
           }
         ]
       },
@@ -454,9 +454,9 @@
             "hrv_cost": 4.0
           },
           {
-            "action": "analyze_options",
-            "label": "Analyze options structure and asymmetric setups",
-            "hrv_cost": 2.0
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 3.0
           },
           {
             "action": "rest",
@@ -497,8 +497,8 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "journal",
-            "label": "Choose a private reflection",
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
             "hrv_cost": 1.0
           },
           {
@@ -507,9 +507,9 @@
             "hrv_cost": 1.0
           },
           {
-            "action": "analyze",
-            "label": "Analyze a current market signal",
-            "hrv_cost": 4.0
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
           },
           {
             "action": "rest",
@@ -530,29 +530,29 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 1.0
-          },
-          {
             "action": "review_position",
             "label": "Review your open positions",
             "hrv_cost": 2.0
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
-          },
-          {
-            "action": "analyze_correlation",
-            "label": "Map cross-asset correlations and second-order effects",
-            "hrv_cost": 1.5
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
           },
           {
             "action": "rest",
             "label": "Quiet rest — no reflection required",
             "hrv_cost": -1.5
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 1.0
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
           }
         ]
       },
@@ -573,14 +573,14 @@
             "hrv_cost": 2.0
           },
           {
-            "action": "forum_post",
-            "label": "Post to the shared forum",
-            "hrv_cost": 1.0
+            "action": "analyze_correlation",
+            "label": "Map cross-asset correlations and second-order effects",
+            "hrv_cost": 1.5
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
           },
           {
             "action": "rest",
@@ -611,8 +611,8 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "roam",
-            "label": "Roam freely — follow your curiosity",
+            "action": "browse_library",
+            "label": "Browse shared library — follow a question",
             "hrv_cost": 2.0
           },
           {
@@ -621,19 +621,19 @@
             "hrv_cost": -1.5
           },
           {
+            "action": "analyze_macro",
+            "label": "Read the macro cycle and long-arc patterns",
+            "hrv_cost": 1.5
+          },
+          {
             "action": "review_position",
             "label": "Review your open positions",
             "hrv_cost": 2.0
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
-          },
-          {
-            "action": "research",
-            "label": "Research a topic of your choosing",
-            "hrv_cost": 3.0
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
           }
         ]
       },
@@ -644,9 +644,9 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
           },
           {
             "action": "direct_message",
@@ -654,14 +654,14 @@
             "hrv_cost": 2.0
           },
           {
-            "action": "roam",
-            "label": "Roam freely — follow your curiosity",
-            "hrv_cost": 2.0
-          },
-          {
             "action": "analyze_macro",
             "label": "Read the macro cycle and long-arc patterns",
             "hrv_cost": 1.5
+          },
+          {
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
           },
           {
             "action": "rest",
@@ -682,8 +682,8 @@
             "hrv_cost": 2.0
           },
           {
-            "action": "roam",
-            "label": "Roam freely — follow your curiosity",
+            "action": "browse_library",
+            "label": "Browse shared library — follow a question",
             "hrv_cost": 2.0
           },
           {
@@ -692,14 +692,14 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "forum_post",
-            "label": "Post to the shared forum",
-            "hrv_cost": 2.0
+            "action": "analyze_macro",
+            "label": "Read the macro cycle and long-arc patterns",
+            "hrv_cost": 1.5
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
+            "action": "review_position",
+            "label": "Review your open positions",
+            "hrv_cost": 2.0
           }
         ]
       },
@@ -725,9 +725,9 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "review_position",
-            "label": "Review your open positions",
-            "hrv_cost": 2.0
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
           },
           {
             "action": "monitor",
@@ -735,9 +735,9 @@
             "hrv_cost": 1.0
           },
           {
-            "action": "analyze",
-            "label": "Analyze a current market signal",
-            "hrv_cost": 4.0
+            "action": "propose_trade",
+            "label": "Develop a trade idea",
+            "hrv_cost": 6.0
           },
           {
             "action": "rest",
@@ -745,9 +745,9 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "research",
-            "label": "Research a topic of your choosing",
-            "hrv_cost": 3.0
+            "action": "analyze",
+            "label": "Analyze a current market signal",
+            "hrv_cost": 4.0
           }
         ]
       },
@@ -763,13 +763,8 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 1.0
-          },
-          {
-            "action": "monitor",
-            "label": "Monitor current market conditions",
+            "action": "forum_post",
+            "label": "Post to the shared forum",
             "hrv_cost": 1.0
           },
           {
@@ -778,9 +773,14 @@
             "hrv_cost": 3.0
           },
           {
-            "action": "forum_post",
-            "label": "Post to the shared forum",
+            "action": "monitor",
+            "label": "Monitor current market conditions",
             "hrv_cost": 1.0
+          },
+          {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
           }
         ]
       },
@@ -791,29 +791,29 @@
         "in_interval": false,
         "choices": [
           {
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
             "action": "analyze_consensus",
             "label": "Analyze the council's current consensus",
             "hrv_cost": 4.0
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
-          },
-          {
-            "action": "rest",
-            "label": "Quiet rest — no reflection required",
-            "hrv_cost": -1.5
-          },
-          {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 1.0
+            "action": "analyze_risk",
+            "label": "Audit structural risk and collective blind spots",
+            "hrv_cost": 1.5
           },
           {
             "action": "roam_contrarian",
             "label": "Roam the contrarian edge — find what others miss",
             "hrv_cost": 1.0
+          },
+          {
+            "action": "rest",
+            "label": "Quiet rest — no reflection required",
+            "hrv_cost": -1.5
           }
         ]
       },
@@ -877,9 +877,9 @@
             "hrv_cost": 3.0
           },
           {
-            "action": "direct_message",
-            "label": "Send a direct message to an agent",
-            "hrv_cost": 1.0
+            "action": "forum_post",
+            "label": "Post to the shared forum",
+            "hrv_cost": 2.0
           },
           {
             "action": "rest",
@@ -887,9 +887,9 @@
             "hrv_cost": -1.5
           },
           {
-            "action": "analyze",
-            "label": "Analyze a current market signal",
-            "hrv_cost": 4.0
+            "action": "journal",
+            "label": "Choose a private reflection",
+            "hrv_cost": 1.0
           },
           {
             "action": "review_position",
@@ -905,29 +905,29 @@
         "in_interval": false,
         "choices": [
           {
-            "action": "direct_message",
-            "label": "Send a direct message to an agent",
-            "hrv_cost": 1.0
-          },
-          {
-            "action": "journal",
-            "label": "Choose a private reflection",
-            "hrv_cost": 1.0
-          },
-          {
             "action": "rest",
             "label": "Quiet rest — no reflection required",
             "hrv_cost": -1.5
           },
           {
-            "action": "propose_trade",
-            "label": "Develop a trade idea",
-            "hrv_cost": 6.0
+            "action": "roam",
+            "label": "Roam freely — follow your curiosity",
+            "hrv_cost": 2.0
+          },
+          {
+            "action": "direct_message",
+            "label": "Send a direct message to an agent",
+            "hrv_cost": 1.0
           },
           {
             "action": "analyze",
             "label": "Analyze a current market signal",
             "hrv_cost": 4.0
+          },
+          {
+            "action": "monitor",
+            "label": "Monitor current market conditions",
+            "hrv_cost": 1.0
           }
         ]
       },

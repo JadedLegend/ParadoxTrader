@@ -293,3 +293,29 @@ a.btn { display: inline-block; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* Original-source library: reference metadata stays separate from interpretation. */
+.library-searchbar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin: 18px 0; }
+.library-searchbar .input-group { flex: 1 1 240px; margin-bottom: 0; }
+.library-searchbar form { width: 100%; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.library-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.library-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.library-catalog, .library-reader { min-width: 0; }
+.library-item, .library-result { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.library-item:first-child, .library-result:first-child { padding-top: 0; }
+.library-item:last-child, .library-result:last-child { border-bottom: 0; }
+.library-item h2, .library-result h2 { font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.library-meta { font-size: 11px; color: var(--text3); line-height: 1.7; margin: 7px 0; overflow-wrap: anywhere; }
+.library-hash { font-size: 10px; font-family: var(--mono); color: var(--text3); overflow-wrap: anywhere; }
+.library-source-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.8; color: var(--text); background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); margin: 12px 0; font-family: var(--font); }
+.library-reader { position: sticky; top: 16px; max-height: calc(100dvh - 60px); overflow-y: auto; }
+.library-result .btn, .library-item .btn { margin-top: 8px; }
+@media (max-width: 1000px) {
+  .library-layout { grid-template-columns: 1fr; }
+  .library-reader { position: static; max-height: none; }
+}
+@media (max-width: 600px) {
+  .library-searchbar form { flex-direction: column; align-items: stretch; }
+  .library-searchbar .input-group { flex-basis: auto; width: 100%; }
+  .library-searchbar .btn { width: 100%; }
+}
