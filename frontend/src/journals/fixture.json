@@ -1,0 +1,4232 @@
+{
+  "journals": {
+    "88888888-8888-4888-8888-888888888888": {
+      "alchemist": [],
+      "oracle": [],
+      "paradox_hunter": [
+        {
+          "author": "paradox_hunter",
+          "channels": [
+            "unclassified"
+          ],
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 1,
+          "note_kind": "note",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": null,
+          "source_wake_id": null,
+          "state": "active",
+          "truncated": false
+        },
+        {
+          "author": "paradox_hunter",
+          "channels": [
+            "unclassified"
+          ],
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 2,
+          "note_kind": "note",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": null,
+          "source_wake_id": null,
+          "state": "active",
+          "truncated": false
+        }
+      ],
+      "shadow": [],
+      "siren": [
+        {
+          "author": "siren",
+          "channels": [
+            "unclassified"
+          ],
+          "content": "A scripted private example note. No live model produced this record.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 1,
+          "note_kind": "note",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": null,
+          "source_wake_id": null,
+          "state": "active",
+          "truncated": false
+        }
+      ],
+      "tempest": [
+        {
+          "author": "tempest",
+          "channels": [
+            "idea"
+          ],
+          "content": "Scripted compost 1: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 1,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "orientation"
+          ],
+          "content": "Scripted compost 2: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 2,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "trading"
+          ],
+          "content": "Scripted compost 3: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 3,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "idea"
+          ],
+          "content": "Scripted compost 4: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 4,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "orientation"
+          ],
+          "content": "Scripted compost 5: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 5,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "trading"
+          ],
+          "content": "Scripted compost 6: a question can remain open; this is not a live agent account.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 6,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "released",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "idea",
+            "orientation"
+          ],
+          "content": "Scripted distillation: the questions share a timing concern, while their differences remain open. The originals remain linked.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 7,
+          "note_kind": "distillation",
+          "source_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "source_links": [
+            {
+              "author": "tempest",
+              "channels": [
+                "idea"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 1,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            },
+            {
+              "author": "tempest",
+              "channels": [
+                "orientation"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 2,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            },
+            {
+              "author": "tempest",
+              "channels": [
+                "trading"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 3,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            },
+            {
+              "author": "tempest",
+              "channels": [
+                "idea"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 4,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            },
+            {
+              "author": "tempest",
+              "channels": [
+                "orientation"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 5,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            },
+            {
+              "author": "tempest",
+              "channels": [
+                "trading"
+              ],
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "id": 6,
+              "kind": "journal",
+              "note_kind": "compost",
+              "source_mode": "offline",
+              "source_wake_id": null,
+              "state": "released"
+            }
+          ],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "active",
+          "truncated": false
+        },
+        {
+          "author": "tempest",
+          "channels": [
+            "orientation"
+          ],
+          "content": "Scripted active compost: leave room to return to a question without an obligation to resolve it.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": 8,
+          "note_kind": "compost",
+          "source_ids": [],
+          "source_links": [],
+          "source_mode": "offline",
+          "source_wake_id": null,
+          "state": "active",
+          "truncated": false
+        }
+      ],
+      "weaver": []
+    }
+  },
+  "kind": "fixture",
+  "observed_at": "2026-11-12T00:00:00+00:00",
+  "provenance": "Scripted temporary stores; serial dispatch, explicit pre-existing scripted compost, normalized IDs/timestamps/hashes. Not real model output.",
+  "runs": [
+    {
+      "agent_models": {
+        "alchemist": "deepseek/deepseek-r1-0528",
+        "oracle": "google/gemini-2.5-pro",
+        "paradox_hunter": "qwen/qwen3-235b-a22b-thinking-2507",
+        "shadow": "x-ai/grok-4.5",
+        "siren": "qwen/qwen3-235b-a22b-2507",
+        "tempest": "deepseek/deepseek-v3.2",
+        "weaver": "moonshotai/kimi-k2.6"
+      },
+      "agents": [
+        {
+          "agent_id": "tempest",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "siren",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "alchemist",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "weaver",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "oracle",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "shadow",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        },
+        {
+          "agent_id": "paradox_hunter",
+          "completed": 2,
+          "failed": 0,
+          "pending": 0,
+          "stopped": 0,
+          "uncertain": 0
+        }
+      ],
+      "capabilities": [
+        "rest",
+        "journal",
+        "inquire",
+        "library",
+        "roam"
+      ],
+      "created_at": "2026-11-12T00:00:00+00:00",
+      "ended_at": "2026-11-12T00:00:00+00:00",
+      "known_cost_usd": "0",
+      "limits": {
+        "budget_usd": "1E+1",
+        "max_input_bytes": 24000,
+        "max_output_tokens": 1024,
+        "max_parallelism": 1,
+        "max_requests": 28,
+        "max_runtime_seconds": 900,
+        "request_timeout_seconds": 60,
+        "wakes_per_agent": 2
+      },
+      "mode": "offline",
+      "request_count": 26,
+      "reserved_usd": "0.497834",
+      "run_id": "88888888-8888-4888-8888-888888888888",
+      "started_at": "2026-11-12T00:00:00+00:00",
+      "status": "completed",
+      "stop_requested": false,
+      "unknown_cost_requests": 4
+    }
+  ],
+  "sources": {
+    "88888888-8888-4888-8888-888888888888": {
+      "alchemist": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+          "kind": "inquiry",
+          "proposal_ids": [],
+          "provenance": "lineage_inquiries",
+          "state": "open",
+          "title": "A scripted example question",
+          "title_truncated": false
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+          "kind": "inquiry",
+          "proposal_ids": [],
+          "provenance": "lineage_inquiries",
+          "state": "open",
+          "title": "A scripted example question",
+          "title_truncated": false
+        }
+      ],
+      "oracle": [],
+      "paradox_hunter": [],
+      "shadow": [
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+          "kind": "inquiry",
+          "proposal_ids": [],
+          "provenance": "lineage_inquiries",
+          "state": "open",
+          "title": "A scripted example question",
+          "title_truncated": false
+        },
+        {
+          "agent_id": "shadow",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+          "kind": "inquiry",
+          "proposal_ids": [],
+          "provenance": "lineage_inquiries",
+          "state": "open",
+          "title": "A scripted example question",
+          "title_truncated": false
+        }
+      ],
+      "siren": [],
+      "tempest": [
+        {
+          "agent_id": "tempest",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+          "kind": "inquiry",
+          "proposal_ids": [],
+          "provenance": "lineage_inquiries",
+          "state": "open",
+          "title": "A scripted example question",
+          "title_truncated": false
+        }
+      ],
+      "weaver": []
+    }
+  },
+  "witnesses": {
+    "88888888-8888-4888-8888-888888888888": {
+      "alchemist": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 4; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nalchemist-r1: selected inquire; outcome: completed.\nalchemist-r2: selected inquire; outcome: completed.\nDistinct attached source references: inquiry=2. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "981bf82c-6d8e-591f-baa9-499f06c4e93e",
+          "method": "mechanical",
+          "scope": "alchemist",
+          "source_digest": "83297eedd4b9ecbeb859b570b0a6be8497ff8b0ad66f94d68bbdb42d4042c127",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "inquire",
+                "agent_id": "alchemist",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "alchemist",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "alchemist-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "812913fe-1824-5618-a659-08eb82ac8f23",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "86191524-fd75-5733-b118-1bc1da3264c1",
+                "wake_id": "alchemist-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a81a57f4-eb1a-5943-a2be-84bcaf7d33e8",
+                "wake_id": "alchemist-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "alchemist"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "812913fe-1824-5618-a659-08eb82ac8f23",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "86191524-fd75-5733-b118-1bc1da3264c1",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "a81a57f4-eb1a-5943-a2be-84bcaf7d33e8",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\nalchemist-r1: selected inquire; outcome: completed.\nalchemist-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: inquiry=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "bf1f4376-5592-5d8e-978a-9e5b6685e23b",
+          "method": "mechanical",
+          "scope": "alchemist",
+          "source_digest": "3d8fb208f496be1f138a38214358f2b57347d3c251e597b4dde8ecd05af4fce8",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "inquire",
+                "agent_id": "alchemist",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "alchemist",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "alchemist-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "812913fe-1824-5618-a659-08eb82ac8f23",
+                "wake_id": "alchemist-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "alchemist"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "812913fe-1824-5618-a659-08eb82ac8f23",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "oracle": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 4; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\noracle-r1: selected roam; outcome: completed.\noracle-r2: selected roam; outcome: completed.\nDistinct attached source references: episode=2. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "12e75019-628e-555f-9cca-0084e011b98b",
+          "method": "mechanical",
+          "scope": "oracle",
+          "source_digest": "8961428580d5085ada15ad5a10a89a3dbe3680ed3e9f4d56a9c3fa4d2114ca0e",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "roam",
+                "agent_id": "oracle",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "action": "roam",
+                "agent_id": "oracle",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 2,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "oracle-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "activity": "roam",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "f09fd15b-a11c-5ec0-9b9f-0b863a937820",
+                "wake_id": "oracle-r2"
+              },
+              {
+                "activity": "roam",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "e48dbf50-5062-5aa4-8e0b-efefe16180ee",
+                "wake_id": "oracle-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "oracle"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": 2,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "f09fd15b-a11c-5ec0-9b9f-0b863a937820",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "e48dbf50-5062-5aa4-8e0b-efefe16180ee",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\noracle-r1: selected roam; outcome: completed.\noracle-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: episode=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "13a5c733-2902-59d7-9ec5-8247323a8ebf",
+          "method": "mechanical",
+          "scope": "oracle",
+          "source_digest": "3e8854219536decfef23cb48f574713cad1f91536c2096799346bdb7c0c74c19",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "roam",
+                "agent_id": "oracle",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "oracle",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "oracle-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "activity": "roam",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+                "wake_id": "oracle-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "oracle"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "paradox_hunter": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 4; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nparadox_hunter-r1: selected journal; outcome: completed. Journal mode: legacy plain journal (no explicit mode recorded).\nparadox_hunter-r2: selected journal; outcome: completed. Journal mode: legacy plain journal (no explicit mode recorded).\nDistinct attached source references: journal=2. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "02cad6f2-dd5c-5347-a595-745ebc7c7ad5",
+          "method": "mechanical",
+          "scope": "paradox_hunter",
+          "source_digest": "da35fa723fb586a1c673c99728863f0644385682e460d3269b3057c38f656576",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "journal",
+                "agent_id": "paradox_hunter",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "action": "journal",
+                "agent_id": "paradox_hunter",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 2,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "paradox_hunter-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "8291c741-2a00-5152-ba92-d636b987f569",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "302767dd-2dd3-5e89-b52f-5957f858c72a",
+                "wake_id": "paradox_hunter-r2"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "09ed34f6-0f46-59e8-8fc9-e9a5da4bcde1",
+                "wake_id": "paradox_hunter-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "paradox_hunter"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": 2,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "8291c741-2a00-5152-ba92-d636b987f569",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "302767dd-2dd3-5e89-b52f-5957f858c72a",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "09ed34f6-0f46-59e8-8fc9-e9a5da4bcde1",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\nparadox_hunter-r1: selected journal; outcome: completed. Journal mode: legacy plain journal (no explicit mode recorded).\nparadox_hunter-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: journal=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "bda738be-3d27-58a6-98f4-7efe6555b0c8",
+          "method": "mechanical",
+          "scope": "paradox_hunter",
+          "source_digest": "ab5ac92c2cb53f6a8b755004c0cd3f1bf0cb1d3bdbb4a6f1905ac75787795dbe",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "journal",
+                "agent_id": "paradox_hunter",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "paradox_hunter",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "paradox_hunter-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "8291c741-2a00-5152-ba92-d636b987f569",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+                "wake_id": "paradox_hunter-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "paradox_hunter"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "8291c741-2a00-5152-ba92-d636b987f569",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "shadow": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 4; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nshadow-r1: selected inquire; outcome: completed.\nshadow-r2: selected inquire; outcome: completed.\nDistinct attached source references: inquiry=2. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "9223260b-4b7b-5032-9ab7-e0f9b9916bd5",
+          "method": "mechanical",
+          "scope": "shadow",
+          "source_digest": "189e61df07c50afd40015de94e292711d810cb9c0cc776dd359c8d532d99114c",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "inquire",
+                "agent_id": "shadow",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "shadow",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "shadow-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c21db26c-a6df-54bb-a5c9-f920d88a4b3b",
+                "wake_id": "shadow-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c85490e5-571e-5d03-a409-b2d1762fa128",
+                "wake_id": "shadow-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "shadow"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "c21db26c-a6df-54bb-a5c9-f920d88a4b3b",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "c85490e5-571e-5d03-a409-b2d1762fa128",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\nshadow-r1: selected inquire; outcome: completed.\nshadow-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: inquiry=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "1f439cba-ea5e-55b0-8825-3499c08e5cda",
+          "method": "mechanical",
+          "scope": "shadow",
+          "source_digest": "48d544f33b4509c35a81a9613ff15e82afb4531b0ba8781524c3b63808bbc225",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "inquire",
+                "agent_id": "shadow",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "shadow",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "shadow-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+                "wake_id": "shadow-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "shadow"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "siren": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 3; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nsiren-r1: selected journal; outcome: completed. Journal mode: legacy plain journal (no explicit mode recorded).\nsiren-r2: selected journal; outcome: completed. Journal mode: witness.\nDistinct attached source references: journal=1, witness=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "9c906182-105f-5926-9205-0e70737bc1ef",
+          "method": "mechanical",
+          "scope": "siren",
+          "source_digest": "2876e3a74dc0682e7247d6410a96a5b289d1af212b3c120be24a61f9049a5444",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "journal",
+                "agent_id": "siren",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "siren-r1"
+              },
+              {
+                "action": "journal",
+                "agent_id": "siren",
+                "choice_committed": true,
+                "failure_code": null,
+                "journal_mode": "witness",
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "4b4e74ce-fae2-579f-81f5-581ff11816fb",
+                    "kind": "witness"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "siren-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+                "wake_id": "siren-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+                "wake_id": "siren-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "633bc361-a660-5c10-b188-8489948f5e61",
+                "wake_id": "siren-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "siren"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": "4b4e74ce-fae2-579f-81f5-581ff11816fb",
+              "kind": "witness"
+            },
+            {
+              "agent_id": "siren",
+              "id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "633bc361-a660-5c10-b188-8489948f5e61",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\nsiren-r1: selected journal; outcome: completed. Journal mode: legacy plain journal (no explicit mode recorded).\nsiren-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: journal=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "4b4e74ce-fae2-579f-81f5-581ff11816fb",
+          "method": "mechanical",
+          "scope": "siren",
+          "source_digest": "8be6afd414234b8c2c69d9200e3fbe2c047ff05dbed0b6b7c6d8a8cb0709fe72",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "journal",
+                "agent_id": "siren",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "siren-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "siren",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "siren-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+                "wake_id": "siren-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+                "wake_id": "siren-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "siren"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "steward": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is completed.\nPrepared owners: 7; owners with a dispatched request (actually began): 7; owners with both wakes completed: 7.\nWake outcomes: completed=14.\nRequests recorded: 26; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nCommitted choices (wake counts): rest=1, journal=4, inquire=5, library=2, roam=2.\nJournal modes (wake counts): witness=1.\nPlain journals without an explicit mode recorded: 3.\nDistinct attached source references: episode=4, inquiry=5, journal=3, library=3, witness=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "b8e85543-1386-506c-9f17-4b2b5dc64286",
+          "method": "mechanical",
+          "scope": "steward",
+          "source_digest": "20519d43eb05cfe8161f2a4561ba46824f0ccff8d4a72dc37a4f068d01969fee",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "rest",
+                "agent_id": "tempest",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "tempest-r1"
+              },
+              {
+                "action": "journal",
+                "agent_id": "siren",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "siren-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "alchemist",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "action": "library",
+                "agent_id": "weaver",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "doc-04445b70bb10-s00106",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-04445b70bb10-s00002",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-c500cd2e2d45-s00026",
+                    "kind": "library"
+                  },
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "action": "roam",
+                "agent_id": "oracle",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "shadow",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "action": "journal",
+                "agent_id": "paradox_hunter",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 1,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "tempest",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "tempest-r2"
+              },
+              {
+                "action": "journal",
+                "agent_id": "siren",
+                "choice_committed": true,
+                "failure_code": null,
+                "journal_mode": "witness",
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "4b4e74ce-fae2-579f-81f5-581ff11816fb",
+                    "kind": "witness"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "siren-r2"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "alchemist",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "alchemist-r2"
+              },
+              {
+                "action": "library",
+                "agent_id": "weaver",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "doc-04445b70bb10-s00106",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-04445b70bb10-s00002",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-c500cd2e2d45-s00026",
+                    "kind": "library"
+                  },
+                  {
+                    "id": 2,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "weaver-r2"
+              },
+              {
+                "action": "roam",
+                "agent_id": "oracle",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 2,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "oracle-r2"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "shadow",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "shadow-r2"
+              },
+              {
+                "action": "journal",
+                "agent_id": "paradox_hunter",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": 2,
+                    "kind": "journal"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "paradox_hunter-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+                "wake_id": "tempest-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+                "wake_id": "siren-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+                "wake_id": "siren-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "812913fe-1824-5618-a659-08eb82ac8f23",
+                "wake_id": "alchemist-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "activity": "library",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "activity": "roam",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+                "wake_id": "oracle-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+                "wake_id": "shadow-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "8291c741-2a00-5152-ba92-d636b987f569",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+                "wake_id": "paradox_hunter-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "226c9746-e674-5883-9569-d7d3c77a0a9d",
+                "wake_id": "tempest-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "5c571809-24d1-5569-94e6-733ca5e28a7b",
+                "wake_id": "tempest-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "siren",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "633bc361-a660-5c10-b188-8489948f5e61",
+                "wake_id": "siren-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "86191524-fd75-5733-b118-1bc1da3264c1",
+                "wake_id": "alchemist-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "alchemist",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "a81a57f4-eb1a-5943-a2be-84bcaf7d33e8",
+                "wake_id": "alchemist-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "8203b0fd-c49b-5bc1-8d7c-e579ec038904",
+                "wake_id": "weaver-r2"
+              },
+              {
+                "activity": "library",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "930a2043-8856-5206-a840-ef6a64c7cb49",
+                "wake_id": "weaver-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "f09fd15b-a11c-5ec0-9b9f-0b863a937820",
+                "wake_id": "oracle-r2"
+              },
+              {
+                "activity": "roam",
+                "agent_id": "oracle",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "e48dbf50-5062-5aa4-8e0b-efefe16180ee",
+                "wake_id": "oracle-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c21db26c-a6df-54bb-a5c9-f920d88a4b3b",
+                "wake_id": "shadow-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "shadow",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c85490e5-571e-5d03-a409-b2d1762fa128",
+                "wake_id": "shadow-r2"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "302767dd-2dd3-5e89-b52f-5957f858c72a",
+                "wake_id": "paradox_hunter-r2"
+              },
+              {
+                "activity": "journal",
+                "agent_id": "paradox_hunter",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "09ed34f6-0f46-59e8-8fc9-e9a5da4bcde1",
+                "wake_id": "paradox_hunter-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": "2026-11-12T00:00:00+00:00",
+              "mode": "offline",
+              "prepared_owners": [
+                "tempest",
+                "siren",
+                "alchemist",
+                "weaver",
+                "oracle",
+                "shadow",
+                "paradox_hunter"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "completed"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "48631e9a-28fd-5183-926a-e9bf0f201512",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00106",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00002",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-c500cd2e2d45-s00026",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "6c2ffb63-c91d-50f9-9776-693fc6d6e447",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": 1,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "siren",
+              "id": "siren-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "siren",
+              "id": "4b4e74ce-fae2-579f-81f5-581ff11816fb",
+              "kind": "witness"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "alchemist-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "ac083aec-d24b-53c2-ab1a-543392527b6a",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": 2,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "oracle-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "oracle",
+              "id": 2,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "shadow-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "5538b1c7-0079-5e86-adec-4eacd453847f",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "paradox_hunter-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": 2,
+              "kind": "journal"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "ec0341fe-8c3b-5005-803b-55bd3f7aae29",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "06b4e17d-db0c-5652-8bb9-86fb0f2c92f6",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "f16f8c1f-83e8-56ad-850d-a65da972c584",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "812913fe-1824-5618-a659-08eb82ac8f23",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "2973161a-7590-5c5e-b0e9-5ce618394044",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "bb46b061-e56c-5959-8fe8-d9399da22c18",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "e62fa3b3-d5a8-5b40-95b0-1a3debf83da1",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "a4d409d7-bb18-517b-9cd2-1fc43fb3ff2e",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "8291c741-2a00-5152-ba92-d636b987f569",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "a412f43b-2db9-5a6d-89df-bd46990533ef",
+              "kind": "request"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "226c9746-e674-5883-9569-d7d3c77a0a9d",
+              "kind": "request"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "5c571809-24d1-5569-94e6-733ca5e28a7b",
+              "kind": "request"
+            },
+            {
+              "agent_id": "siren",
+              "id": "633bc361-a660-5c10-b188-8489948f5e61",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "86191524-fd75-5733-b118-1bc1da3264c1",
+              "kind": "request"
+            },
+            {
+              "agent_id": "alchemist",
+              "id": "a81a57f4-eb1a-5943-a2be-84bcaf7d33e8",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "8203b0fd-c49b-5bc1-8d7c-e579ec038904",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "930a2043-8856-5206-a840-ef6a64c7cb49",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "f09fd15b-a11c-5ec0-9b9f-0b863a937820",
+              "kind": "request"
+            },
+            {
+              "agent_id": "oracle",
+              "id": "e48dbf50-5062-5aa4-8e0b-efefe16180ee",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "c21db26c-a6df-54bb-a5c9-f920d88a4b3b",
+              "kind": "request"
+            },
+            {
+              "agent_id": "shadow",
+              "id": "c85490e5-571e-5d03-a409-b2d1762fa128",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "302767dd-2dd3-5e89-b52f-5957f858c72a",
+              "kind": "request"
+            },
+            {
+              "agent_id": "paradox_hunter",
+              "id": "09ed34f6-0f46-59e8-8fc9-e9a5da4bcde1",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "tempest": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 3; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\ntempest-r1: selected rest; outcome: completed.\ntempest-r2: selected inquire; outcome: completed.\nDistinct attached source references: inquiry=1. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "3225f17f-4486-51ae-a3b0-b7561b256c99",
+          "method": "mechanical",
+          "scope": "tempest",
+          "source_digest": "5b1d2d636a2fb37274da41b99bfb8b1cf457c77f83d3503512ea123324eea818",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "rest",
+                "agent_id": "tempest",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "tempest-r1"
+              },
+              {
+                "action": "inquire",
+                "agent_id": "tempest",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+                    "kind": "inquiry"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "tempest-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+                "wake_id": "tempest-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "226c9746-e674-5883-9569-d7d3c77a0a9d",
+                "wake_id": "tempest-r2"
+              },
+              {
+                "activity": "inquire",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "5c571809-24d1-5569-94e6-733ca5e28a7b",
+                "wake_id": "tempest-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "tempest"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "5ebe7afd-dd7f-5bea-a6b1-71968dc81b31",
+              "kind": "inquiry"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+              "kind": "request"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "226c9746-e674-5883-9569-d7d3c77a0a9d",
+              "kind": "request"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "5c571809-24d1-5569-94e6-733ca5e28a7b",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 1; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\ntempest-r1: selected rest; outcome: completed.\ntempest-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: 0. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "94269b80-d2b1-5dce-9492-e960ad037411",
+          "method": "mechanical",
+          "scope": "tempest",
+          "source_digest": "e99d89bc749e6267a5cd4617fd04098d60c32ed31c72c4d0af962dff3a17f4f2",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "rest",
+                "agent_id": "tempest",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "tempest-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "tempest",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "tempest-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "tempest",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+                "wake_id": "tempest-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "tempest"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "tempest-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "tempest",
+              "id": "3956d041-276b-5d5b-8165-6a6396d8b873",
+              "kind": "request"
+            }
+          ]
+        }
+      ],
+      "weaver": [
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 1.\nWake outcomes: completed=2.\nRequests recorded: 4; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nweaver-r1: selected library; outcome: completed.\nweaver-r2: selected library; outcome: completed.\nDistinct attached source references: episode=2, library=3. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "45a244b3-34d8-5837-ad63-d048020a73f9",
+          "method": "mechanical",
+          "scope": "weaver",
+          "source_digest": "be9a51ce001dc2f4b8c9034abcd2eb63dac22456f9943252801b30e26d4adb3d",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "library",
+                "agent_id": "weaver",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "doc-04445b70bb10-s00106",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-04445b70bb10-s00002",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-c500cd2e2d45-s00026",
+                    "kind": "library"
+                  },
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "action": "library",
+                "agent_id": "weaver",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "doc-04445b70bb10-s00106",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-04445b70bb10-s00002",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-c500cd2e2d45-s00026",
+                    "kind": "library"
+                  },
+                  {
+                    "id": 2,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 2,
+                "status": "completed",
+                "wake_id": "weaver-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "activity": "library",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "activity": "choice",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "8203b0fd-c49b-5bc1-8d7c-e579ec038904",
+                "wake_id": "weaver-r2"
+              },
+              {
+                "activity": "library",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "930a2043-8856-5206-a840-ef6a64c7cb49",
+                "wake_id": "weaver-r2"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "weaver"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00106",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00002",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-c500cd2e2d45-s00026",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": 2,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "8203b0fd-c49b-5bc1-8d7c-e579ec038904",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "930a2043-8856-5206-a840-ef6a64c7cb49",
+              "kind": "request"
+            }
+          ]
+        },
+        {
+          "author": "witness",
+          "content": "I keep only recorded facts; reasons and unrecorded events remain unknown.\nThis offline run is running.\nPrepared owners: 1; owners with a dispatched request (actually began): 1; owners with both wakes completed: 0.\nWake outcomes: completed=1; pending=1.\nRequests recorded: 2; unresolved/uncertain: 0.\nRecorded menu: rest, journal, inquire, library, roam.\nJournal submodes offered: note, compost, distill, witness.\nHistorical offers unknown (no historical offer snapshot) for 1 wakes.\nweaver-r1: selected library; outcome: completed.\nweaver-r2: selected unknown (no committed choice); outcome: pending.\nNo committed choice recorded for 1 wakes; this is not evidence of rest.\nDistinct attached source references: episode=1, library=3. Full facts and identifiers are kept alongside this account; source words remain with their authors.",
+          "created_at": "2026-11-12T00:00:00+00:00",
+          "id": "edbaa2f4-56fc-5a03-a9f1-03953c657a6a",
+          "method": "mechanical",
+          "scope": "weaver",
+          "source_digest": "b5b838b40defc3e0d3aca21e89018f12ef0a8a94ed42df1ebf62aa5b5461e36c",
+          "source_facts": {
+            "jobs": [
+              {
+                "action": "library",
+                "agent_id": "weaver",
+                "choice_committed": true,
+                "failure_code": null,
+                "offered_actions": [
+                  "rest",
+                  "journal",
+                  "inquire",
+                  "library",
+                  "roam"
+                ],
+                "offered_journal_modes": [
+                  "note",
+                  "compost",
+                  "distill",
+                  "witness"
+                ],
+                "offered_journal_options": {
+                  "channels": [
+                    "trading",
+                    "idea",
+                    "orientation",
+                    "unclassified"
+                  ],
+                  "default_channels": [
+                    "unclassified"
+                  ],
+                  "distillation_is_optional": true,
+                  "max_channels": 3,
+                  "max_source_ids": 20,
+                  "modes": [
+                    "note",
+                    "compost",
+                    "distill",
+                    "witness"
+                  ],
+                  "release_only": "distill",
+                  "release_type": "boolean",
+                  "source_ids_only": "distill",
+                  "witness_prior_owner_limit": 3
+                },
+                "record_refs": [
+                  {
+                    "id": "doc-04445b70bb10-s00106",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-04445b70bb10-s00002",
+                    "kind": "library"
+                  },
+                  {
+                    "id": "doc-c500cd2e2d45-s00026",
+                    "kind": "library"
+                  },
+                  {
+                    "id": 1,
+                    "kind": "episode"
+                  }
+                ],
+                "round": 1,
+                "status": "completed",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "action": null,
+                "agent_id": "weaver",
+                "choice_committed": false,
+                "failure_code": null,
+                "offered_actions": null,
+                "offered_journal_modes": null,
+                "record_refs": [],
+                "round": 2,
+                "status": "pending",
+                "wake_id": "weaver-r2"
+              }
+            ],
+            "requests": [
+              {
+                "activity": "choice",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+                "wake_id": "weaver-r1"
+              },
+              {
+                "activity": "library",
+                "agent_id": "weaver",
+                "dispatched": true,
+                "failure_code": null,
+                "outcome": "success",
+                "request_id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+                "wake_id": "weaver-r1"
+              }
+            ],
+            "run": {
+              "created_at": "2026-11-12T00:00:00+00:00",
+              "ended_at": null,
+              "mode": "offline",
+              "prepared_owners": [
+                "weaver"
+              ],
+              "run_id": "88888888-8888-4888-8888-888888888888",
+              "started_at": "2026-11-12T00:00:00+00:00",
+              "status": "running"
+            }
+          },
+          "source_refs": [
+            {
+              "id": "88888888-8888-4888-8888-888888888888",
+              "kind": "run"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r1",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00106",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-04445b70bb10-s00002",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "doc-c500cd2e2d45-s00026",
+              "kind": "library"
+            },
+            {
+              "agent_id": "weaver",
+              "id": 1,
+              "kind": "episode"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "weaver-r2",
+              "kind": "wake"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "c9cbbc55-561e-585e-a85d-9337a297de47",
+              "kind": "request"
+            },
+            {
+              "agent_id": "weaver",
+              "id": "1bcd3c2b-9d02-5ca7-8469-b9effe6aaf84",
+              "kind": "request"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

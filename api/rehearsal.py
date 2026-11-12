@@ -106,8 +106,28 @@ def _job(value):
         result['decision_context'] = _decision_metadata(result['decision_context'])
     if 'selection_origin' in result and result['selection_origin'] not in (None, 'none', 'model'):
         result['selection_origin'] = None
-    result['record_refs'] = [_project(ref, ('kind', 'id')) for ref in value.get('record_refs', [])
-                             if ref.get('kind') in ('journal', 'episode', 'inquiry', 'library')]
+    if value.get('action') == 'journal':
+        if value.get('journal_mode') in ('note', 'compost', 'distill', 'witness'):
+            result['journal_mode'] = value['journal_mode']
+        channels = value.get('channels')
+        if (value.get('journal_mode') != 'witness' and isinstance(channels, list) and 1 <= len(channels) <= 3
+                and all(isinstance(channel, str) and channel in ('trading', 'idea', 'orientation', 'unclassified') for channel in channels)
+                and len(set(channels)) == len(channels)
+                and ('unclassified' not in channels or channels == ['unclassified'])):
+            result['channels'] = list(channels)
+    result['record_refs'] = []
+    for ref in value.get('record_refs', []):
+        if not isinstance(ref, dict):
+            continue
+        if ref.get('kind') == 'witness':
+            if (value.get('agent_id') not in AGENTS or value.get('wake_id') not in
+                    (f"{value['agent_id']}-r1", f"{value['agent_id']}-r2")
+                    or not isinstance(ref.get('id'), str) or not UUID.fullmatch(ref['id'])
+                    or ref.get('agent_id', value['agent_id']) != value['agent_id']):
+                continue
+        elif ref.get('kind') not in ('journal', 'episode', 'inquiry', 'library'):
+            continue
+        result['record_refs'].append(_project(ref, ('kind', 'id')))
     return result
 
 
@@ -241,9 +261,9 @@ def _inquiry(path, inquiry_id, owner):
 def _record_selection(params):
     owner = _owner(params, required=True)
     kind, record_id = params.get('kind'), params.get('id')
-    if kind not in ('journal', 'episode', 'inquiry', 'library') or record_id is None:
+    if kind not in ('journal', 'episode', 'inquiry', 'library', 'witness') or record_id is None:
         _error(400, 'invalid_rehearsal_request')
-    if kind == 'inquiry':
+    if kind in ('inquiry', 'witness'):
         _uuid(record_id)
     elif kind == 'library':
         if not re.fullmatch(r'doc-[0-9a-f]{12}-s[0-9]{5}', record_id):
@@ -264,6 +284,16 @@ def _record(store, run_id, params):
     run_path = store.run_path(run_id)
     if kind == 'inquiry':
         value = _inquiry(_safe_file(run_path, 'trade_queue.sqlite3'), record_id, owner)
+    elif kind == 'witness':
+        from core.runtime.rehearsal.witness import WitnessStore
+        matching = [job for job in jobs if job.get('agent_id') == owner and
+                    any(ref.get('kind') == 'witness' and ref.get('id') == record_id for ref in job.get('record_refs', []))]
+        if any(job.get('wake_id') not in (f'{owner}-r1', f'{owner}-r2') for job in matching):
+            _error(404, 'rehearsal_record_not_found')
+        account = WitnessStore(store.safe_run_file(run_id, 'witness.sqlite3')).get_account(record_id, owner)
+        if account is None or account.get('id') != record_id:
+            _error(404, 'rehearsal_record_not_found')
+        value = _witness_account(account, owner)
     elif kind == 'library':
         path = _safe_file(run_path, 'library.sqlite3')
         with _read_connection(path) as conn:
@@ -285,6 +315,143 @@ def _record(store, run_id, params):
         value['content'] = value['content'][:12000]
     return {'run_id': run_id, 'agent_id': owner, 'kind': kind,
             'id': int(record_id) if kind in ('journal', 'episode') else record_id, 'record': value}
+
+
+CHANNELS = ('trading', 'idea', 'orientation', 'unclassified')
+
+
+def _journal_note(value, owner):
+    """Known literal source fields only, never an arbitrary private wrapper."""
+    if not isinstance(value, dict):
+        _error(503, 'rehearsal_unavailable')
+    channels, sources = value.get('channels'), value.get('source_ids')
+    wake = value.get('source_wake_id')
+    if (value.get('author') != owner or value.get('agent_id', owner) != owner
+            or type(value.get('id')) is not int or not 1 <= value['id'] <= 2**31 - 1
+            or not isinstance(value.get('content'), str)
+            or not isinstance(value.get('created_at'), str)
+            or not isinstance(channels, list) or not 1 <= len(channels) <= 3
+            or any(channel not in CHANNELS for channel in channels)
+            or len(set(channels)) != len(channels)
+            or ('unclassified' in channels and channels != ['unclassified'])
+            or value.get('note_kind') not in ('note', 'compost', 'distillation')
+            or value.get('state') not in ('active', 'released')
+            or 'source_mode' not in value or value['source_mode'] not in ('real', 'offline', None)
+            or 'source_wake_id' not in value
+            or wake not in (None, f'{owner}-r1', f'{owner}-r2')
+            or not isinstance(sources, list) or len(sources) > 20
+            or any(type(source) is not int or not 1 <= source <= 2**31 - 1 for source in sources)
+            or len(set(sources)) != len(sources)):
+        _error(503, 'rehearsal_unavailable')
+    result = _project(value, ('id', 'channels', 'note_kind', 'state', 'author', 'source_mode',
+                              'created_at', 'source_wake_id', 'source_ids'))
+    result['content'] = value['content'][:12000]
+    result['truncated'] = value.get('truncated') is True or len(value['content']) > 12000
+    return result
+
+
+def _journal_sources(store, run_id, owner, channel, state, limit, offset):
+    if channel not in ('idea', 'trading') or state == 'released':
+        return [], 'not_applicable'
+    path = store.safe_run_file(run_id, 'trade_queue.sqlite3')
+    if not path.is_file():
+        return [], 'missing'
+    # Only source inquiries actually referenced by this owner's exact run wakes.
+    ids = set()
+    for job in store.list_jobs(run_id):
+        if job.get('agent_id') != owner:
+            continue
+        if job.get('wake_id') not in (f'{owner}-r1', f'{owner}-r2'):
+            _error(503, 'rehearsal_unavailable')
+        for ref in job.get('record_refs', []):
+            if ref.get('kind') == 'inquiry' and isinstance(ref.get('id'), str) and UUID.fullmatch(ref['id']):
+                ids.add(ref['id'])
+    with _read_connection(path) as conn:
+        tables = {row['name'] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('lineage_inquiries','lineage_proposals') LIMIT 2")}
+        if 'lineage_inquiries' not in tables or channel == 'trading' and 'lineage_proposals' not in tables:
+            return [], 'missing'
+        if not ids:
+            return [], 'ok'
+        ids = sorted(ids)[:256]
+        where = 'i.agent_id=? AND i.inquiry_id IN (' + ','.join('?' for _ in ids) + ')'
+        if channel == 'trading':
+            where += ' AND EXISTS (SELECT 1 FROM lineage_proposals p WHERE p.inquiry_id=i.inquiry_id AND p.agent_id=i.agent_id LIMIT 1)'
+        rows = conn.execute('SELECT i.inquiry_id,i.agent_id,i.title,i.state,i.created_at FROM lineage_inquiries i WHERE ' + where + ' ORDER BY i.created_at DESC,i.inquiry_id DESC LIMIT ? OFFSET ?', [owner, *ids, limit, offset]).fetchall()
+        result = []
+        for row in rows:
+            proposals = []
+            if channel == 'trading':
+                proposals = [item['proposal_id'] for item in conn.execute('SELECT proposal_id FROM lineage_proposals WHERE inquiry_id=? AND agent_id=? ORDER BY created_at,proposal_id LIMIT 20', (row['inquiry_id'], owner))]
+            result.append({'kind': 'inquiry', 'id': row['inquiry_id'], 'agent_id': owner,
+                           'title': row['title'][:500], 'title_truncated': len(row['title']) > 500,
+                           'state': row['state'], 'created_at': row['created_at'],
+                           'provenance': 'lineage_proposals' if channel == 'trading' else 'lineage_inquiries',
+                           'proposal_ids': proposals})
+        return result, 'ok'
+
+
+def _journal_read(root, run_id, owner, channel, state, limit, offset, note_id):
+    from core.memory.compost import CompostStore
+    store = _store(root)
+    store.get_run(run_id)
+    path = store.safe_run_file(run_id, f'memory/{owner}.sqlite3')
+    compost = CompostStore(path, owner)
+    note = None
+    if note_id is not None:
+        value = compost.get_note(note_id)
+        if value is None:
+            _error(404, 'rehearsal_record_not_found')
+        note = _journal_note(value, owner)
+        if note['id'] != note_id:
+            _error(503, 'rehearsal_unavailable')
+        values = {'status': 'ok', 'notes': [], 'total': 1}
+        sources, source_status = [], 'not_applicable'
+    else:
+        values = compost.list_notes(channel=channel, state=state, limit=limit, offset=offset)
+        sources, source_status = _journal_sources(store, run_id, owner, channel, state, limit, offset)
+    if (values.get('status') not in ('ok', 'missing') or not isinstance(values.get('notes'), list)
+            or len(values['notes']) > limit or type(values.get('total')) is not int or values['total'] < 0):
+        _error(503, 'rehearsal_unavailable')
+    notes = [_journal_note(value, owner) for value in values['notes']]
+    if any(channel not in value['channels'] or state != 'all' and value['state'] != state for value in notes):
+        _error(503, 'rehearsal_unavailable')
+    return {'run_id': run_id, 'agent_id': owner, 'channel': channel, 'state': state,
+            'status': values['status'], 'notes': notes, 'note': note, 'total': values['total'],
+            'limit': limit, 'offset': offset, 'sources': sources, 'source_status': source_status}
+
+
+def _witness_account(value, scope):
+    if (not isinstance(value, dict) or value.get('scope') != scope or value.get('author') != 'witness'
+            or value.get('method') != 'mechanical' or not isinstance(value.get('id'), str)
+            or not UUID.fullmatch(value['id']) or not isinstance(value.get('content'), str)
+            or len(value['content']) > 24000 or not isinstance(value.get('created_at'), str)
+            or not isinstance(value.get('source_digest'), str) or len(value['source_digest']) > 256
+            or not isinstance(value.get('source_refs'), list) or len(value['source_refs']) > 256):
+        _error(503, 'rehearsal_unavailable')
+    refs = []
+    for ref in value['source_refs']:
+        if (not isinstance(ref, dict) or ref.get('kind') not in ('run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness')
+                or not (isinstance(ref.get('id'), str) and len(ref['id']) <= 128 or type(ref.get('id')) is int and 1 <= ref['id'] <= 2**63 - 1)
+                or 'agent_id' in ref and (ref['agent_id'] not in AGENTS or scope != 'steward' and ref['agent_id'] != scope)
+                or 'wake_id' in ref and (not isinstance(ref['wake_id'], str) or ref['wake_id'] not in tuple(f'{owner}-r{round}' for owner in (AGENTS if scope == 'steward' else (scope,)) for round in (1, 2)))):
+            _error(503, 'rehearsal_unavailable')
+        if scope != 'steward' and ref['kind'] in ('wake', 'job') and ref['id'] not in (f'{scope}-r1', f'{scope}-r2'):
+            _error(503, 'rehearsal_unavailable')
+        refs.append(_project(ref, ('kind', 'id', 'agent_id', 'wake_id')))
+    return {**_project(value, ('id', 'scope', 'content', 'source_digest', 'author', 'method', 'created_at')), 'source_refs': refs}
+
+
+def _witness_read(root, run_id, scope, limit, offset):
+    from core.runtime.rehearsal.witness import WitnessStore
+    store = _store(root)
+    store.get_run(run_id)
+    values = WitnessStore(store.safe_run_file(run_id, 'witness.sqlite3')).list_accounts(scope, limit=limit, offset=offset)
+    if (values.get('status') not in ('ok', 'missing') or not isinstance(values.get('accounts'), list)
+            or len(values['accounts']) > limit or type(values.get('total')) is not int or values['total'] < 0):
+        _error(503, 'rehearsal_unavailable')
+    accounts = [_witness_account(value, scope) for value in values['accounts']]
+    return {'run_id': run_id, 'scope': scope, 'status': values['status'], 'accounts': accounts,
+            'total': values['total'], 'limit': limit, 'offset': offset}
 
 
 def create_app(root, operator_token=None):
@@ -397,5 +564,27 @@ def create_app(root, operator_token=None):
                     'decision': {'metadata': metadata, 'private_context': _private_context(value['private_context'], owner),
                                  'requests': [_decision_request(event, owner, wake_id) for event in value['requests']]}}
         return read(fetch)
+
+    @app.get('/api/rehearsals/{run_id}/journals')
+    def journals(run_id: str, request: Request):
+        _uuid(run_id)
+        params = _params(request, ('agent_id', 'channel', 'state', 'limit', 'offset', 'note_id'))
+        owner = _owner(params, required=True)
+        channel, state = params.get('channel', 'unclassified'), params.get('state', 'all')
+        if channel not in CHANNELS or state not in ('all', 'active', 'released'):
+            _error(400, 'invalid_rehearsal_request')
+        limit = _integer(params, 'limit', 20, 1, 20)
+        offset = _integer(params, 'offset', 0, 0, 10000)
+        note_id = _integer(params, 'note_id', None, 1, 2**31 - 1)
+        return read(lambda: _journal_read(root, run_id, owner, channel, state, limit, offset, note_id))
+
+    @app.get('/api/rehearsals/{run_id}/witness')
+    def witness(run_id: str, request: Request):
+        _uuid(run_id)
+        params = _params(request, ('agent_id', 'limit', 'offset'))
+        scope = _owner(params) or 'steward'
+        limit = _integer(params, 'limit', 3, 1, 20)
+        offset = _integer(params, 'offset', 0, 0, 10000)
+        return read(lambda: _witness_read(root, run_id, scope, limit, offset))
 
     return app

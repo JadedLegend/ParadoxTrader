@@ -390,3 +390,19 @@ a.btn { display: inline-block; text-decoration: none; }
   .rehearsal-table { min-width: 600px; }
   .rehearsal-private { padding: 12px; }
 }
+
+/* Separate optional journal destinations and literal source notes. */
+.journal-layout { display: flex; gap: 18px; align-items: flex-start; }
+.journal-list { flex: 0 0 280px; min-width: 0; }
+.journal-detail { flex: 1; min-width: 0; }
+.journal-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.journal-tabs button[aria-selected="true"] { border-color: var(--accent); }
+.journal-source { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+.journal-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.journal-labels { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--text2); }
+.journal-entry-button { display: block; width: 100%; text-align: left; margin: 8px 0; }
+.journal-witness { margin-top: 18px; }
+@media (max-width: 760px) {
+  .journal-layout { flex-direction: column; }
+  .journal-list, .journal-detail { width: 100%; flex-basis: auto; }
+}

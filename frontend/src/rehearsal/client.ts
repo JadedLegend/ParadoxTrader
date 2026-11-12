@@ -1,5 +1,6 @@
 import { REHEARSAL_AGENTS } from './contracts'
 import type { RehearsalDecisionMetadata, RehearsalFixture, RehearsalJob, RehearsalPrivateJSON, RehearsalRecordResponse, RehearsalRequest, RehearsalRun } from './contracts'
+import { projectWitnessAccount } from '../journals/client'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const PREFIX = '/api/rehearsals'
@@ -61,9 +62,12 @@ function summary(value: RehearsalRun): RehearsalRun {
     capabilities: value.capabilities.filter(cap => ['rest', 'journal', 'inquire', 'library', 'roam'].includes(cap)) }
 }
 function operationalJob(value: RehearsalJob): RehearsalJob {
+  const mode = value.action === 'journal' && ['note', 'compost', 'distill', 'witness'].includes(value.journal_mode ?? '') ? value.journal_mode : undefined
+  const channels = value.action === 'journal' && Array.isArray(value.channels) && value.channels.length <= 3 && new Set(value.channels).size === value.channels.length && value.channels.every(channel => ['trading', 'idea', 'orientation', 'unclassified'].includes(channel)) && (!value.channels.includes('unclassified') || value.channels.length === 1) ? [...value.channels] : undefined
   return { ...pick(value, ['wake_id', 'agent_id', 'round', 'status', 'action', 'failure_code', 'requested_model', 'response_model', 'provider', 'request_count', 'duration_ms', 'updated_at']),
+    ...(mode ? { journal_mode: mode } : {}), ...(channels ? { channels } : {}),
     decision_context: projectDecisionMetadata(value.decision_context), selection_origin: value.selection_origin === 'model' || value.selection_origin === 'none' ? value.selection_origin : null,
-    record_refs: value.record_refs.filter(ref => ['journal', 'episode', 'inquiry', 'library'].includes(ref.kind)).map(ref => pick(ref, ['kind', 'id'])) }
+    record_refs: value.record_refs.filter(ref => ['journal', 'episode', 'inquiry', 'library'].includes(ref.kind) || ref.kind === 'witness' && typeof ref.id === 'string' && UUID.test(ref.id)).map(ref => pick(ref, ['kind', 'id'])) }
 }
 function operationalRequest(value: RehearsalRequest): RehearsalRequest {
   const fields = ['input_tokens', 'output_tokens', 'total_tokens', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'reported_cost_usd', 'estimated_cost_usd', 'cost_status', 'cost_source'] as const
@@ -89,6 +93,9 @@ function validateRecord(record: RehearsalRecordResponse) {
     }
   } else if (record.kind === 'library') {
     if (!('section_id' in record.record) || record.record.section_id !== record.id) throw invalid()
+  } else if (record.kind === 'witness') {
+    if (!('scope' in record.record) || record.record.scope !== record.agent_id) throw invalid()
+    projectWitnessAccount(record.record, record.agent_id)
   } else if (!('id' in record.record) || String(record.record.id) !== String(record.id)) throw invalid()
 }
 /** Local GET reader only; neither credentials nor transport exist at this boundary. */
@@ -113,8 +120,8 @@ export async function readRehearsalFixture(path: string): Promise<unknown> {
   const wake = url.searchParams.get('wake_id')
   if (route === 'decisions' && (!agentId || !wake || ![`${agentId}-r1`, `${agentId}-r2`].includes(wake))) throw invalid()
   if (route === 'records') {
-    if (!agentId || !kind || !id || !['journal', 'episode', 'inquiry', 'library'].includes(kind)) throw invalid()
-    if (kind === 'inquiry' ? !UUID.test(id) : kind === 'library' ? !/^doc-[0-9a-f]{12}-s[0-9]{5}$/.test(id) : !/^[1-9][0-9]{0,9}$/.test(id) || Number(id) > 2 ** 31 - 1) throw invalid()
+    if (!agentId || !kind || !id || !['journal', 'episode', 'inquiry', 'library', 'witness'].includes(kind)) throw invalid()
+    if (kind === 'inquiry' || kind === 'witness' ? !UUID.test(id) : kind === 'library' ? !/^doc-[0-9a-f]{12}-s[0-9]{5}$/.test(id) : !/^[1-9][0-9]{0,9}$/.test(id) || Number(id) > 2 ** 31 - 1) throw invalid()
   }
   const fixture = (await import('./fixture.json')).default as unknown as RehearsalFixture
   if (fixture.kind !== 'fixture' || !Array.isArray(fixture.runs)) throw new Error('Local rehearsal example unavailable.')
@@ -164,5 +171,6 @@ export async function readRehearsalFixture(path: string): Promise<unknown> {
   const record = value
   if (record.run_id !== runId || record.agent_id !== agentId || record.kind !== kind || String(record.id) !== id) throw invalid()
   validateRecord(record)
+  if (kind === 'witness') return structuredClone({ ...record, record: projectWitnessAccount(record.record, record.agent_id) })
   return structuredClone(record)
 }

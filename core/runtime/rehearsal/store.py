@@ -26,6 +26,14 @@ AGENT_IDS = OWNERS = (
     "tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter",
 )
 CAPABILITIES = ("rest", "journal", "inquire", "library", "roam")
+JOURNAL_OPTIONS = {
+    "modes": ["note", "compost", "distill", "witness"],
+    "channels": ["trading", "idea", "orientation", "unclassified"],
+    "default_channels": ["unclassified"], "max_channels": 3,
+    "source_ids_only": "distill", "max_source_ids": 20,
+    "release_only": "distill", "release_type": "boolean",
+    "witness_prior_owner_limit": 3, "distillation_is_optional": True,
+}
 DEFAULT_LIMITS = {
     "wakes_per_agent": 2, "max_requests": 28, "max_output_tokens": 1024,
     "max_input_bytes": 24000, "max_runtime_seconds": 900,
@@ -41,7 +49,7 @@ _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "
 _INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
     "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "library.sqlite3",
-    "library_corpus.json", "profiles/snapshot.json",
+    "witness.sqlite3", "library_corpus.json", "profiles/snapshot.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
     *(f"memory/{owner}.sqlite3" for owner in OWNERS),
     *(f"memory/{owner}-{owner}-r{round_number}-library.json" for owner in OWNERS for round_number in (1, 2)),
@@ -176,8 +184,10 @@ def _message_input(messages):
 def _decision_metadata(value):
     keys = {"schema_version", "offered_actions", "action_costs", "constraints",
             "admission_snapshot", "model", "continuity"}
-    if not isinstance(value, dict) or set(value) != keys:
+    if not isinstance(value, dict) or not keys <= set(value) or set(value) - keys - {"journal_options"}:
         raise RehearsalError("invalid decision metadata")
+    if "journal_options" in value and _dump(value["journal_options"]) != _dump(JOURNAL_OPTIONS):
+        raise RehearsalError("invalid journal options")
     _integer(value["schema_version"], "schema_version", 1, 1)
     if value["offered_actions"] != list(CAPABILITIES):
         raise RehearsalError("invalid offered_actions")
@@ -337,17 +347,42 @@ def _validate_manifest(raw):
 
 
 def _choice(value):
-    if not isinstance(value, dict) or set(value) - {"action", "query"} or value.get("action") not in CAPABILITIES:
+    allowed = {"action", "query", "journal_mode", "channels", "source_ids", "release"}
+    if (not isinstance(value, dict) or set(value) - allowed
+            or not isinstance(value.get("action"), str) or value["action"] not in CAPABILITIES):
         raise RehearsalError("invalid choice")
     if "query" in value:
         query = value["query"]
-        if value["action"] != "library" or not isinstance(query, str) or not query.strip():
+        if (value["action"] != "library" or not isinstance(query, str) or not query.strip()
+                or len(query) > 200 or any(ord(c) < 32 for c in query)):
             raise RehearsalError("invalid library query")
         try:
             if len(query.encode("utf-8")) > 2000:
                 raise RehearsalError("invalid library query")
         except UnicodeError:
             raise RehearsalError("invalid library query") from None
+    extras = set(value) & {"journal_mode", "channels", "source_ids", "release"}
+    if extras and value["action"] != "journal":
+        raise RehearsalError("invalid journal choice")
+    mode = value.get("journal_mode", "note")
+    if not isinstance(mode, str) or mode not in JOURNAL_OPTIONS["modes"]:
+        raise RehearsalError("invalid journal mode")
+    if "channels" in value:
+        channels = value["channels"]
+        if (not isinstance(channels, list) or not 1 <= len(channels) <= 3
+                or any(not isinstance(c, str) or c not in JOURNAL_OPTIONS["channels"] for c in channels)
+                or len(set(channels)) != len(channels)
+                or ("unclassified" in channels and channels != ["unclassified"])
+                or mode == "witness"):
+            raise RehearsalError("invalid journal channels")
+    if "source_ids" in value:
+        ids = value["source_ids"]
+        if (mode != "distill" or not isinstance(ids, list) or not 1 <= len(ids) <= 20
+                or any(type(i) is not int or not 1 <= i <= 2**63 - 1 for i in ids)
+                or len(set(ids)) != len(ids)):
+            raise RehearsalError("invalid source ids")
+    if "release" in value and (mode != "distill" or type(value["release"]) is not bool):
+        raise RehearsalError("invalid release")
     return _dump(value)
 
 
@@ -358,10 +393,12 @@ def _refs(value):
         raise RehearsalError("invalid record_refs")
     result = []
     for ref in value:
-        if not isinstance(ref, dict) or set(ref) != {"kind", "id"} or ref["kind"] not in ("journal", "episode", "inquiry", "library"):
+        if not isinstance(ref, dict) or set(ref) != {"kind", "id"} or ref["kind"] not in ("journal", "episode", "inquiry", "library", "witness"):
             raise RehearsalError("invalid record ref")
         ident = ref["id"]
-        if type(ident) is int:
+        if ref["kind"] == "witness":
+            _uuid(ident, "record id")
+        elif type(ident) is int:
             _integer(ident, "record id", 1, 2**63 - 1)
         elif ref["kind"] == "inquiry":
             _uuid(ident, "record id")
@@ -686,6 +723,15 @@ class RehearsalStore:
                     result["selection_origin"] = "model"
             except (RehearsalError, ValueError, TypeError):
                 pass
+        if "choice" in row.keys() and row["choice"] is not None:
+            try:
+                choice = json.loads(row["choice"])
+                _choice(choice)
+                for field in ("journal_mode", "channels"):
+                    if field in choice:
+                        result[field] = choice[field]
+            except (RehearsalError, ValueError, TypeError):
+                pass
         return result
 
     @classmethod
@@ -748,6 +794,55 @@ class RehearsalStore:
         with self._connection(run_id) as connection:
             rows = connection.execute("SELECT * FROM jobs ORDER BY round, rowid").fetchall()
             return [self._public_job(row) for row in rows]
+
+    def get_witness_snapshot(self, run_id, owner=None):
+        """One read snapshot of source facts, never private inputs/output/query.
+
+        Missing legacy offer metadata stays unknown. Scope validation precedes
+        any file access; no migrations or source-memory reads occur here.
+        """
+        if owner is not None and (not isinstance(owner, str) or owner not in OWNERS):
+            raise RehearsalError("invalid witness owner")
+        with self._connection(run_id) as connection:
+            connection.execute("BEGIN")
+            row = connection.execute("SELECT run_id,status,created_at,started_at,ended_at,manifest FROM runs LIMIT 1").fetchone()
+            if row is None:
+                raise RehearsalError("run not found")
+            manifest = json.loads(row["manifest"])
+            run = {field: row[field] for field in ("run_id", "status", "created_at", "started_at", "ended_at")}
+            run["mode"] = manifest["mode"]
+            run["prepared_owners"] = [owner] if owner is not None else list(OWNERS)
+            columns = {item[1] for item in connection.execute("PRAGMA table_info(jobs)")}
+            context = "decision_metadata" if "decision_metadata" in columns else "NULL AS decision_metadata"
+            # SQLite projects only classified fields; raw library queries and
+            # arbitrary private choice bodies never enter the snapshot reader.
+            where, args = ("", ()) if owner is None else (" WHERE agent_id=?", (owner,))
+            rows = connection.execute(
+                "SELECT wake_id,agent_id,round,status,action,failure_code,request_count,record_refs,"
+                + context + ",json_extract(choice,'$.journal_mode') AS journal_mode,"
+                "json_extract(choice,'$.channels') AS channels,"
+                "CASE WHEN choice IS NULL THEN 0 ELSE 1 END AS choice_committed "
+                "FROM jobs" + where + " ORDER BY round,rowid LIMIT 14", args).fetchall()
+            jobs = []
+            for item in rows:
+                if (item["agent_id"] not in OWNERS or type(item["round"]) is not int
+                        or item["round"] not in (0, 1, 2)
+                        or item["wake_id"] != f"{item['agent_id']}-r{item['round']}"):
+                    raise RehearsalConflict("job owner linkage is invalid")
+                job = {field: item[field] for field in ("wake_id", "agent_id", "round", "status", "action", "failure_code", "request_count")}
+                job["record_refs"] = json.loads(item["record_refs"])
+                job["decision_context"] = None if item["decision_metadata"] is None else json.loads(item["decision_metadata"])
+                job["choice_committed"] = bool(item["choice_committed"])
+                if item["journal_mode"] is not None:
+                    job["journal_mode"] = item["journal_mode"]
+                if item["channels"] is not None:
+                    job["channels"] = json.loads(item["channels"])
+                jobs.append(job)
+            requests = [dict(item) for item in connection.execute(
+                "SELECT request_id,wake_id,agent_id,activity,dispatched,outcome,failure_code "
+                "FROM requests" + where + " ORDER BY rowid LIMIT 28", args)]
+            return {"schema_version": 1, "owner": owner, "run": run,
+                    "jobs": jobs, "requests": requests}
 
     def begin(self, run_id, *, resume=False):
         if type(resume) is not bool:

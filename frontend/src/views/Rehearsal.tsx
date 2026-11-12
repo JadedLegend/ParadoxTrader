@@ -178,7 +178,7 @@ export default function Rehearsal() {
           const context = projectDecisionMetadata(job.decision_context)
           return <article key={job.wake_id} aria-label={`Round ${job.round} decision`}>
             <h3>Round {job.round} · {job.wake_id}</h3>
-            <p>Selected action: {job.action ? label(job.action) : 'Not recorded'} · Selection provenance: {job.selection_origin === 'model' ? 'Model choice' : job.selection_origin === 'none' ? 'No committed model choice' : 'Unknown (older record)'} · Actual status: {label(job.status)}</p>
+            <p>Selected action: {job.action ? label(job.action) : 'Not recorded'}{job.journal_mode ? ` (${label(job.journal_mode)})` : ''}{job.channels?.length ? ` · Destinations: ${job.channels.join(', ')}` : ''} · Selection provenance: {job.selection_origin === 'model' ? 'Model choice' : job.selection_origin === 'none' ? 'No committed model choice' : 'Unknown (older record)'} · Actual status: {label(job.status)}</p>
             <p className="rehearsal-meta">Requested {text(job.requested_model, 200) || 'Unavailable'} · Returned {text(job.response_model, 200) || 'Unavailable'} · Provider {text(job.provider, 100) || 'Unavailable'} · Latency {elapsed(job.duration_ms)}{job.failure_code ? ` · ${text(job.failure_code, 100)}` : ''}</p>
             {context ? <>
               <h4>Offered actions and catalog upper bounds</h4><ul>{context.action_costs.map(cost => <li key={cost.action}>{label(cost.action)} · at most {cost.max_requests} request{cost.max_requests === 1 ? '' : 's'} including picker · reservation ceiling {dollars(cost.reservation_ceiling_usd)}</li>)}</ul>

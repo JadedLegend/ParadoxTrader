@@ -10,7 +10,7 @@ export type RehearsalAgentId = typeof REHEARSAL_AGENTS[number]['id']
 export type RehearsalStatus = 'prepared' | 'running' | 'completed' | 'partial' | 'stopped' | 'uncertain'
 export type RehearsalJobStatus = 'pending' | 'running' | 'claimed' | 'completed' | 'failed' | 'stopped' | 'uncertain'
 export type RehearsalAction = 'rest' | 'journal' | 'inquire' | 'library' | 'roam'
-export type RehearsalRecordKind = 'journal' | 'episode' | 'inquiry' | 'library'
+export type RehearsalRecordKind = 'journal' | 'episode' | 'inquiry' | 'library' | 'witness'
 export interface RehearsalLimits {
   wakes_per_agent: number; max_requests: number; max_output_tokens: number; max_input_bytes: number
   max_runtime_seconds: number; request_timeout_seconds: number; max_parallelism: number; budget_usd: string
@@ -33,6 +33,8 @@ export interface RehearsalJob {
   response_model: string | null; provider: string | null; request_count: number; duration_ms: number | null
   record_refs: RehearsalRecordRef[]; updated_at: string
   decision_context?: RehearsalDecisionMetadata | null; selection_origin?: 'none' | 'model' | null
+  journal_mode?: 'note' | 'compost' | 'distill' | 'witness'
+  channels?: ('trading' | 'idea' | 'orientation' | 'unclassified')[]
 }
 export interface RehearsalUsage {
   input_tokens?: number | null; output_tokens?: number | null; total_tokens?: number | null
@@ -56,9 +58,10 @@ export interface RehearsalJobsResponse { run_id: string; jobs: RehearsalJob[] }
 export interface RehearsalRequestsResponse { run_id: string; events: RehearsalRequest[]; total: number; limit: number; offset: number }
 export interface RehearsalMemoryRecord { id: number; content: string; title?: string; phase?: string; created_at: string; truncated?: boolean }
 export interface RehearsalLibraryRecord { section_id: string; document_id?: string; locator?: string; text: string; truncated?: boolean }
+export interface RehearsalWitnessRecord extends Omit<RehearsalMemoryRecord, 'id'> { id: string; scope: RehearsalAgentId; author: 'witness'; method: 'mechanical'; source_refs: unknown[]; source_digest: string }
 export interface RehearsalRecordResponse {
   run_id: string; agent_id: RehearsalAgentId; kind: RehearsalRecordKind; id: string | number
-  record: RehearsalMemoryRecord | RehearsalLibraryRecord | LineageDetailResponse
+  record: RehearsalMemoryRecord | RehearsalLibraryRecord | RehearsalWitnessRecord | LineageDetailResponse
 }
 export interface RehearsalDecisionMetadata {
   schema_version: 1; offered_actions: RehearsalAction[]

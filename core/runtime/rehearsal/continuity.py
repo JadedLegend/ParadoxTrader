@@ -128,8 +128,13 @@ def owner_continuity(store, run_id, job):
             context["truncated"] = True
             break
         try:
+            if ref["kind"] == "journal":
+                from core.memory.compost import CompostStore
+                path = store.safe_run_file(run_id, f"memory/{owner}.sqlite3")
+                if CompostStore(path, owner).is_released(ref["id"]):
+                    continue  # Archival source links remain readable explicitly.
             material, cut = _excerpt(store, run_id, owner, ref)
-        except (OSError, sqlite3.Error, RehearsalError, UnicodeError):
+        except (OSError, sqlite3.Error, ValueError, UnicodeError):
             material, cut = None, False
         if material is None:
             context["unavailable"] = True

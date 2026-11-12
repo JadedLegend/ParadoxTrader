@@ -8,6 +8,9 @@ export function readFixture(path: string): unknown {
   const route = url.pathname
   const meta = { kind: 'fixture', observed_at: fixture.observed_at }
   if (route === '/api/rehearsals' || route.startsWith('/api/rehearsals/')) {
+    if (/^\/api\/rehearsals\/[^/]+\/(journals|witness)$/.test(route)) {
+      return import('../journals/client').then(journals => journals.readJournalFixture(path))
+    }
     return import('../rehearsal/client').then(rehearsal => rehearsal.readRehearsalFixture(path))
   }
   if (route.startsWith('/api/lineage/')) {
