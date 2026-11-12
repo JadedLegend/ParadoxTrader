@@ -1,32 +1,41 @@
-# React + TypeScript + Vite
+# Paradox Edge Trader frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React, TypeScript, and Vite operator interface for the seven-agent community.
 
-Currently, two official plugins are available:
+## Frontend-only preview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node 22.12+ and npm 10.9.9. From this directory:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Open the local address Vite prints. **Do not start the Python API or engine for this preview.** The API's existing startup lifecycle starts its scheduler if independently launched.
+
+The default mode uses labeled local fixtures for agent and portfolio examples and reads the actual imported collection locally on the Library page. All backend writes remain blocked. No environment file, accounts, or keys are needed. Inspect Wake Choices to select an agent and demonstrate a choice window. Your demonstration is local UI state, not an agent decision or executed activity.
+
+Library search returns bounded excerpts with original filenames, hashes, and page/paragraph/line locators. The extracted corpus loads lazily rather than entering every dashboard view or agent wake. Originals remain byte-for-byte in the private repository. A static frontend build contains this private extracted collection; do not publicly distribute it without deciding which sources can be shared.
+
+Only the exact build-time setting `VITE_RUNTIME_MODE=connected` restores existing backend requests. A `VITE_API_URL` by itself does not enable them. There is no in-app mode switch. Connected operation requires separate configuration and execution-safety work; it is not deployed or enabled by this milestone. Never put private provider/broker keys in `VITE_*` variables.
+
+## Checks
+
+```sh
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Frontend interaction tests run in an isolated DOM with network calls blocked. The Python regression suite and offline fixture-generation check run from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -v
+python3 -B scripts/build_ui_fixtures.py --check
+python3 -B scripts/import_library.py --check
+```
+
+To regenerate public persona/menu examples, run the fixture script without `--check`. It does not read configured credentials or private agent records.
+
+See [fixture choice UI notes](../docs/FIXTURE_CHOICE_UI.md) for the actual milestone boundary and [the implementation plan](../docs/CHOICE_UI_PLAN.md) for structure.

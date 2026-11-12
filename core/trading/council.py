@@ -227,8 +227,6 @@ def run_council_deliberation(proposal: dict) -> dict:
         title=f"Council deliberation: {proposal.get('symbol', 'UNKNOWN')}",
         content=synthesis_result["synthesis"][:500],
         phase="reintegration",
-        delta_coherence=4.0,
-        effort=5.0,
         tags=["council", "deliberation", decision],
     )
 

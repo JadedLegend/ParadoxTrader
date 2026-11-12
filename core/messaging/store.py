@@ -71,11 +71,17 @@ class MessagingStore:
             ).fetchall()
         return [self._row(r) for r in rows]
 
-    def get_inbox(self, recipient: str, unread_only: bool = False, limit: int = 20) -> list[dict]:
+    def get_inbox(
+        self, recipient: str, unread_only: bool = False, limit: int = 20,
+        sender: Optional[str] = None,
+    ) -> list[dict]:
         query = "SELECT id, sender, recipient, content, is_read, created_at FROM messages WHERE recipient=?"
         params = [recipient]
         if unread_only:
             query += " AND is_read=0"
+        if sender is not None:
+            query += " AND sender=?"
+            params.append(sender)
         query += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         with sqlite3.connect(self.db_path) as conn:

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { getForum, postToForum, getThreads, getSelfDefinition } from '../api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { IS_PREVIEW, getForum, postToForum, getThreads, getSelfDefinition } from '../api'
 
 const AGENT_COLORS: Record<string, string> = {
   tempest: '#7c6af7',
@@ -28,22 +28,22 @@ function timeAgo(iso: string) {
 function AgentNameBadge({ author }: { author: string }) {
   const [open, setOpen] = useState(false)
   const [defData, setDefData] = useState<{ self_definition: string } | null>(null)
+  const [error, setError] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   const agentId = author.toLowerCase().replace(/ /g, '_')
   const isAgent = AGENT_IDS.includes(agentId)
   const color = AGENT_COLORS[agentId] || 'var(--text)'
 
-  const handleClick = async () => {
-    if (!isAgent) return
-    if (!open && !defData) {
-      try {
-        const d = await getSelfDefinition(agentId)
-        setDefData(d)
-      } catch { setDefData({ self_definition: '' }) }
-    }
-    setOpen(o => !o)
-  }
+  useEffect(() => {
+    if (!open || !isAgent) return
+    let cancelled = false
+    setDefData(null)
+    setError('')
+    getSelfDefinition(agentId).then(d => { if (!cancelled) setDefData(d) })
+      .catch(() => { if (!cancelled) setError('Could not load this definition. Close and reopen to retry.') })
+    return () => { cancelled = true }
+  }, [open, agentId, isAgent])
 
   // Close on outside click
   useEffect(() => {
@@ -65,15 +65,16 @@ function AgentNameBadge({ author }: { author: string }) {
 
   return (
     <div ref={ref} style={{position:'relative', display:'inline-block'}}>
-      <span
+      <button
         className="post-author"
-        style={{color, cursor:'pointer', textDecoration:'underline dotted', textUnderlineOffset:3}}
-        onClick={handleClick}
+        style={{color, cursor:'pointer', textDecoration:'underline dotted', textUnderlineOffset:3, background:'none', border:0, padding:0, fontFamily:'inherit'}}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
         title="Click to see definition"
       >
         {author.replace('_', ' ')}
-      </span>
-      {open && defData && (
+      </button>
+      {open && (
         <div style={{
           position:'absolute', top:'100%', left:0, zIndex:100,
           background:'var(--bg2)', border:`1px solid ${color}`,
@@ -83,7 +84,7 @@ function AgentNameBadge({ author }: { author: string }) {
           <div style={{fontSize:11, fontWeight:700, color, marginBottom:6, textTransform:'uppercase', letterSpacing:1}}>
             {author.replace('_', ' ')}
           </div>
-          {defData.self_definition ? (
+          {error ? <div className="error-msg" role="alert">{error}</div> : !defData ? <div className="loading">Loading definition...</div> : defData.self_definition ? (
             <div style={{fontSize:12, color:'var(--text)', lineHeight:1.7, fontStyle:'italic'}}>
               {defData.self_definition}
             </div>
@@ -111,32 +112,54 @@ export default function Forum() {
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [loadedThread, setLoadedThread] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const alive = useRef(true)
+  const request = useRef(0)
+  const threadRef = useRef(activeThread)
+  threadRef.current = activeThread
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    const current = ++request.current
     try {
       const [p, t] = await Promise.all([getForum(100, activeThread), getThreads()])
+      if (!alive.current || current !== request.current || threadRef.current !== activeThread) return
       setPosts(p.posts || [])
       setThreads(t.threads || [])
-    } catch (e) {
-      console.error(e)
+      setLoadedThread(activeThread)
+      setError('')
+    } catch {
+      if (alive.current && current === request.current && threadRef.current === activeThread) setError('Could not load this forum thread. Displayed posts may be stale; use Refresh to retry.')
     } finally {
-      setLoading(false)
+      if (alive.current && current === request.current && threadRef.current === activeThread) setLoading(false)
     }
-  }
+  }, [activeThread])
 
-  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t) }, [activeThread])
+  useEffect(() => {
+    alive.current = true
+    setLoading(true)
+    setPosts([])
+    setLoadedThread(null)
+    setError('')
+    void load()
+    const timer = IS_PREVIEW ? null : setInterval(load, 15000)
+    return () => { alive.current = false; if (timer) clearInterval(timer) }
+  }, [load])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [posts])
 
   const handlePost = async () => {
-    if (!content.trim()) return
+    if (IS_PREVIEW || !content.trim() || sending) return
     setSending(true)
     try {
       await postToForum('user', content, activeThread)
+      if (!alive.current || threadRef.current !== activeThread) return
       setContent('')
-      load()
+      await load()
+    } catch {
+      if (alive.current) setError('Could not confirm the forum post. Your draft is retained; refresh the thread before retrying to avoid duplicates.')
     } finally {
-      setSending(false)
+      if (alive.current) setSending(false)
     }
   }
 
@@ -154,14 +177,18 @@ export default function Forum() {
         <button className="btn btn-ghost" onClick={load}>Refresh</button>
       </div>
 
+      {IS_PREVIEW && <div className="notice">Fixture conversations only. Posting is disabled in preview; no message is sent to the council.</div>}
+      {error && <div className="error-msg" role="alert">{error}</div>}
+
       {/* Thread tabs */}
       <div className="flex gap-8 mb-16" style={{flexWrap:'wrap'}}>
         {['general', 'council_deliberation', ...(threads.filter(t => t.id !== 'general' && t.id !== 'council_deliberation').map((t: any) => t.id))].map(tid => (
           <button
-            key={tid}
-            className={`btn ${activeThread === tid ? 'btn-primary' : 'btn-ghost'}`}
-            style={{fontSize:12}}
-            onClick={() => setActiveThread(tid)}
+              key={tid}
+              className={`btn ${activeThread === tid ? 'btn-primary' : 'btn-ghost'}`}
+              style={{fontSize:12}}
+              disabled={sending}
+              onClick={() => setActiveThread(tid)}
           >
             {tid.replace(/_/g, ' ')}
           </button>
@@ -171,11 +198,12 @@ export default function Forum() {
       {/* Posts */}
       <div className="card" style={{flex:1, overflowY:'auto', marginBottom:16}}>
         {loading ? <div className="loading">Loading...</div> :
+         loadedThread !== activeThread ? null :
          posts.length === 0 ? <div className="empty-state">No posts yet. The chamber is quiet.</div> :
          posts.map(p => (
           <div key={p.id} className="forum-post">
             <div className="post-meta">
-              <AgentNameBadge author={p.author} />
+              <AgentNameBadge key={p.author} author={p.author} />
               <span className="post-time">{timeAgo(p.created_at)}</span>
               {p.thread_id !== 'general' && <span className="post-thread">{p.thread_id.replace(/_/g,' ')}</span>}
               {p.tags?.map((tag: string) => <span key={tag} className="tag">{tag}</span>)}
@@ -191,12 +219,14 @@ export default function Forum() {
         <textarea
           className="forum-input"
           rows={3}
-          placeholder="Post to the forum... (Ctrl+Enter to send)"
+          aria-label="Forum post"
+          disabled={IS_PREVIEW || sending}
+          placeholder={IS_PREVIEW ? 'Posting disabled in preview' : 'Post to the forum... (Ctrl+Enter to send)'}
           value={content}
           onChange={e => setContent(e.target.value)}
           onKeyDown={handleKey}
         />
-        <button className="btn btn-primary" onClick={handlePost} disabled={sending || !content.trim()}>
+        <button className="btn btn-primary" onClick={handlePost} disabled={IS_PREVIEW || sending || !content.trim()}>
           {sending ? '...' : 'Post'}
         </button>
       </div>

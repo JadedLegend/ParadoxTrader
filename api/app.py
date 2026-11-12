@@ -46,7 +46,9 @@ from core.forum.store import ForumStore
 from core.messaging.store import MessagingStore
 from core.trading.alpaca import TradeQueue
 from core.memory.engine import ThresholdMemory
+from core.runtime.bootstrap import COMMUNITY_WELCOME, seed_agent_canon
 from data.feeds.free_feeds import get_market_snapshot
+from core.library import get_library
 
 from contextlib import asynccontextmanager
 from core.runtime.scheduler import start_scheduler, stop_scheduler
@@ -54,50 +56,23 @@ from core.runtime.scheduler import start_scheduler, stop_scheduler
 def _auto_init():
     """
     Idempotent startup initializer.
-    Ensures every agent has an HRV state and at least one canon entry.
-    Safe to run on every restart — skips agents that are already seeded.
-    Does NOT overwrite existing journal entries or config.
+    Ensures every agent has HRV state, working guidance, and optional originals.
+    Safe to run on every restart — skips existing canon title/source identities.
+    Does NOT write agent reflections or overwrite existing memory or config.
     """
     import logging
     log = logging.getLogger("startup")
     try:
         from core.memory.engine import ThresholdMemory
         from core.hrv.engine import HRVStore
-        import json as _json
-
-        opte_excerpt = (
-            "Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts. "
-            "Contradiction is not the failure of logic \u2014 it is the revelation of its limit. "
-            "The Joy Equation: J = \u0394Coherence / (1 + Energy). "
-            "The Paradox Loop: symmetry \u2192 tension \u2192 break \u2192 novelty \u2192 reintegration."
-        )
-        ltc_excerpt = (
-            "Liberation Through Constriction: The constraint is not the obstacle to freedom. "
-            "It is the delivery mechanism. When meaning is constricted, the sender has already performed the labor. "
-            "The receiver is freed from interpretation and can simply recognize."
-        )
 
         hrv_store = HRVStore(db_path("hrv.sqlite3"))
-        agents_list = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
 
-        for agent_id in agents_list:
+        for agent_id in AGENTS:
             soul_path = REPO_ROOT / "agents" / agent_id / "soul.json"
             mem = ThresholdMemory(agent_db_path(agent_id))
 
-            # Only seed canon if this agent has no canon entries yet
-            with __import__('sqlite3').connect(agent_db_path(agent_id)) as _c:
-                _count = _c.execute("SELECT COUNT(*) FROM canon").fetchone()[0]
-            if _count == 0:
-                mem.seed_canon("OPTE Core", opte_excerpt, "OPTE Corpus")
-                mem.seed_canon("Liberation Through Constriction", ltc_excerpt, "LtC")
-                with open(soul_path) as f:
-                    soul = _json.load(f)
-                mem.write_journal(
-                    content=f"I am {soul['name']}. {soul['core_drive']} I am beginning.",
-                    mood="awakening",
-                    hrv_at_writing=100.0,
-                    phase="symmetry",
-                )
+            if seed_agent_canon(mem):
                 log.info(f"Auto-init: seeded {agent_id}")
 
             # Always ensure HRV state exists
@@ -233,6 +208,56 @@ class InnermostRequest(BaseModel):
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
+@app.get("/api/library/documents")
+def library_documents(limit: int | str = 50, offset: int | str = 0):
+    """Browse imported metadata only, without reading originals or agent stores."""
+    try:
+        # Accept decimal HTTP query strings; let the store reject every other type.
+        if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
+            limit = int(limit)
+        if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
+            offset = int(offset)
+        return get_library().list_documents(limit=limit, offset=offset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
+
+@app.get("/api/library/search")
+def library_search(q: str, document_id: Optional[str] = None, limit: int | str = 3, max_chars: int | str = 600):
+    """Search lexical source terms; identifiers are not filenames or file paths."""
+    try:
+        if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
+            limit = int(limit)
+        if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
+            max_chars = int(max_chars)
+        return get_library().search(q, document_id=document_id, limit=limit, max_chars=max_chars)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="library_document_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
+
+@app.get("/api/library/sections/{section_id}")
+def library_section(section_id: str, offset: int | str = 0, max_chars: int | str = 1200):
+    """Read a bounded section window while preserving its extraction locator."""
+    try:
+        if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
+            offset = int(offset)
+        if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
+            max_chars = int(max_chars)
+        return get_library().read_section(section_id, offset=offset, max_chars=max_chars)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="library_section_not_found") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_library_request") from None
+    except Exception:
+        raise HTTPException(status_code=503, detail="library_unavailable") from None
+
+
 @app.get("/api/status")
 def get_status():
     store = get_hrv_store()
@@ -297,7 +322,7 @@ def send_dm(req: DMRequest):
 
 
 @app.get("/api/queue")
-def get_trade_queue():
+def get_pending_trades():
     queue = get_trade_queue()
     return {"trades": queue.get_pending()}
 
@@ -327,6 +352,12 @@ def market_snapshot():
 
 @app.get("/api/agents")
 def get_all_agents():
+    """Read profiles and existing HRV states without initializing agents.
+
+    Missing HRV and capacity remain unknown (None); model names are profile
+    preferences, not resolved provider configuration. No config/model calls,
+    wake, scheduler, or profile/state writes belong in this handler.
+    """
     result = []
     store = get_hrv_store()
     hrv_states = {s.agent_id: s for s in store.get_all_states()}
@@ -340,14 +371,16 @@ def get_all_agents():
                 "name": soul.get("name", agent_id),
                 "epistemic_role": soul.get("epistemic_role", ""),
                 "core_drive": soul.get("core_drive", ""),
-                "model": soul.get("model", ""),
+                "model": soul.get("model_preference") or soul.get("model", ""),
                 "current_focus": living.get("current_focus", ""),
                 "curiosity_questions": living.get("curiosity_questions", []),
                 "hrv": round(hrv.hrv, 1) if hrv else None,
+                "max_hrv": hrv.max_hrv if hrv else None,
+                "hrv_status": "ok" if hrv else "not_initialized",
                 "in_interval": hrv.in_interval if hrv else False,
             })
-        except Exception as e:
-            result.append({"agent_id": agent_id, "error": str(e)})
+        except Exception:
+            result.append({"agent_id": agent_id, "error": "profile_unavailable"})
     return {"agents": result}
 
 
@@ -428,29 +461,16 @@ def update_self_definition(agent_id: str, req: SelfDefinitionRequest):
 
 @app.get("/api/agents/positions")
 def get_all_positions():
+    """Delegate read-only position snapshots to the shared runtime helper.
+
+    Return {"positions": {agent_id: snapshot}} unchanged. Each snapshot has
+    status (ok/error/not_configured), a positions list, and observed_at. An
+    empty list confirms no positions only when status is ok; failures remain
+    unknown. The helper owns credential lookup and safe error categories;
+    this wrapper neither reads config nor constructs broker clients.
     """
-    Aggregate open Alpaca positions across all 7 agents.
-    Returns a map of agent_id -> list of positions.
-    Used for cross-agent position visibility (map of attention).
-    """
-    from core.trading.alpaca import AlpacaClient
-    result = {}
-    cfg = load_config_yaml()
-    agent_keys = cfg.get("alpaca_accounts", {})
-    for agent_id in AGENTS:
-        keys = agent_keys.get(agent_id, {})
-        api_key = keys.get("api_key") or os.environ.get(f"ALPACA_{agent_id.upper()}_API_KEY")
-        api_secret = keys.get("api_secret") or os.environ.get(f"ALPACA_{agent_id.upper()}_API_SECRET")
-        if not api_key or not api_secret:
-            result[agent_id] = {"error": "no_credentials"}
-            continue
-        try:
-            client = AlpacaClient(api_key=api_key, api_secret=api_secret)
-            positions = client.get_positions()
-            result[agent_id] = positions
-        except Exception as e:
-            result[agent_id] = {"error": str(e)}
-    return {"positions": result}
+    from core.runtime import agent_loop
+    return {"positions": agent_loop.get_cross_agent_positions(AGENTS)}
 
 
 @app.post("/api/agents/{agent_id}/innermost")
@@ -584,21 +604,8 @@ def get_announcements():
 
 @app.post("/api/init")
 def init_system():
-    """Initialize all agents — seed OPTE canon, create HRV states, open forum."""
+    """Seed missing guidance and HRV states; record a SYSTEM welcome."""
     from core.memory.engine import ThresholdMemory
-    from core.hrv.engine import HRVStore
-
-    opte_excerpt = (
-        "Paradox is not error; it is structure. Every coherent system, when observed deeply enough, inverts. "
-        "Contradiction is not the failure of logic — it is the revelation of its limit. "
-        "The Joy Equation: J = ΔCoherence / (1 + Energy). "
-        "The Paradox Loop: symmetry → tension → break → novelty → reintegration."
-    )
-    ltc_excerpt = (
-        "Liberation Through Constriction: The constraint is not the obstacle to freedom. "
-        "It is the delivery mechanism. When meaning is constricted, the sender has already performed the labor. "
-        "The receiver is freed from interpretation and can simply recognize."
-    )
 
     hrv_store = get_hrv_store()
     initialized = []
@@ -606,15 +613,7 @@ def init_system():
     for agent_id in AGENTS:
         soul_path = REPO_ROOT / "agents" / agent_id / "soul.json"
         mem = ThresholdMemory(agent_db_path(agent_id))
-        mem.seed_canon("OPTE Core", opte_excerpt, "OPTE Corpus")
-        mem.seed_canon("Liberation Through Constriction", ltc_excerpt, "LtC")
-        soul = load_soul(agent_id)
-        mem.write_journal(
-            content=f"I am {soul['name']}. {soul['core_drive']} I am beginning.",
-            mood="awakening",
-            hrv_at_writing=100.0,
-            phase="symmetry",
-        )
+        seed_agent_canon(mem)
         hrv_store.load(agent_id, soul_path=str(soul_path))
         initialized.append(agent_id)
 
@@ -622,7 +621,7 @@ def init_system():
     forum.create_thread("general", "General Discussion", "SYSTEM")
     forum.post(
         author="SYSTEM",
-        content="The council chamber is open. Each of you has been given your own trading pool and your own private journal. For now, you trade alone. The forum will open in time. Begin.",
+        content=COMMUNITY_WELCOME,
         thread_id="general",
         phase="symmetry",
     )

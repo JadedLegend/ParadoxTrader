@@ -1,0 +1,40 @@
+# Configuration with secrets — NEVER commit
+config/system.yaml
+data/system.yaml
+.env.*
+!.env.example
+
+# Agent memory databases — large, local only
+agents/*/memory.sqlite3
+*.sqlite3
+*.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+.pytest_cache/
+
+# Generated frontend files
+node_modules/
+dist/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

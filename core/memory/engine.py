@@ -9,7 +9,7 @@ Four motions:
   recover    — treat failed runs as collapse events with reintegration protocol
   condense   — turn diffuse episodes into dense memory glyphs
 
-Phase-aware retrieval weights episodes by Paradox Loop phase:
+Optional phase-aware retrieval can weight episodes by Paradox Loop phase:
   symmetry → tension → break → novelty → reintegration
 
 Each agent has their own SQLite database.
@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS episodes (
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     phase TEXT NOT NULL DEFAULT 'symmetry',
-    delta_coherence REAL DEFAULT 0.0,
-    effort REAL DEFAULT 1.0,
+    delta_coherence REAL DEFAULT NULL,
+    effort REAL DEFAULT NULL,
     joy_score REAL GENERATED ALWAYS AS (delta_coherence / (1.0 + effort)) VIRTUAL,
     tags TEXT DEFAULT '[]',
     created_at TEXT NOT NULL
@@ -137,10 +137,15 @@ class ThresholdMemory:
         title: str,
         content: str,
         phase: str = "symmetry",
-        delta_coherence: float = 1.0,
-        effort: float = 1.0,
+        delta_coherence: Optional[float] = None,
+        effort: Optional[float] = None,
         tags: Optional[list] = None,
     ) -> int:
+        """Keep an episode; unknown measures stay NULL, not inferred from its action.
+
+        Explicit legacy values remain accepted for compatibility and history.
+        These columns are not performance evidence or an activity reward.
+        """
         if phase not in PARADOX_PHASES:
             phase = "symmetry"
         now = datetime.now(timezone.utc).isoformat()
@@ -293,8 +298,8 @@ class ThresholdMemory:
         limit: int = 5,
     ) -> list[dict]:
         """
-        Phase-aware lexical retrieval.
-        Scores episodes by keyword overlap + phase weight.
+        Lexical retrieval with an optional, explicitly requested phase preference.
+        Legacy coherence metadata never controls retrieval rank.
         """
         terms = set(query_text.lower().split())
 
@@ -307,13 +312,18 @@ class ThresholdMemory:
         for row in rows:
             text = (row[1] + " " + row[2]).lower()
             overlap = sum(1 for t in terms if t in text)
-            phase_w = PHASE_WEIGHTS.get(row[3], 1.0)
-            bias_bonus = 1.5 if (phase_bias and row[3] == phase_bias) else 1.0
-            score = overlap * phase_w * bias_bonus
+            phase_w = (
+                PHASE_WEIGHTS.get(row[3], 1.0) * 1.5
+                if phase_bias and row[3] == phase_bias else 1.0
+            )
+            score = overlap * phase_w
             if score > 0:
+                has_legacy_values = row[4] is not None and row[5] is not None
                 scored.append({
                     "id": row[0], "title": row[1], "content": row[2],
-                    "phase": row[3], "joy": row[4] / (1 + row[5]),
+                    "phase": row[3],
+                    "joy": row[4] / (1 + row[5]) if has_legacy_values else None,
+                    "joy_status": "legacy_supplied" if has_legacy_values else "not_measured",
                     "score": score, "created_at": row[6],
                 })
 
