@@ -13,6 +13,7 @@ import './styles.css'
 
 const Library = lazy(() => import('./views/Library'))
 const Costs = lazy(() => import('./views/Costs'))
+const InquiryHistory = lazy(() => import('./views/InquiryHistory'))
 
 class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -26,7 +27,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 const NAV = [
   ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
-  ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
+  ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
 ]
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/choices" element={<WakeChoices />} />
               <Route path="/library" element={<Library />} />
               <Route path="/costs" element={<Costs />} />
+              <Route path="/inquiries" element={<InquiryHistory />} />
               <Route path="/forum" element={<Forum />} />
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/agents" element={<Agents />} />

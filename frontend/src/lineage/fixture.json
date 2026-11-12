@@ -1,0 +1,773 @@
+{
+  "agent_id": "alchemist",
+  "details": {
+    "25ef886b-7907-4377-9d0e-688ef4281326": {
+      "entries": [
+        {
+          "agent_id": "alchemist",
+          "content": "Fictional scenario: two accounts disagree about the useful horizon for an options premium.",
+          "created_at": "2026-11-12T12:00:01+00:00",
+          "entry_id": "ff7beced-e1fb-4b34-90a0-569892efb53e",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "observation",
+          "source": "operator"
+        },
+        {
+          "agent_id": "alchemist",
+          "content": "Compare a timing explanation with a volatility explanation; leave both available for further inquiry.",
+          "created_at": "2026-11-12T12:00:02+00:00",
+          "entry_id": "fcf471d2-bf2a-4b8f-b0d0-11d3f0c87d10",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:00+00:00",
+          "event_id": "9105b42d-41af-49c7-aa93-4fc29ad7fa8a",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "A timing question, followed through",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:01+00:00",
+          "event_id": "ff2181b8-ef89-4a8c-b15f-6b5371d5fc22",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "ff7beced-e1fb-4b34-90a0-569892efb53e",
+            "kind": "observation",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:02+00:00",
+          "event_id": "99b6b657-0bb5-42cf-9e6f-5807ec53153b",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "fcf471d2-bf2a-4b8f-b0d0-11d3f0c87d10",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:03+00:00",
+          "event_id": "7ac6d4f8-4566-46b4-8582-23af9a1211d3",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "proposal_created",
+          "payload": {
+            "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+            "queue_id": 1
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:04+00:00",
+          "event_id": "8d28880a-e7ba-42df-9750-fea21a973863",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "proposal_reviewed",
+          "payload": {
+            "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+            "queue_id": 1,
+            "review_status": "approved",
+            "reviewer_notes": "Explicit operator mock approval",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:05+00:00",
+          "event_id": "ae162d89-bc14-4f10-8b1a-369b11131d75",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "order_prepared",
+          "payload": {
+            "broker": "mock",
+            "client_order_id": "lineage-21bf5611-933a-5707-9153-d7b7da1ab620",
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:07+00:00",
+          "event_id": "b69a649f-362d-4037-9e73-7fe3e17d9979",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "order_issue",
+          "payload": {
+            "category": "submission_unknown",
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:08+00:00",
+          "event_id": "b89d8501-b595-41b4-81ad-bf9850e04d58",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "00963f67-25c6-405c-b2bb-a17ee962ab72",
+            "broker_revision": 1,
+            "filled_qty": 0,
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "status": "accepted"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:10+00:00",
+          "event_id": "7870dedb-d115-4d11-9f25-2ec649fc761e",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "fill_confirmed",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_fill_id": "d57d67d5-86bb-4f8d-8970-8b416db4f359",
+            "fill_id": "4875335c-9ca7-5e5e-90d4-bb107619d923",
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:10+00:00",
+          "event_id": "8edc8c6f-b0ad-430e-9110-c1df6f82009f",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "00963f67-25c6-405c-b2bb-a17ee962ab72",
+            "broker_revision": 2,
+            "filled_qty": 1,
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "status": "partially_filled"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:12+00:00",
+          "event_id": "42705b97-c6aa-42fd-8fbd-994932c81168",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "00963f67-25c6-405c-b2bb-a17ee962ab72",
+            "broker_revision": 3,
+            "filled_qty": 2,
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "status": "filled"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:12+00:00",
+          "event_id": "62314d96-6a4d-4f65-a8b1-34b1ebf15a9c",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "fill_confirmed",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_fill_id": "d7284f84-7f83-4563-b1d1-f75715703238",
+            "fill_id": "cd7ff3ce-efc6-5f0b-b84d-1eabf81d227c",
+            "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+            "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:13+00:00",
+          "event_id": "576ebb2e-614c-47df-ab1b-4125a379e25e",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "proposal_created",
+          "payload": {
+            "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+            "queue_id": 2
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:14+00:00",
+          "event_id": "52b7f637-5256-4a9e-a0eb-e61ade149d68",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "proposal_reviewed",
+          "payload": {
+            "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+            "queue_id": 2,
+            "review_status": "approved",
+            "reviewer_notes": "Explicit operator mock close approval",
+            "source": "operator"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:15+00:00",
+          "event_id": "7e5840e6-22bd-4148-9136-19007f667ee2",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "order_prepared",
+          "payload": {
+            "broker": "mock",
+            "client_order_id": "lineage-ae468f7b-262b-55a3-8ecb-27cf6d91c6c8",
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:17+00:00",
+          "event_id": "39fdb27b-8779-4a14-9a58-40b81d3d3875",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "e8044991-2edc-4ec0-b8c3-7d8141907a2b",
+            "broker_revision": 1,
+            "filled_qty": 0,
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "status": "accepted"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:19+00:00",
+          "event_id": "59eafe78-fd4f-4f3b-aa55-1900da914547",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "e8044991-2edc-4ec0-b8c3-7d8141907a2b",
+            "broker_revision": 2,
+            "filled_qty": 1,
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "status": "partially_filled"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:19+00:00",
+          "event_id": "63d765a7-65ff-45c9-8973-0879a069ea45",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "fill_confirmed",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_fill_id": "1b8d7d9b-f405-4873-bda6-6da09d42e398",
+            "fill_id": "9c1fd1f9-900c-5f2d-94f5-64239da1e15f",
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:21+00:00",
+          "event_id": "2a859aab-077e-453c-89f3-04e209734e8b",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "broker_snapshot_applied",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_order_id": "e8044991-2edc-4ec0-b8c3-7d8141907a2b",
+            "broker_revision": 3,
+            "filled_qty": 2,
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "status": "filled"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:21+00:00",
+          "event_id": "ffdabfaa-93c4-4bf2-aeb3-f22b6dc42b5b",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "fill_confirmed",
+          "payload": {
+            "authority": "mock_broker",
+            "broker_fill_id": "6b4ba386-2c76-45ec-a4e1-bcdecc7ff03d",
+            "fill_id": "0cecf23c-ff7c-59c9-b210-97d29d5b5760",
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:22+00:00",
+          "event_id": "8eac9d85-b122-4c51-8e7d-3f6864155b13",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "kind": "review_added",
+          "payload": {
+            "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+            "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+            "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+            "review_id": "da0e4da7-e2e6-4b25-b2a2-80002046a4cf"
+          }
+        }
+      ],
+      "fills": [
+        {
+          "agent_id": "alchemist",
+          "authority": "mock_broker",
+          "broker_fill_id": "d57d67d5-86bb-4f8d-8970-8b416db4f359",
+          "created_at": "2026-11-12T12:00:09.000000Z",
+          "fill_id": "4875335c-9ca7-5e5e-90d4-bb107619d923",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "price": "2.4",
+          "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+          "qty": 1,
+          "side": "buy"
+        },
+        {
+          "agent_id": "alchemist",
+          "authority": "mock_broker",
+          "broker_fill_id": "d7284f84-7f83-4563-b1d1-f75715703238",
+          "created_at": "2026-11-12T12:00:11.000000Z",
+          "fill_id": "cd7ff3ce-efc6-5f0b-b84d-1eabf81d227c",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "price": "2.5",
+          "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+          "qty": 1,
+          "side": "buy"
+        },
+        {
+          "agent_id": "alchemist",
+          "authority": "mock_broker",
+          "broker_fill_id": "1b8d7d9b-f405-4873-bda6-6da09d42e398",
+          "created_at": "2026-11-12T12:00:18.000000Z",
+          "fill_id": "9c1fd1f9-900c-5f2d-94f5-64239da1e15f",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "price": "2.7",
+          "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+          "qty": 1,
+          "side": "sell"
+        },
+        {
+          "agent_id": "alchemist",
+          "authority": "mock_broker",
+          "broker_fill_id": "6b4ba386-2c76-45ec-a4e1-bcdecc7ff03d",
+          "created_at": "2026-11-12T12:00:20.000000Z",
+          "fill_id": "0cecf23c-ff7c-59c9-b210-97d29d5b5760",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "price": "2.7",
+          "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+          "qty": 1,
+          "side": "sell"
+        }
+      ],
+      "inquiry": {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:00+00:00",
+        "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+        "phase": 0,
+        "state": "open",
+        "title": "A timing question, followed through",
+        "updated_at": "2026-11-12T12:00:22+00:00",
+        "visibility": "owner"
+      },
+      "orders": [
+        {
+          "agent_id": "alchemist",
+          "broker": "mock",
+          "broker_order_id": "00963f67-25c6-405c-b2bb-a17ee962ab72",
+          "broker_revision": 3,
+          "client_order_id": "lineage-21bf5611-933a-5707-9153-d7b7da1ab620",
+          "created_at": "2026-11-12T12:00:05+00:00",
+          "filled_qty": 2,
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "bd9c576d-751b-55f9-96b2-2866ee9d6b0b",
+          "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+          "qty": 2,
+          "queue_id": 1,
+          "status": "filled",
+          "structure": {
+            "expiry": "2027-01-15",
+            "intent": "open",
+            "limit_price": "2.5",
+            "multiplier": 100,
+            "option_type": "call",
+            "order_type": "limit",
+            "qty": 2,
+            "side": "buy",
+            "strike": "100",
+            "symbol": "DEMO270115C00100000",
+            "underlying": "DEMO"
+          },
+          "sync_state": "ok",
+          "updated_at": "2026-11-12T12:00:12+00:00"
+        },
+        {
+          "agent_id": "alchemist",
+          "broker": "mock",
+          "broker_order_id": "e8044991-2edc-4ec0-b8c3-7d8141907a2b",
+          "broker_revision": 3,
+          "client_order_id": "lineage-ae468f7b-262b-55a3-8ecb-27cf6d91c6c8",
+          "created_at": "2026-11-12T12:00:15+00:00",
+          "filled_qty": 2,
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+          "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+          "qty": 2,
+          "queue_id": 2,
+          "status": "filled",
+          "structure": {
+            "expiry": "2027-01-15",
+            "intent": "close",
+            "limit_price": "2.7",
+            "multiplier": 100,
+            "option_type": "call",
+            "order_type": "limit",
+            "qty": 2,
+            "side": "sell",
+            "strike": "100",
+            "symbol": "DEMO270115C00100000",
+            "underlying": "DEMO"
+          },
+          "sync_state": "ok",
+          "updated_at": "2026-11-12T12:00:21+00:00"
+        }
+      ],
+      "positions": [
+        {
+          "agent_id": "alchemist",
+          "average_entry_price": null,
+          "fees": null,
+          "gross_realized_pnl": "50",
+          "mark_status": "unavailable",
+          "market_value": null,
+          "multiplier": 100,
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "qty": 0,
+          "status": "closed",
+          "symbol": "DEMO270115C00100000",
+          "unrealized_pnl": null
+        }
+      ],
+      "proposals": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:03+00:00",
+          "horizon": "Fictional short-term scenario",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "proposal_id": "509e57fa-a7a7-44b0-b56a-118812519f61",
+          "queue_id": 1,
+          "review_status": "approved",
+          "structure": {
+            "expiry": "2027-01-15",
+            "intent": "open",
+            "limit_price": "2.5",
+            "multiplier": 100,
+            "option_type": "call",
+            "order_type": "limit",
+            "qty": 2,
+            "side": "buy",
+            "strike": "100",
+            "symbol": "DEMO270115C00100000",
+            "underlying": "DEMO"
+          },
+          "thesis": "Optional mock structure to test execution continuity for this inquiry.",
+          "uncertainty": "No live quote or contract lookup is supplied."
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:13+00:00",
+          "horizon": "Mock lifecycle completion",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+          "queue_id": 2,
+          "review_status": "approved",
+          "structure": {
+            "expiry": "2027-01-15",
+            "intent": "close",
+            "limit_price": "2.7",
+            "multiplier": 100,
+            "option_type": "call",
+            "order_type": "limit",
+            "qty": 2,
+            "side": "sell",
+            "strike": "100",
+            "symbol": "DEMO270115C00100000",
+            "underlying": "DEMO"
+          },
+          "thesis": "An explicit mock exit structure, separate from the original interpretation.",
+          "uncertainty": "Fees and market marks remain unavailable."
+        }
+      ],
+      "reviews": [
+        {
+          "agent_id": "alchemist",
+          "content": "The mock execution sequence is complete. Continue investigating the horizon question using new evidence when it becomes available.",
+          "created_at": "2026-11-12T12:00:22+00:00",
+          "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+          "order_id": "a9622b93-47d0-5685-a2aa-6f6482bc29d8",
+          "position_id": "735cd1f3-2680-570f-b74d-f63313d57af5",
+          "proposal_id": "967fb76a-4218-4f99-a798-f0fdf05b59d6",
+          "review_id": "da0e4da7-e2e6-4b25-b2a2-80002046a4cf"
+        }
+      ],
+      "status": "ok",
+      "truncated": false
+    },
+    "3690ca0e-12d0-4e6a-916e-adf62b45e23e": {
+      "entries": [],
+      "events": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:25+00:00",
+          "event_id": "3214bf74-20d8-430c-b27f-2ae7203f92e9",
+          "inquiry_id": "3690ca0e-12d0-4e6a-916e-adf62b45e23e",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Liquidity question — paused",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:26+00:00",
+          "event_id": "b30cbe3c-7986-40a8-a621-05c1c31f8e51",
+          "inquiry_id": "3690ca0e-12d0-4e6a-916e-adf62b45e23e",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Return when relevant evidence is available.",
+            "state": "paused"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:25+00:00",
+        "inquiry_id": "3690ca0e-12d0-4e6a-916e-adf62b45e23e",
+        "phase": 0,
+        "state": "paused",
+        "title": "Liquidity question — paused",
+        "updated_at": "2026-11-12T12:00:26+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "94807db7-eefd-499d-816d-23894b8811ca": {
+      "entries": [
+        {
+          "agent_id": "alchemist",
+          "content": "Keep this question open while choosing whether further investigation would help.",
+          "created_at": "2026-11-12T12:00:24+00:00",
+          "entry_id": "c49e1db7-c571-4a5a-8a18-b54a953e6010",
+          "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:23+00:00",
+          "event_id": "d718847f-e6a1-4503-bc12-64b13768cc5c",
+          "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "Wait for a clearer horizon",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:24+00:00",
+          "event_id": "bb6d06d0-2212-47f7-8f64-609b028d1df3",
+          "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "c49e1db7-c571-4a5a-8a18-b54a953e6010",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:23+00:00",
+        "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+        "phase": 0,
+        "state": "open",
+        "title": "Wait for a clearer horizon",
+        "updated_at": "2026-11-12T12:00:24+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    },
+    "d283a19e-8fc4-4c23-b46e-18c145c04e04": {
+      "entries": [
+        {
+          "agent_id": "alchemist",
+          "content": "A prior account remains available alongside a later alternative.",
+          "created_at": "2026-11-12T12:00:28+00:00",
+          "entry_id": "ab99adc0-f2aa-4af5-a7c1-ff5225009349",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "interpretation",
+          "source": "agent"
+        },
+        {
+          "agent_id": "alchemist",
+          "content": "Revisit the assumptions without requiring a synthesis or trade.",
+          "created_at": "2026-11-12T12:00:31+00:00",
+          "entry_id": "3c692401-8dbe-4172-bdf5-1444b1065e2e",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "interpretation",
+          "source": "agent"
+        }
+      ],
+      "events": [
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:27+00:00",
+          "event_id": "0d0c9229-cbcd-406c-8adf-2acaed9884e3",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "inquiry_created",
+          "payload": {
+            "phase": 0,
+            "title": "An alternative explanation, revisited",
+            "visibility": "owner"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:28+00:00",
+          "event_id": "e1e84a87-3947-49e5-8455-39d0ec215937",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "ab99adc0-f2aa-4af5-a7c1-ff5225009349",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:29+00:00",
+          "event_id": "ed9ab687-5389-4de1-a94b-258fb4a7ed27",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "inquiry_state_changed",
+          "payload": {
+            "from_state": "open",
+            "reason": "Set aside for now.",
+            "state": "abandoned"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:30+00:00",
+          "event_id": "e02c814c-c8e2-4918-bacf-c8dedbb2537d",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "inquiry_revisited",
+          "payload": {
+            "from_state": "abandoned",
+            "reason": "A new question made this worth revisiting.",
+            "state": "open"
+          }
+        },
+        {
+          "agent_id": "alchemist",
+          "created_at": "2026-11-12T12:00:31+00:00",
+          "event_id": "a842baa0-ed0e-471f-a594-fd99fa5cf6f1",
+          "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+          "kind": "entry_added",
+          "payload": {
+            "entry_id": "3c692401-8dbe-4172-bdf5-1444b1065e2e",
+            "kind": "interpretation",
+            "source": "agent"
+          }
+        }
+      ],
+      "fills": [],
+      "inquiry": {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:27+00:00",
+        "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+        "phase": 0,
+        "state": "open",
+        "title": "An alternative explanation, revisited",
+        "updated_at": "2026-11-12T12:00:31+00:00",
+        "visibility": "owner"
+      },
+      "orders": [],
+      "positions": [],
+      "proposals": [],
+      "reviews": [],
+      "status": "ok",
+      "truncated": false
+    }
+  },
+  "list": {
+    "inquiries": [
+      {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:00+00:00",
+        "inquiry_id": "25ef886b-7907-4377-9d0e-688ef4281326",
+        "phase": 0,
+        "state": "open",
+        "title": "A timing question, followed through",
+        "updated_at": "2026-11-12T12:00:22+00:00",
+        "visibility": "owner"
+      },
+      {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:23+00:00",
+        "inquiry_id": "94807db7-eefd-499d-816d-23894b8811ca",
+        "phase": 0,
+        "state": "open",
+        "title": "Wait for a clearer horizon",
+        "updated_at": "2026-11-12T12:00:24+00:00",
+        "visibility": "owner"
+      },
+      {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:25+00:00",
+        "inquiry_id": "3690ca0e-12d0-4e6a-916e-adf62b45e23e",
+        "phase": 0,
+        "state": "paused",
+        "title": "Liquidity question — paused",
+        "updated_at": "2026-11-12T12:00:26+00:00",
+        "visibility": "owner"
+      },
+      {
+        "agent_id": "alchemist",
+        "created_at": "2026-11-12T12:00:27+00:00",
+        "inquiry_id": "d283a19e-8fc4-4c23-b46e-18c145c04e04",
+        "phase": 0,
+        "state": "open",
+        "title": "An alternative explanation, revisited",
+        "updated_at": "2026-11-12T12:00:31+00:00",
+        "visibility": "owner"
+      }
+    ],
+    "limit": 50,
+    "offset": 0,
+    "status": "ok",
+    "total": 4
+  },
+  "mode": "mock_demo"
+}

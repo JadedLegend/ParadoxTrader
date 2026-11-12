@@ -339,3 +339,27 @@ a.btn { display: inline-block; text-decoration: none; }
   .usage-metrics > .card, .usage-breakdown > .card { flex-basis: auto; }
   .usage-toolbar { align-items: stretch; }
 }
+
+/* Inquiry lineage: readable continuity, not a compulsory trading funnel. */
+.lineage-layout { display: flex; align-items: flex-start; gap: 24px; }
+.lineage-sidebar { flex: 0 1 290px; min-width: 220px; }
+.lineage-detail { flex: 1; min-width: 0; }
+.lineage-sidebar .btn { display: block; width: 100%; text-align: left; white-space: normal; margin-bottom: 8px; }
+.lineage-section { margin-bottom: 18px; }
+.lineage-meta { color: var(--text3); font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.lineage-timeline { list-style: none; padding: 0; margin: 12px 0; border-left: 1px solid var(--border); }
+.lineage-event { margin: 0 0 16px 14px; padding-left: 8px; line-height: 1.7; }
+.lineage-event p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lineage-section table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.lineage-section th, .lineage-section td { border-bottom: 1px solid var(--border); padding: 10px 8px; text-align: left; overflow-wrap: anywhere; }
+.lineage-section .notice { margin-top: 10px; }
+@media (max-width: 850px) {
+  .lineage-layout { flex-direction: column; }
+  .lineage-sidebar { flex-basis: auto; min-width: 0; width: 100%; }
+  .lineage-detail { width: 100%; }
+}
+
+.lineage-layout > section:last-child { flex: 1; min-width: 0; }
+.lineage-list { list-style: none; padding: 0; margin: 0; }
+.lineage-inquiry[aria-pressed="true"] { border-color: var(--text2); background: var(--bg); }
+@media (max-width: 850px) { .lineage-layout > section:last-child { width: 100%; } }
