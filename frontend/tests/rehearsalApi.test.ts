@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getRehearsalRuns, getRehearsalRun, getRehearsalJobs, getRehearsalRequests, getRehearsalRecord } from '../src/api'
+import { getRehearsalRuns, getRehearsalRun, getRehearsalJobs, getRehearsalRequests, getRehearsalRecord, getRehearsalDecision } from '../src/api'
 import { readRehearsalFixture } from '../src/rehearsal/client'
 import { REHEARSAL_AGENTS } from '../src/rehearsal/contracts'
 import baseFixture from '../src/rehearsal/fixture.json'
@@ -16,7 +16,7 @@ describe('rehearsal default fixture read API (all HTTP blocked)', () => {
     expect(jobs.run_id).toBe(run.run_id)
     expect(jobs.jobs).toHaveLength(14)
     expect(new Set(jobs.jobs.map(job => job.agent_id)).size).toBe(7)
-    expect(run.limits).toMatchObject({ wakes_per_agent: 2, max_requests: 28, max_parallelism: 3, max_output_tokens: 1024, max_input_bytes: 24000, max_runtime_seconds: 900, request_timeout_seconds: 60 })
+    expect(run.limits).toMatchObject({ wakes_per_agent: 2, max_requests: 28, max_parallelism: 1, max_output_tokens: 1024, max_input_bytes: 24000, max_runtime_seconds: 900, request_timeout_seconds: 60 })
     expect(await getRehearsalRuns(20, 1000000)).toMatchObject({ runs: [], total: runs.total })
   })
   it('filters request pages by all seven actual owners without relabeling or fabricating telemetry', async () => {
@@ -110,4 +110,68 @@ describe('rehearsal default fixture read API (all HTTP blocked)', () => {
     try { await expect(readRehearsalFixture(`/api/rehearsals/${id}/records?agent_id=${job.agent_id}&kind=${ref.kind}&id=${ref.id}`)).rejects.toThrow() }
     finally { vi.doUnmock('../src/rehearsal/fixture.json'); vi.resetModules() }
   })
+})
+
+function decisionFixture() {
+  const fixture = structuredClone(baseFixture) as any
+  const run = fixture.runs[0]; const id = run.run_id
+  const job = fixture.jobs[id].find((value: any) => value.agent_id === 'tempest')
+  const wake = job.wake_id
+  const metadata = { schema_version: 1, offered_actions: ['rest', 'journal', 'inquire', 'library', 'roam'], action_costs: ['rest', 'journal', 'inquire', 'library', 'roam'].map(action => ({ action, max_requests: action === 'rest' ? 1 : 2, reservation_ceiling_usd: '0', basis: 'catalog_upper_bound' })), constraints: run.limits, admission_snapshot: { reserved_usd: '0', remaining_budget_usd: '0', request_count: 0, remaining_requests: 28, is_reservation: false }, model: { requested_model: 'synthetic/tempest', context_length: 65536, max_completion_tokens: 1024, catalog_source: 'synthetic' }, continuity: { status: 'empty', refs: [], truncated: false, chars: 0 } }
+  job.decision_context = metadata; job.selection_origin = 'model'
+  fixture.decisions = { [id]: { [wake]: { run_id: id, agent_id: 'tempest', wake_id: wake, decision: { metadata, private_context: { continuity: { status: 'empty', refs: [], excerpts: [], body: 'LITERAL OWNER PRIVATE' } }, requests: [{ request_id: 'input-1', agent_id: 'tempest', wake_id: wake, input_sha256: 'HASH', input_coverage: 'complete', messages: [{ role: 'user', content: '<b>FULL PRIVATE INPUT</b>' }] }] } } } }
+  return { fixture, id, wake, path: `/api/rehearsals/${id}/decisions?agent_id=tempest&wake_id=${wake}` }
+}
+describe('local decision context owner boundary', () => {
+  it('reads explicit owner/wake envelope with complete literal inputs and clone isolation', async () => {
+    const { fixture, path, id, wake } = decisionFixture()
+    vi.doMock('../src/rehearsal/fixture.json', () => ({ default: fixture })); vi.resetModules()
+    try {
+      const value = await readRehearsalFixture(path) as any
+      expect(value).toMatchObject({ run_id: id, agent_id: 'tempest', wake_id: wake })
+      expect(value.decision.requests[0]).toMatchObject({ input_sha256: 'HASH', input_coverage: 'complete', messages: [{ role: 'user', content: '<b>FULL PRIVATE INPUT</b>' }] })
+      value.decision.private_context.continuity.body = 'mutated'
+      expect(JSON.stringify(await readRehearsalFixture(path))).toContain('LITERAL OWNER PRIVATE')
+      const jobs = await readRehearsalFixture(`/api/rehearsals/${id}/jobs`) as any
+      expect(jobs.jobs.find((job: any) => job.wake_id === wake).decision_context.offered_actions).toHaveLength(5)
+      expect(JSON.stringify(jobs)).not.toContain('LITERAL OWNER PRIVATE')
+    } finally { vi.doUnmock('../src/rehearsal/fixture.json'); vi.resetModules() }
+  })
+  it.each(['wrapper', 'request', 'private', 'public', 'missing'])('fails closed for %s mismatch or older absent decisions', async attack => {
+    const { fixture, path, id, wake } = decisionFixture(); const value = fixture.decisions[id][wake]
+    if (attack === 'wrapper') value.agent_id = 'siren'
+    if (attack === 'request') value.decision.requests[0].wake_id = 'tempest-r2'
+    if (attack === 'private') value.decision.private_context.agent_id = 'siren'
+    if (attack === 'public') value.decision.metadata.continuity.refs = [{ kind: 'journal', id: 1, agent_id: 'siren' }]
+    if (attack === 'missing') delete fixture.decisions
+    vi.doMock('../src/rehearsal/fixture.json', () => ({ default: fixture })); vi.resetModules()
+    try { await expect(readRehearsalFixture(path)).rejects.toThrow() }
+    finally { vi.doUnmock('../src/rehearsal/fixture.json'); vi.resetModules() }
+  })
+  it('strips arbitrary nested fields from public and private scaffolding without altering quoted text', async () => {
+    const { fixture, path, id, wake } = decisionFixture(); const value = fixture.decisions[id][wake]
+    value.decision.metadata.model.api_key = 'UNEXPECTED'; value.decision.metadata.continuity.raw_output = 'UNEXPECTED'
+    value.decision.private_context.api_key = 'UNEXPECTED'; value.decision.requests[0].authorization = 'UNEXPECTED'; value.decision.requests[0].messages[0].api_key = 'UNEXPECTED'
+    vi.doMock('../src/rehearsal/fixture.json', () => ({ default: fixture })); vi.resetModules()
+    try {
+      expect(JSON.stringify(await readRehearsalFixture(path))).not.toContain('UNEXPECTED')
+      expect(JSON.stringify(await readRehearsalFixture(`/api/rehearsals/${id}/jobs`))).not.toContain('UNEXPECTED')
+    } finally { vi.doUnmock('../src/rehearsal/fixture.json'); vi.resetModules() }
+  })
+  it.each(['agent_id=siren&wake_id=tempest-r1', 'agent_id=tempest&wake_id=tempest-r3', 'agent_id=tempest&wake_id=tempest-r1&wake_id=tempest-r2', 'agent_id=tempest', 'wake_id=tempest-r1'])('rejects invalid owner/wake parameters %s', async query => {
+    const run = await firstRun()
+    await expect(readRehearsalFixture(`/api/rehearsals/${run.run_id}/decisions?${query}`)).rejects.toThrow()
+  })
+})
+
+it('reads regenerated actual-store decision snapshots through parent wrapper without HTTP', async () => {
+  const run = await firstRun(); const jobs = (await getRehearsalJobs(run.run_id)).jobs
+  const recorded = jobs.filter(job => job.decision_context)
+  expect(recorded.length).toBeGreaterThan(0)
+  for (const job of recorded) {
+    const value = await getRehearsalDecision(run.run_id, job.agent_id, job.wake_id)
+    expect(value).toMatchObject({ run_id: run.run_id, agent_id: job.agent_id, wake_id: job.wake_id })
+    expect(value.decision.metadata).toEqual(job.decision_context)
+    for (const event of value.decision.requests) expect(event).toMatchObject({ agent_id: job.agent_id, wake_id: job.wake_id, input_coverage: 'complete' })
+  }
 })

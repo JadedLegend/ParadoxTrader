@@ -21,10 +21,11 @@ SUMMARY_FIELDS = ('run_id', 'mode', 'status', 'created_at', 'started_at', 'ended
                   'request_count', 'reserved_usd', 'known_cost_usd', 'unknown_cost_requests',
                   'reported_cost_usd', 'estimated_cost_usd')
 JOB_FIELDS = ('wake_id', 'agent_id', 'round', 'status', 'action', 'failure_code', 'requested_model',
-              'response_model', 'provider', 'request_count', 'duration_ms', 'updated_at')
+              'response_model', 'provider', 'request_count', 'duration_ms', 'updated_at',
+              'decision_context', 'selection_origin')
 REQUEST_FIELDS = ('request_id', 'wake_id', 'agent_id', 'activity', 'model', 'requested_model',
                   'response_model', 'provider', 'outcome', 'duration_ms', 'input_bytes',
-                  'max_output_tokens', 'reserved_usd', 'failure_code', 'created_at', 'submitted_at', 'finished_at')
+                  'max_output_tokens', 'reserved_usd', 'failure_code', 'created_at', 'submitted_at', 'finished_at', 'finish_reason')
 USAGE_FIELDS = ('input_tokens', 'output_tokens', 'total_tokens', 'prompt_tokens', 'completion_tokens',
                 'cost_usd', 'reported_cost_usd', 'estimated_cost_usd', 'cost_status', 'cost_source')
 
@@ -35,6 +36,58 @@ def _error(status, code):
 
 def _project(value, fields):
     return {key: value[key] for key in fields if key in value}
+
+
+def _decision_metadata(value):
+    """Strict nested public projection: no arbitrary private source fields."""
+    actions = ('rest', 'journal', 'inquire', 'library', 'roam')
+    def number(item):
+        return type(item) is int and 0 <= item <= 1_000_000_000
+    def string(item):
+        return isinstance(item, str) and len(item) <= 256
+    def decimal(item):
+        return string(item) and re.fullmatch(r'[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?', item) is not None
+    def obj(item, fields):
+        if not isinstance(item, dict) or any(key not in item or not check(item[key]) for key, check in fields.items()):
+            raise ValueError('invalid decision metadata')
+        return _project(item, fields)
+    if value is None:
+        return None
+    try:
+        if not isinstance(value, dict) or type(value.get('schema_version')) is not int or value['schema_version'] != 1:
+            return None
+        offered, costs = value['offered_actions'], value['action_costs']
+        if not isinstance(offered, list) or not offered or len(offered) > 5 or any(action not in actions for action in offered) or len(set(offered)) != len(offered):
+            return None
+        if not isinstance(costs, list) or len(costs) > 5:
+            return None
+        costs = [obj(cost, {'action': lambda item: item in actions, 'max_requests': number,
+                            'reservation_ceiling_usd': decimal, 'basis': lambda item: item == 'catalog_upper_bound'}) for cost in costs]
+        if sorted(cost['action'] for cost in costs) != sorted(offered):
+            return None
+        constraints = obj(value['constraints'], {field: decimal if field == 'budget_usd' else number for field in LIMIT_FIELDS})
+        snapshot = obj(value['admission_snapshot'], {'reserved_usd': decimal, 'remaining_budget_usd': decimal,
+                       'request_count': number, 'remaining_requests': number, 'is_reservation': lambda item: item is False})
+        model = obj(value['model'], {'requested_model': string, 'context_length': number,
+                                     'max_completion_tokens': number, 'catalog_source': lambda item: item is None or string(item)})
+        continuity = obj(value['continuity'], {'status': lambda item: item in ('empty', 'available', 'included', 'unavailable', 'truncated', 'partial', 'failed'),
+                                              'refs': lambda item: isinstance(item, list) and len(item) <= 100,
+                                              'truncated': lambda item: type(item) is bool, 'chars': number})
+        refs = []
+        for ref in continuity['refs']:
+            if not isinstance(ref, dict) or ref.get('kind') not in ('journal', 'episode', 'inquiry', 'library'):
+                return None
+            if not (string(ref.get('id')) or number(ref.get('id'))):
+                return None
+            projected = _project(ref, ('kind', 'id', 'wake_id', 'agent_id'))
+            if any(not string(projected[key]) for key in ('wake_id', 'agent_id') if key in projected):
+                return None
+            refs.append(projected)
+        continuity['refs'] = refs
+        return {'schema_version': 1, 'offered_actions': list(offered), 'action_costs': costs,
+                'constraints': constraints, 'admission_snapshot': snapshot, 'model': model, 'continuity': continuity}
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def _summary(value):
@@ -49,6 +102,10 @@ def _summary(value):
 
 def _job(value):
     result = _project(value, JOB_FIELDS)
+    if 'decision_context' in result:
+        result['decision_context'] = _decision_metadata(result['decision_context'])
+    if 'selection_origin' in result and result['selection_origin'] not in (None, 'none', 'model'):
+        result['selection_origin'] = None
     result['record_refs'] = [_project(ref, ('kind', 'id')) for ref in value.get('record_refs', [])
                              if ref.get('kind') in ('journal', 'episode', 'inquiry', 'library')]
     return result
@@ -61,8 +118,39 @@ def _request(value):
         usage = value  # Existing actual-store events project coverage fields flat.
     result['usage'] = _project(usage, USAGE_FIELDS) if isinstance(usage, dict) else None
     return result
-
-
+PRIVATE_FIELDS = frozenset(('continuity', 'include_metadata', 'include_continuity', 'status', 'refs',
+    'truncated', 'chars', 'excerpts', 'unavailable', 'records', 'kind', 'id', 'wake_id', 'agent_id',
+    'body', 'content', 'source', 'account_kind', 'body_truncated', 'inquiry_id', 'title', 'state',
+    'title_source', 'title_truncated', 'latest_entry', 'entry_status', 'entry_id', 'created_at', 'record'))
+def _private_context(value, owner, depth=0):
+    if depth > 12:
+        _error(404, 'rehearsal_decision_not_found')
+    if value is None or type(value) in (bool, int, float, str):
+        return value
+    if isinstance(value, list):
+        return [_private_context(item, owner, depth + 1) for item in value]
+    if not isinstance(value, dict):
+        _error(404, 'rehearsal_decision_not_found')
+    if ('agent_id' in value and value['agent_id'] != owner or
+            'wake_id' in value and value['wake_id'] not in (f'{owner}-r1', f'{owner}-r2') or
+            value.get('kind') == 'innermost'):
+        _error(404, 'rehearsal_decision_not_found')
+    return {key: _private_context(item, owner, depth + 1) for key, item in value.items() if key in PRIVATE_FIELDS}
+def _decision_request(value, owner, wake_id):
+    if not isinstance(value, dict) or value.get('agent_id') != owner or value.get('wake_id') != wake_id:
+        _error(404, 'rehearsal_decision_not_found')
+    result = _request(value)
+    result.update(_project(value, ('input_sha256', 'input_coverage', 'input_status', 'context_status')))
+    if 'messages' in value:
+        messages = value['messages']
+        if messages is not None:
+            if not isinstance(messages, list) or any(not isinstance(message, dict) or
+                    message.get('role') not in ('system', 'user', 'assistant', 'tool') or
+                    not isinstance(message.get('content'), str) for message in messages):
+                _error(404, 'rehearsal_decision_not_found')
+            messages = [_project(message, ('role', 'content')) for message in messages]
+        result['messages'] = messages
+    return result
 def _params(request, allowed):
     params = request.query_params
     if any(key not in allowed or len(params.getlist(key)) != 1 for key in params):
@@ -95,7 +183,12 @@ def _uuid(value):
 def _store(root):
     # Lazy import only after auth/validation. No provider/controller is imported.
     from core.runtime.rehearsal.store import RehearsalStore
-    return RehearsalStore(root)
+    class ReadOnlyRehearsalStore(RehearsalStore):
+        def _connection(self, run_id, *, write=False):
+            if write:
+                raise RuntimeError('read-only inspection')
+            return _read_connection(self._db_path(run_id))
+    return ReadOnlyRehearsalStore(root)
 
 
 def _safe_file(run_path, relative):
@@ -277,5 +370,32 @@ def create_app(root, operator_token=None):
         # Owner validation precedes constructing even the read-only store.
         _record_selection(params)
         return read(lambda: _record(_store(root), run_id, params))
+
+    @app.get('/api/rehearsals/{run_id}/decisions')
+    def decisions(run_id: str, request: Request):
+        _uuid(run_id)
+        params = _params(request, ('agent_id', 'wake_id'))
+        owner = _owner(params, required=True)
+        wake_id = params.get('wake_id')
+        if wake_id not in (f'{owner}-r1', f'{owner}-r2'):
+            _error(404, 'rehearsal_decision_not_found')
+        def fetch():
+            store = _store(root)
+            matching = [job for job in store.list_jobs(run_id) if job.get('wake_id') == wake_id]
+            if len(matching) != 1 or matching[0].get('agent_id') != owner:
+                _error(404, 'rehearsal_decision_not_found')
+            value = store.get_decision_details(run_id, wake_id)
+            if not isinstance(value, dict) or not all(key in value for key in ('metadata', 'private_context', 'requests')):
+                _error(404, 'rehearsal_decision_not_found')
+            metadata = _decision_metadata(value['metadata'])
+            if metadata is None or not isinstance(value['requests'], list):
+                _error(404, 'rehearsal_decision_not_found')
+            if any(ref.get('agent_id', owner) != owner or ref.get('wake_id', f'{owner}-r1') not in
+                   (f'{owner}-r1', f'{owner}-r2') for ref in metadata['continuity']['refs']):
+                _error(404, 'rehearsal_decision_not_found')
+            return {'run_id': run_id, 'agent_id': owner, 'wake_id': wake_id,
+                    'decision': {'metadata': metadata, 'private_context': _private_context(value['private_context'], owner),
+                                 'requests': [_decision_request(event, owner, wake_id) for event in value['requests']]}}
+        return read(fetch)
 
     return app

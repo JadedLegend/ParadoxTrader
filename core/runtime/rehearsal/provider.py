@@ -372,8 +372,10 @@ class OpenRouterTransport:
         started = time.perf_counter()
         upstream_provider = None
         failure = None
+        finish_reason = None
         from .store import RehearsalStopped
         try:
+            store.commit_request_context(run_id, request_id, token, full_messages)
             # This persisted transition is the dispatch linearization point.
             # Stop denies later transitions; already committed transport is
             # in flight and cannot be cancelled by pretending its cost vanished.
@@ -382,6 +384,10 @@ class OpenRouterTransport:
             store.finish_request(run_id, request_id, outcome="not_sent", duration_ms=0,
                                  failure_code="admission_stopped", usage=None)
             raise
+        except Exception:
+            store.finish_request(run_id, request_id, outcome="not_sent", duration_ms=0,
+                                 failure_code="request_context_unavailable", usage=None)
+            raise ProviderError("request_context_unavailable") from None
         try:
             try:
                 response = post("https://openrouter.ai/api/v1/chat/completions",
@@ -411,6 +417,9 @@ class OpenRouterTransport:
             if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], dict):
                 raise ProviderError("invalid_response")
             choice = choices[0]
+            supplied_finish = choice.get("finish_reason")
+            if isinstance(supplied_finish, str):
+                finish_reason = supplied_finish if supplied_finish in {"stop", "length", "tool_calls", "content_filter"} else "unknown"
             if choice.get("finish_reason") != "stop":
                 raise ProviderError("output_truncated" if choice.get("finish_reason") == "length" else "unsupported_finish")
             message = choice.get("message")
@@ -444,7 +453,7 @@ class OpenRouterTransport:
                                  outcome="uncertain" if failure and failure.uncertain else event["outcome"],
                                  response_model=event["response_model"], provider=upstream_provider,
                                  duration_ms=event["duration_ms"], usage=_usage_metadata(event_to_response(event)),
-                                 failure_code=failure.code if failure else None)
+                                 failure_code=failure.code if failure else None, finish_reason=finish_reason)
             if failure is not None and failure.code == "usage_recording_failed":
                 raise failure
 
