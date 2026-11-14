@@ -57,6 +57,15 @@ The installer does not start any agent, scheduler, model session or broker conne
    systemctl start paradoxtrader-backup.service && ls /var/backups/paradoxtrader
    ```
 
+7. **Where real runs must live.** The dashboard and the backups read `/var/lib/paradoxtrader/sessions`, which only the `paradoxtrader` user can write. Start every real run as that user with that root, or it will be invisible to the dashboard and never backed up:
+
+   ```bash
+   cd /opt/paradoxtrader/current
+   sudo -u paradoxtrader /opt/paradoxtrader/venv/bin/python scripts/rehearsal.py      --root /var/lib/paradoxtrader/sessions prepare --mode offline
+   ```
+
+   `scripts/rehearsal.py` also takes its default root from `PARADOX_SESSIONS_ROOT` when that is set.
+
 ## Verified here vs. on the host
 
 **Verified in the repo:**

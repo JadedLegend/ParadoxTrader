@@ -146,6 +146,37 @@ class BackupTests(unittest.TestCase):
             backup_data.run_backup(self.source, self.dest, keep=2, now=datetime(2026, 11, day, tzinfo=timezone.utc))
         self.assertEqual(sorted(p.name for p in self.dest.iterdir()), ["20261103T000000Z", "20261104T000000Z"])
 
+    def test_prune_never_touches_foreign_directories(self):
+        self.dest.mkdir()
+        for name in ("lost+found", "manual-copy", "2026-11-01", "20261101T000000Z-old"):
+            (self.dest / name).mkdir()
+        for day in range(1, 5):
+            backup_data.run_backup(self.source, self.dest, keep=1, now=datetime(2026, 11, day, tzinfo=timezone.utc))
+        self.assertEqual(sorted(p.name for p in self.dest.iterdir()),
+                         ["2026-11-01", "20261101T000000Z-old", "20261104T000000Z", "lost+found", "manual-copy"])
+
+    def test_prune_keeps_new_snapshot_when_clock_is_behind(self):
+        for day in (10, 11):
+            backup_data.run_backup(self.source, self.dest, keep=2, now=datetime(2026, 11, day, tzinfo=timezone.utc))
+        result = backup_data.run_backup(self.source, self.dest, keep=2, now=datetime(2026, 11, 1, tzinfo=timezone.utc))
+        self.assertTrue(Path(result["snapshot"]).exists())
+        self.assertEqual(result["pruned"], ["20261110T000000Z"])
+        self.assertEqual(sorted(p.name for p in self.dest.iterdir()), ["20261101T000000Z", "20261111T000000Z"])
+
+    def test_empty_source_fails_and_keeps_existing_snapshots(self):
+        for day in (1, 2):
+            backup_data.run_backup(self.source, self.dest, keep=2, now=datetime(2026, 11, day, tzinfo=timezone.utc))
+        empty = Path(self.tmp.name) / "unmounted"
+        empty.mkdir()
+        with self.assertRaises(RuntimeError):
+            backup_data.run_backup(empty, self.dest, keep=1, now=datetime(2026, 11, 3, tzinfo=timezone.utc))
+        self.assertEqual(sorted(p.name for p in self.dest.iterdir()), ["20261101T000000Z", "20261102T000000Z"])
+
+    def test_cli_exits_nonzero_on_empty_source(self):
+        empty = Path(self.tmp.name) / "unmounted"
+        empty.mkdir()
+        self.assertEqual(backup_data.main(["--source", str(empty), "--dest", str(self.dest)]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

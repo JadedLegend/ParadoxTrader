@@ -42,6 +42,37 @@ class LegacyAppSafetyTests(unittest.TestCase):
         self.assertIn('PARADOX_ALLOW_LEGACY_APP:-}" != "1"', script)
         self.assertIn("--host 127.0.0.1", script)
 
+    def test_serving_the_app_is_refused_without_opt_in(self):
+        from fastapi.testclient import TestClient
+        from api import app as legacy
+        with mock.patch.object(legacy, "_auto_init") as init, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PARADOX_ALLOW_LEGACY_APP", None)
+            with self.assertRaises(RuntimeError) as ctx:
+                with TestClient(legacy.app):
+                    pass
+            self.assertIn("legacy_app_disabled", str(ctx.exception))
+            init.assert_not_called()
+
+    def test_cross_site_writes_are_refused_and_cors_is_not_open(self):
+        from fastapi.testclient import TestClient
+        from api import app as legacy
+        client = TestClient(legacy.app)  # no context manager: lifespan never runs
+        for path in ("/api/wake/tempest", "/api/queue/1/approve", "/api/forum"):
+            response = client.post(path, headers={"Origin": "https://evil.example"})
+            self.assertEqual(response.status_code, 403, path)
+            self.assertEqual(response.json()["detail"], "cross_origin_write_refused")
+        preflight = client.options("/api/wake/tempest", headers={
+            "Origin": "https://evil.example", "Access-Control-Request-Method": "POST"})
+        self.assertNotEqual(preflight.headers.get("access-control-allow-origin"), "*")
+        self.assertNotEqual(preflight.headers.get("access-control-allow-origin"), "https://evil.example")
+        self.assertNotIn("*", legacy._legacy_allowed_origins())
+
+    def test_release_excludes_the_legacy_app(self):
+        build = (ROOT / "deploy" / "build_release.sh").read_text()
+        self.assertIn('rm -f "$WORK/paradoxtrader-$SHA/api/app.py" "$WORK/paradoxtrader-$SHA/start.sh"', build)
+        install = (ROOT / "deploy" / "install_host.sh").read_text()
+        self.assertIn('[ ! -e "$REL/api/app.py" ] && [ ! -e "$REL/start.sh" ]', install)
+
 
 if __name__ == "__main__":
     unittest.main()

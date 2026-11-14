@@ -96,8 +96,28 @@ def _legacy_scheduler_enabled():
     return os.environ.get("PARADOX_LEGACY_SCHEDULER", "").strip() == "1"
 
 
+def _legacy_app_allowed():
+    """The broad legacy app may only be served deliberately, for local development.
+
+    start.sh checks the same variable, but `uvicorn api.app:app` would bypass a
+    check that lives only in the script, so the app enforces it at startup too.
+    Importing the module (as tests do) is unaffected; serving it is refused.
+    """
+    return os.environ.get("PARADOX_ALLOW_LEGACY_APP", "").strip() == "1"
+
+
+def _legacy_allowed_origins():
+    raw = os.environ.get("PARADOX_LEGACY_ALLOWED_ORIGINS",
+                         "http://localhost:5173,http://127.0.0.1:5173")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not _legacy_app_allowed():
+        raise RuntimeError("legacy_app_disabled: set PARADOX_ALLOW_LEGACY_APP=1 only for "
+                           "deliberate local development; use scripts/rehearsal.py and the "
+                           "private gateway instead")
     _auto_init()
     scheduler_enabled = _legacy_scheduler_enabled()
     if scheduler_enabled:
@@ -108,14 +128,35 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Paradox Edge Trader v2", version="2.0.0", lifespan=lifespan)
 
-# CORS — allow the React frontend (same origin in production, localhost in dev)
+# CORS — the built frontend is same-origin and the Vite dev server proxies /api,
+# so only the local dev origins are allowed, and never with credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_legacy_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+
+_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+@app.middleware("http")
+async def _reject_cross_site_writes(request, call_next):
+    """CORS does not stop a web page from *sending* a simple POST (e.g. /api/wake/x).
+
+    Browsers always attach Origin to cross-origin writes, so refuse any write whose
+    Origin is neither this server nor an allowed dev origin. Requests without an
+    Origin header (curl, the CLI) are unaffected.
+    """
+    origin = request.headers.get("origin")
+    if request.method in _UNSAFE_METHODS and origin:
+        own = f"{request.url.scheme}://{request.url.netloc}"
+        if origin != own and origin not in _legacy_allowed_origins():
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "cross_origin_write_refused"}, status_code=403)
+    return await call_next(request)
 
 AGENTS = ["tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter"]
 

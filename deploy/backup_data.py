@@ -14,6 +14,7 @@ Usage:
 """
 import argparse
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -23,6 +24,7 @@ from pathlib import Path
 
 SQLITE_SUFFIXES = (".sqlite3", ".sqlite", ".db")
 STAGING_PREFIX = ".backup-"
+SNAPSHOT_NAME = re.compile(r"^\d{8}T\d{6}Z$")
 SQLITE_HEADER = b"SQLite format 3\x00"
 
 
@@ -69,13 +71,29 @@ def copy_database(src, target):
         raise RuntimeError(f"integrity_check_failed: {target.name}")
 
 
-def prune(dest, keep):
+def prune(dest, keep, *, protect=None):
+    """Remove the oldest snapshots beyond ``keep``.
+
+    Only directories named exactly like a snapshot (``YYYYMMDDTHHMMSSZ``) are
+    candidates, so manual copies, ``lost+found`` or anything else in the backup
+    folder are never touched. ``protect`` (the snapshot just written) is never
+    removed, even if a skewed clock makes it sort before older snapshots.
+    """
+    protect = Path(protect).name if protect is not None else None
     snapshots = sorted(p for p in Path(dest).iterdir()
-                       if p.is_dir() and not p.is_symlink() and not p.name.startswith(STAGING_PREFIX))
+                       if p.is_dir() and not p.is_symlink() and SNAPSHOT_NAME.match(p.name))
     removed = []
-    for old in snapshots[:-keep] if keep > 0 else []:
+    if keep <= 0:
+        return removed
+    excess = len(snapshots) - keep
+    for old in snapshots:
+        if excess <= 0:
+            break
+        if old.name == protect:
+            continue
         shutil.rmtree(old)
         removed.append(old)
+        excess -= 1
     return removed
 
 
@@ -92,17 +110,23 @@ def run_backup(source, dest, *, keep=14, now=None):
         raise FileExistsError(f"snapshot_exists: {final.name}")
     staging = dest / f"{STAGING_PREFIX}{stamp}"
     staging.mkdir(mode=0o700)
+    databases = find_databases(source)
+    if not databases:
+        # An empty or unmounted data directory must not count as a good backup,
+        # and must never prune the real snapshots that are still on disk.
+        shutil.rmtree(staging, ignore_errors=True)
+        raise RuntimeError(f"no_databases_found: {source}")
     copied = []
     try:
-        for db in find_databases(source):
+        for db in databases:
             relative = db.relative_to(source)
             copy_database(db, staging / relative)
-            copied.append(str(relative))
+            copied.append(relative.as_posix())
         staging.rename(final)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise
-    pruned = prune(dest, keep)
+    pruned = prune(dest, keep, protect=final)
     return {"snapshot": str(final), "databases": copied, "cleaned_staging": [p.name for p in cleaned],
             "pruned": [p.name for p in pruned]}
 
@@ -113,7 +137,11 @@ def main(argv=None):
     parser.add_argument("--dest", default="/var/backups/paradoxtrader")
     parser.add_argument("--keep", type=int, default=14)
     args = parser.parse_args(argv)
-    result = run_backup(args.source, args.dest, keep=args.keep)
+    try:
+        result = run_backup(args.source, args.dest, keep=args.keep)
+    except (OSError, RuntimeError) as exc:
+        print(f"backup_failed: {exc}", file=sys.stderr)
+        return 1
     print(f"snapshot={result['snapshot']} databases={len(result['databases'])} "
           f"cleaned_staging={len(result['cleaned_staging'])} pruned={len(result['pruned'])}")
     return 0

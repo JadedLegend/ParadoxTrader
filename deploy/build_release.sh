@@ -9,6 +9,8 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 git -C "$ROOT" archive --format=tar --prefix="paradoxtrader-$SHA/" "$REF" | tar -x -C "$WORK"
 ( cd "$WORK/paradoxtrader-$SHA/frontend" && npm ci --silent && VITE_RUNTIME_MODE=connected npm run build && rm -rf node_modules )
+# The broad legacy app and its launcher never ship to the host.
+rm -f "$WORK/paradoxtrader-$SHA/api/app.py" "$WORK/paradoxtrader-$SHA/start.sh"
 echo "$SHA" > "$WORK/paradoxtrader-$SHA/RELEASE"
 mkdir -p "$ROOT/dist-release"
 tar -C "$WORK" -czf "$ROOT/dist-release/paradoxtrader-$SHA.tar.gz" "paradoxtrader-$SHA"
