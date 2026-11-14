@@ -1,3 +1,6 @@
+# ARCHIVED legacy Render blueprint. Moved out of the repo root so Render no longer
+# auto-detects it: it launched the broad api/app.py (scheduler + open config API).
+# Not an approved deployment recipe; the project deploys to the VPS instead.
 services:
   - type: web
     name: paradox-edge-trader

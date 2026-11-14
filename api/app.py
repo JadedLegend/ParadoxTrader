@@ -91,12 +91,20 @@ def _auto_init():
         _l.getLogger("startup").error(f"Auto-init failed (non-fatal): {e}", exc_info=True)
 
 
+def _legacy_scheduler_enabled():
+    """The legacy scheduler wakes every agent and spends model credit; it is opt-in only."""
+    return os.environ.get("PARADOX_LEGACY_SCHEDULER", "").strip() == "1"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _auto_init()
-    start_scheduler()
+    scheduler_enabled = _legacy_scheduler_enabled()
+    if scheduler_enabled:
+        start_scheduler()
     yield
-    stop_scheduler()
+    if scheduler_enabled:
+        stop_scheduler()
 
 app = FastAPI(title="Paradox Edge Trader v2", version="2.0.0", lifespan=lifespan)
 
@@ -727,7 +735,10 @@ def get_config():
 
 
 @app.post("/api/config")
-def update_config(req: ConfigUpdateRequest):
+def update_config(req: ConfigUpdateRequest, authorization: Optional[str] = Header(default=None)):
+    _require_lineage_operator(authorization)
+    if req.key_path.split(".")[0] == "guardrails":
+        raise HTTPException(status_code=403, detail="guardrails_not_writable_via_api")
     cfg = load_config_yaml()
     parts = req.key_path.split(".")
     node = cfg

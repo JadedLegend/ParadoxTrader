@@ -232,8 +232,11 @@ class InitializerWiringTests(unittest.TestCase):
         self.assertEqual(calls(auto, "post"), [])
         lifecycle = function(tree, "lifespan")
         self.assertIsInstance(lifecycle, ast.AsyncFunctionDef)
-        self.assertEqual([ast.unparse(item) for item in lifecycle.body],
-                         ["_auto_init()", "start_scheduler()", "yield", "stop_scheduler()"])
+        body = [ast.unparse(item) for item in lifecycle.body]
+        self.assertEqual(body[0], "_auto_init()")
+        self.assertEqual(body[1], "scheduler_enabled = _legacy_scheduler_enabled()")
+        self.assertTrue(body[2].startswith("if scheduler_enabled:\n    start_scheduler()"))
+        self.assertIn("yield", body)
         for name in ("start_scheduler", "stop_scheduler", "agent_wake"):
             self.assertEqual(calls(auto, name), [])
 

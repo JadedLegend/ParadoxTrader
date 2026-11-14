@@ -1,0 +1,15 @@
+[Unit]
+Description=ParadoxTrader local SQLite backup
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/paradoxtrader/current
+ExecStart=/opt/paradoxtrader/venv/bin/python deploy/backup_data.py --source /var/lib/paradoxtrader --dest /var/backups/paradoxtrader --keep 14
+IPAddressDeny=any
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/backups/paradoxtrader
+ProtectHome=true
+UMask=0077
