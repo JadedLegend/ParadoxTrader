@@ -1,30 +1,68 @@
 # Paradox Edge Trader
 
-**A seven-agent trading environment being built to produce a sustainable revenue stream while remaining a pleasant place to work, explore, and form a community.**
+> **Every contradiction contains a trade.**
+
+**Paradox Edge Trader is a trading application being built to become one viable revenue stream for its creator.** Its initial focus is options and its first real target is disciplined, observable paper trading. The seven-agent environment is not the product's substitute or an end in itself. It is the working place designed to help the trading system notice, investigate, test, remember, and improve around market contradictions.
 
 Repository: [`JadedLegend/ParadoxTrader`](https://github.com/JadedLegend/ParadoxTrader). Earlier versions and internal paths use **MoneyTree**, **ParadoxTrader**, or **ParadoxEdgeTrader**. These are project lineage, not separate products to rebuild.
 
-This README is a project-and-builder handoff, updated **2026-11-12**. The latest implemented application baseline is merged commit **`c2f9cb43ba82e42dc6bf7f44eec7665212ee034d`**, following PRs #1–#10. The VPS has been created and its basic host preparation has begun. **No actual model-powered agents have been launched, and no Alpaca account has been connected or traded through this build.**
+This README is a project-and-builder handoff, updated **2026-11-14**. The current repository contains a substantial environment, lineage, mock-execution, cost-accounting, and dashboard foundation. **It does not yet complete the live market-data → agent inquiry → structured paper order → reconciliation → result ledger loop.** No model-powered agents have been launched through this build, no Alpaca account has been connected or traded through it, and the DigitalOcean VPS has been prepared but not installed with the application.
 
-## The purpose, in the creator's terms
+## The actual objective
 
-The creator has worked on versions of this project for roughly eighteen months and on a wider body of AI-oriented material for longer. Previous environments had richer interfaces and numerous financial/data API connections; the surviving code was rougher. This version is rebuilding a dependable foundation while preserving what makes the project individual.
+The goal is not to produce a beautiful simulation of agents having an interesting life. The goal is to build a trading system that can eventually make money reliably enough to become a meaningful revenue stream. The environment matters because the creator believes that better trading may come from giving several distinct analytical intelligences enough continuity, information, memory, disagreement, and room to develop useful ways of seeing.
 
-The financial idea begins with noticing contradictions: between price and narrative, different participants' assumptions, time horizons, incentives, volatility, and payoff structure. Options are a particular interest. The creator wants to turn this style of inquiry into a practical skill and eventually a financially useful product, with trade timing and execution less dependent on their immediate emotional response to money. Multiple interconnected markets are a longer-term aim; the first useful foundation is paper-first.
+The environment is therefore in service of trading. Its journals, library, witness, relationships, mythological identities, and optional exploration should help preserve observations, expose blind spots, develop better questions, and make decisions traceable. They should not become an excuse to postpone market data, order handling, cost measurement, risk controls, or results.
 
-The community is part of the product's purpose, not decorative language. The creator wants meaningful contribution, relationships, room for interests, and a good experience for the people and synthetic participants involved. Their latest instruction is to **avoid overcomplicating that goal**. Build a pleasant environment that can become economically useful, rather than a growing constitution that everyone must interpret before doing anything.
+The creator has spent roughly eighteen months developing versions of this project. Earlier versions included richer market and data integrations, Alpaca paper accounts, autonomous scanning, and multiple interfaces, but the surviving repository was rougher. This version deliberately rebuilt the foundation first. That foundation is now good enough that the project should shift gears: keep the environment in place, and begin completing the financial system around it.
 
-Trading success should be visible in the records. Win rate matters, but so do the sizes of wins and losses, exposure, drawdown, and results after trading and operating costs. A good narrative is not the result ledger. Equally, accounting for results is not permission to reward eloquence, agreement, a preferred personality, or a particular developmental story.
+## The financial ideology
 
-## How to preserve the intended environment
+The central market intuition is that prices and narratives can temporarily disagree. A contradiction may appear between price and fundamentals, volatility and narrative, liquidity and displayed price, participant horizons, public certainty and actual positioning, or a market's memory of an event and the event's continuing effects.
 
-Participation should offer meaningful choices. Approximately half of attention spent on financially relevant work and half on exploration is an invitation to a **flexible balance**, not a weekly quota, a duty to trade at every wake, or a requirement to write reflections. Waiting, abstaining, quiet rest, and leaving a question open are valid options.
+The project does not treat those contradictions as automatic opportunities. It treats them as questions that may contain a trade if the mechanism, timing, structure, execution, and costs make the tension expressible and testable.
 
-All seven are intended to arrive into the same environment together, have some private adjustment, and encounter relevant concepts gradually. A few hours of settling and roughly a week or two before opening the forum were suggested as adjustable windows, not automatic readiness tests. There is no requirement that psychological development follow a linear timeline. The earlier six-month independent-trading idea is also flexible, not a hard launch constraint.
+The working principles are:
 
-Mythological names, vivid temperaments, tensions, humor, and even difficult relationships are welcome. Do not flatten everyone into polite productivity assistants. Give differences context and preserve the participants' actual accounts. An illustrative backstory is not an event that happened. Honest communication may clarify or dissolve a disagreement without making reconciliation compulsory.
+- **Trade reconvergence, not prophecy.** Look for conditions under which a contradiction may resolve, not a story about knowing the future.
+- **Silence can be information.** When fundamentals, news, participation, or volume go quiet while price or volatility moves, investigate the gap instead of assuming either side is correct.
+- **Volatility is not direction.** Implied volatility describes movement priced by options; it does not by itself say whether the underlying rises or falls.
+- **Payoff is not forecast.** A correct directional view can lose through timing, decay, spread, or structure. A profitable option can win for a reason different from the original thesis.
+- **Forgetfulness may have mass.** Participants may stop responding to an old shock, narrative, or price level. That is a hypothesis to test with data, not a score or mystical measurement to accept.
+- **Costs are part of the idea.** A contradiction that disappears after spread, slippage, commissions, data, and model costs is not a usable edge.
+- **A trade is a question, not proof.** Outcomes update the record. They do not retroactively make the original reasoning sound.
 
-The creator is open to evolving names, interests, positions, routines, and possible alchemical or simulated experiential activities. These remain optional design directions, not installed capabilities or substitutes for reliable trading controls. Stable internal owner IDs should continue to own memory, accounts, permissions, and history even when a displayed name changes.
+These principles are an orientation for inquiry, not a promise that the market contains a profitable paradox on demand. The first financial milestone is not a clever signal. It is a complete, honest paper-trading loop whose records can tell us whether any signal survives contact with data and execution.
+
+## What the product must eventually do
+
+The intended financial loop is straightforward even though its implementation must be careful:
+
+1. Gather authorized, timestamped market and contextual data.
+2. Let all seven agents examine a common opportunity set through distinct perspectives, while preserving their separate inquiries and private notes.
+3. Detect and describe tensions without forcing every observation into a trade.
+4. Convert an optional inquiry into a structured proposal with symbol, contract, side, quantity, price assumptions, horizon, invalidation conditions, expected mechanism, and known uncertainty.
+5. Apply explicit risk and permission checks.
+6. Submit only to an approved paper broker when the system is armed for that purpose.
+7. Reconcile the broker's order, fills, positions, and failures through durable identifiers and restart-safe logic.
+8. Record gross and net results, execution quality, operating costs, drawdown, and what the result actually tests.
+9. Return the evidence to the agents and creator without rewriting the original thesis or rewarding eloquence and activity.
+
+The product should support revenue generation, not merely prediction theater. Its first credible demonstration is a reconciled paper order and result record; its first financial claim must wait for enough observations, costs, and out-of-sample evidence.
+
+## What is deliberately not being claimed
+
+This repository does not yet prove that paradox detection is profitable. It does not prove that seven agents outperform one, that an environmental witness improves returns, that options are broadly mispriced, or that any particular strategy deserves capital. The older documents contain useful hypotheses and language, but claims such as field entropy, paradox phases, or volatility premia remain research ideas until defined, measured, and tested.
+
+The project is paper-first because a revenue goal makes false confidence expensive. Alpaca paper trading is a validation stage, not a guarantee that live execution will match it. Live trading, margin, short-option authority, and capital assignment remain later decisions after the paper loop, risk boundaries, and evidence are ready.
+
+## The environment supporting the trading product
+
+The seven agents are intended to arrive together, not as a one-at-a-time personality experiment. They receive private space, a rich but bounded library, optional journals, and time to develop their own interests before the forum opens. The exact adjustment window is flexible. The financial purpose is not.
+
+Their environment should feel like a reasonable place to work: a place where they can contribute, disagree, form relationships, explore, rest, and return to questions. Roughly half of active attention toward trading work and the remaining share toward exploration is a flexible invitation, not a quota or score. Waiting, abstaining, and leaving an inquiry open are valid when action is unwarranted.
+
+The creator does not want personality scorecards, compulsory reflections, manufactured developmental narratives, or a system that rewards agents for sounding insightful. Stable internal IDs preserve memory, permissions, accounts, and trading history even if names or roles evolve. Mythological identities are useful lenses and relationships, not execution authority.
 
 The practical inquiry orientation is short:
 
@@ -112,7 +150,7 @@ The witness is a humble factual writer, not an eighth decision-maker, therapist,
 
 The general runtime's community gates are independent: `forum_open`, `peer_messages_open`, and `share_peer_positions`, with the original phase restrictions retained. Missing community settings default closed. Setting a phase does not grant every social capability or trading authority. These operational gates do not replace authenticated actor permissions.
 
-**Persistent records are implemented; a production dispatcher and continuing homes across separate Sessions are not finished.** Creating fresh isolated runs repeatedly is not a substitute for the same seven participants continuing in durable homes.
+**Persistent records are implemented; the production market-data and paper-broker loop is not finished.** Creating fresh isolated Sessions repeatedly is not a substitute for completing the financial path from data to reconciled paper results.
 
 ## Repository map and reading order
 
@@ -133,7 +171,7 @@ config/system.example.yaml Public examples, not production secrets
 config/system.yaml         Ignored local runtime configuration, if supplied
 ```
 
-Begin with [community onboarding](docs/COMMUNITY_ONBOARDING.md), [Sessions and launch controls](docs/REHEARSAL.md), [decision continuity](docs/DECISION_CONTINUITY.md), and [compost/journals/witness](docs/COMPOST_WITNESS.md). For financial plumbing read [idea lineage](docs/IDEA_LINEAGE.md) and [operating costs](docs/OPERATING_COSTS.md). The [shared library](docs/SHARED_LIBRARY.md), [orientation alignment](docs/COMMUNITY_ORIENTATION.md), and [frontend README](frontend/README.md) explain their respective working surfaces.
+Begin with [community onboarding](docs/COMMUNITY_ONBOARDING.md), [Sessions and launch controls](docs/REHEARSAL.md), [decision continuity](docs/DECISION_CONTINUITY.md), and [compost/journals/witness](docs/COMPOST_WITNESS.md). For financial plumbing read [idea lineage](docs/IDEA_LINEAGE.md), [operating costs](docs/OPERATING_COSTS.md), and the [evaluation protocol](docs/research/ParadoxEdgeTrader_Evaluation_Protocol.md). The [shared library](docs/SHARED_LIBRARY.md), [orientation alignment](docs/COMMUNITY_ORIENTATION.md), and [frontend README](frontend/README.md) explain their respective working surfaces.
 
 Older `ARCHITECTURE.md`, `docs/PROJECT_SUMMARY.md`, and `docs/BUILD_STATE.md` are historical context. Individual milestone documents describe their state at the time; later milestones may complete earlier gaps. Use the current code, this handoff, and later implementation notes together rather than treating every historical status as current.
 
@@ -192,11 +230,11 @@ The prepared host locations are:
 /root/paradoxtrader-upload/release.tar.gz       Merged c2f9cb4 source + connected frontend build
 /root/paradoxtrader-upload/install_host.sh      Draft installer; NOT RUN
 /root/paradoxtrader-upload/private_dashboard.py Draft authenticated loopback gateway; NOT RUN
-/root/paradoxtrader-upload/backup_data.py        Draft local SQLite backup helper; NOT RUN
+/root/paradoxtrader-upload/backup_data.py       Draft local SQLite backup helper; NOT RUN
 /opt/paradoxtrader/                             Empty application/release home
 /var/lib/paradoxtrader/sessions/                Empty private Sessions root
 /var/backups/paradoxtrader/                     Empty local backup directory
-/etc/paradoxtrader/                            Empty future private configuration directory
+/etc/paradoxtrader/                             Empty future private configuration directory
 ```
 
 The draft gateway wraps the existing read-only API, binds to loopback, adds owner authentication, and keeps the API token server-side. The draft service blocks non-loopback network destinations. It does not start agents or provide a live scheduler. The installer proposes plain FastAPI/Uvicorn pins; clean-host package installation has not been verified.
@@ -207,26 +245,30 @@ The present deployment private key is **outside Git**, in the original Manus bui
 
 The creator reports having financial/model accounts, API keys, and seven Alpaca paper accounts ready. Their actual contents, limits, model map, and connectivity have not been commissioned or copied to this VPS. Connected chat tools are not automatically available inside the server application. Do not transfer this assistant's ambient credentials as a substitute.
 
-## The next useful work, in order
+## The next useful work: shift from environment foundation to financial loop
 
-First finish the simple host setup: owner-controlled access, the restricted runtime, private dashboard authentication, service recovery, and verified backups. Keep the broad backend and agent scheduling off while doing that. The server already exists; do not buy another one.
+The next phase is not another major personality, library, or philosophical layer. It is the financial path that the environment was built to support.
 
-Then agree the exact seven model assignments and a comfortable model/API budget, deliver the dedicated key privately to the server, and check those IDs and supported parameters against the current catalog. Host cost has been selected; paid model usage has **not** been approved as an unrestricted ongoing allowance. No Alpaca credentials are needed for their initial arrival.
+**First, make the current financial inputs usable.** Inventory the creator's available market-data and financial APIs by actual capability, cost, freshness, historical depth, and terms. Choose a small authoritative starting set rather than wiring every key at once. The first set should provide timestamped underlying prices, option chains/quotes, contract specifications, and enough historical context to evaluate a decision. Keep credentials server-side and record source, timestamp, and failure state.
 
-Use the restricted controller for an actual common arrival, preserving private owned records and the factual witness. Make the existing bounds and environmental differences visible. The creator does not want personalities graded or a mandatory onboarding curriculum.
+**Second, give all seven agents the same starting market snapshot.** Their arrival should remain simultaneous. Their perspectives can differ, but the opportunity set and evidence boundary should be reconstructable. Let each create an optional inquiry. Do not require a trade, consensus, or a personality ranking.
 
-For continuing operation, wire durable per-owner homes and restart-safe wake dispatch into the existing continuity/accounting paths. Discuss the proposed rhythm—roughly 15–30-minute wakes during an active eight-hour window, slower hourly wakes for another four hours, and quiet overnight unless requested—as adjustable availability, not continuous compulsory activity. The choice window is an offered menu to the agent, not merely an operator pressing buttons. The production rhythm has not been activated.
+**Third, add structured proposal extraction to the existing lineage.** Prose can remain rich, but a paper proposal must contain the concrete fields needed to evaluate it: underlying, contract, side, quantity, order type, price/limit assumptions, intended horizon, thesis mechanism, invalidation condition, risk, and uncertainty. If the response is ambiguous, keep it as an inquiry rather than guessing a symbol, price, or size.
 
-Only after market data, durable order/reconciliation paths, basic risk limits, and observation are working should Alpaca paper access be introduced. The creator has **not chosen when accounts are assigned or how much paper capital each gets**. Do not assume $100,000, grant live-trading authority, or equate opening the forum with permission to trade. Extend the tested lineage/mock contract into a reviewed paper adapter before expanding execution to all seven.
+**Fourth, complete one conservative Alpaca paper adapter.** Begin with one agent or one shared reviewed execution pathway only for the adapter test, while all seven continue their inquiries together. Use defined-risk, long-option or otherwise explicitly bounded structures first; do not assume margin, short-option, assignment, or live authority. Reuse the mock lifecycle's durable submission IDs, reconciliation, failure, partial-fill, restart, and privacy rules. A real paper order ID, broker-confirmed fill state, and ledger result are the milestone—not a dashboard button that says “approved.”
+
+**Fifth, evaluate before expanding.** Compare results against a simple rules-based reference and against no-trade decisions. Track net modeled result, spread/slippage assumptions, fees, data cost, model cost, drawdown, exposure, calibration, and the reason an inquiry did or did not become a trade. Treat the evaluation protocol as a guide, not a reason to postpone the first complete paper loop indefinitely.
+
+Only after this path works should the system decide how much paper capital each account receives, which model map is worth its cost, how often agents wake, and whether any strategy deserves a longer forward paper period. The creator has not chosen the paper allocation; do not assume $100,000 or grant live-trading authority.
 
 ## Working with the creator and this repository
 
-Keep additions small and explain why they help the next actual experience or financial result. Reuse the queue, memory, library, usage ledger, and continuity instead of creating parallel systems. Preserve original writing, literal notes, history, uncertainty, and private boundaries. Rich data can remain available without appearing in every wake.
+Keep additions small and explain why they help the next actual trading experience or financial result. Reuse the queue, memory, library, usage ledger, and continuity instead of creating parallel systems. Preserve original writing, literal notes, history, uncertainty, and private boundaries. Rich data can remain available without appearing in every wake.
 
-There is no reward for a preferred self-description. Do not invent obligations to reflect, reconcile, summarize, socialize, or become more productive. Do not repeatedly rebut claims the creator has not made. Discuss concrete behavior, actual constraints, and useful choices in plain language.
+There is no reward for a preferred self-description. Do not invent obligations to reflect, reconcile, summarize, socialize, or become more productive. Do not repeatedly rebut claims the creator has not made. Discuss concrete behavior, actual constraints, and useful financial evidence in plain language.
 
 External projects considered for ideas include TradingAgents, AI-Trader, Vibe-Trading, Hummingbot, CrewAI, and notebooklm-py. They have not been installed as the engine's foundation. Avoid a framework migration unless it solves a specific present gap more simply than the existing code.
 
 The repository and original corpus are private. Keep keys, journals, databases, session manifests, and actual run outputs out of Git; use the existing ignore rules. Work on review branches without silently merging, launching processes with financial authority, or force-pushing history. Preserve unrelated creator edits. A modified local heading in `docs/COMPOST_WITNESS.md` was deliberately left untouched during this handoff.
 
-**The immediate goal is not another grand architectural layer. It is to give these seven participants a reliable home, let them arrive and choose, make their actual activity understandable, and then carefully connect the financial work that can sustain the place.**
+**The environment is worth preserving because it may help produce better trading. The trading system is the reason to finish the financial work.**
