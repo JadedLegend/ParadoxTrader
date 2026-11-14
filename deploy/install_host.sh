@@ -27,6 +27,7 @@ if [ ! -d "$BASE/releases/$NAME" ]; then
 fi
 REL="$BASE/releases/$NAME"
 [ -f "$REL/frontend/dist/index.html" ] || { echo "Release has no built frontend (frontend/dist)." >&2; exit 1; }
+[ ! -e "$REL/api/app.py" ] && [ ! -e "$REL/start.sh" ] || { echo "Release contains the legacy app (api/app.py or start.sh); rebuild with deploy/build_release.sh." >&2; exit 1; }
 
 [ -x "$BASE/venv/bin/python" ] || python3 -m venv "$BASE/venv"
 "$BASE/venv/bin/pip" install --quiet --upgrade pip

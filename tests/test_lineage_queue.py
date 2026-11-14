@@ -1,5 +1,6 @@
 """Offline tests for the one existing approval queue and additive linkage."""
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -34,7 +35,13 @@ class QueueTests(unittest.TestCase):
 
     def test_root_path_unchanged_and_alpaca_reexports(self):
         root = Path(__file__).resolve().parents[1]
-        self.assertEqual(QUEUE_DB, root / "data" / "trade_queue.sqlite3")
+        # QUEUE_DB follows DATA_DIR like every other store; with DATA_DIR unset
+        # that is still <repo>/data, so existing local queues are not moved.
+        from core.data_dir import DATA_DIR, get_data_dir
+        self.assertEqual(QUEUE_DB, DATA_DIR / "trade_queue.sqlite3")
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("DATA_DIR", None)
+            self.assertEqual(get_data_dir(), root / "data")
         source = (root / "core/trading/alpaca.py").read_text()
         self.assertIn("from core.trading.queue import QUEUE_DB, QUEUE_SCHEMA, TradeQueue", source)
         queue_source = (root / "core/trading/queue.py").read_text()

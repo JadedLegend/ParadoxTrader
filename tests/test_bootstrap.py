@@ -233,9 +233,11 @@ class InitializerWiringTests(unittest.TestCase):
         lifecycle = function(tree, "lifespan")
         self.assertIsInstance(lifecycle, ast.AsyncFunctionDef)
         body = [ast.unparse(item) for item in lifecycle.body]
-        self.assertEqual(body[0], "_auto_init()")
-        self.assertEqual(body[1], "scheduler_enabled = _legacy_scheduler_enabled()")
-        self.assertTrue(body[2].startswith("if scheduler_enabled:\n    start_scheduler()"))
+        # Serving is refused before any initialization unless explicitly allowed.
+        self.assertTrue(body[0].startswith("if not _legacy_app_allowed():\n    raise RuntimeError("))
+        self.assertEqual(body[1], "_auto_init()")
+        self.assertEqual(body[2], "scheduler_enabled = _legacy_scheduler_enabled()")
+        self.assertTrue(body[3].startswith("if scheduler_enabled:\n    start_scheduler()"))
         self.assertIn("yield", body)
         for name in ("start_scheduler", "stop_scheduler", "agent_wake"):
             self.assertEqual(calls(auto, name), [])

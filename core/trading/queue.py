@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-QUEUE_DB = Path(__file__).parent.parent.parent / "data" / "trade_queue.sqlite3"
+from core.data_dir import DATA_DIR  # noqa: E402  (lightweight; resolves DATA_DIR like every other store)
+
+# Follows DATA_DIR like the other legacy stores. With DATA_DIR unset this is still
+# <repo>/data/trade_queue.sqlite3, so existing local queues are not moved.
+QUEUE_DB = DATA_DIR / "trade_queue.sqlite3"
 QUEUE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS trade_queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

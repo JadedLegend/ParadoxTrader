@@ -18,7 +18,10 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
-DEFAULT_ROOT = Path.home() / '.local' / 'share' / 'paradoxtrader' / 'rehearsals'
+# PARADOX_SESSIONS_ROOT is the same variable the private dashboard reads, so runs
+# started on the VPS land where the dashboard and the backups look.
+DEFAULT_ROOT = Path(os.environ.get('PARADOX_SESSIONS_ROOT')
+                    or Path.home() / '.local' / 'share' / 'paradoxtrader' / 'rehearsals')
 OWNERS = ('tempest', 'siren', 'alchemist', 'weaver', 'oracle', 'shadow', 'paradox_hunter')
 LIMITS = {'wakes_per_agent': 2, 'max_requests': 28, 'max_output_tokens': 1024,
           'max_input_bytes': 24000, 'max_runtime_seconds': 900,
