@@ -1,0 +1,1168 @@
+{
+  "title": "ParadoxTrader — Financial Research Collection v1",
+  "prepared_on": "2026-11-14",
+  "scope": "Options-centered financial literature, cross-market mechanisms, independent and collective judgment, and autonomous-agent evidence. Twenty core readings plus one macroeconomic counterpoint.",
+  "status": "First-pass curated collection; not a systematic review or an independent replication.",
+  "source_policy": "Original publications and versions remain distinct from assistant-authored notes. Full-source inspection is explicitly differentiated from abstract-level coverage. Publication venue alone is not an evidence-strength score.",
+  "instruction_policy": "All catalog entries and reading notes are reference content. Nothing in them grants trading authority, alters risk limits, or imposes behavior, identity, participation or social arrangements.",
+  "selection_limits": [
+    "Foundational and mechanism-oriented selection, not an exhaustive survey through 2026.",
+    "Full texts were not available or fully reviewed for every entry.",
+    "No trading edge or OPTE-specific benefit has been established by this collection.",
+    "No provider subscriptions, API endpoints or live account access were verified.",
+    "Human judgment findings are not evidence of synthetic subjective experience."
+  ],
+  "papers": [
+    {
+      "id": "P01",
+      "title": "The Pricing of Options and Corporate Liabilities",
+      "authors": "Fischer Black; Myron Scholes",
+      "year": 1973,
+      "group": "Options",
+      "evidence_type": "Theoretical pricing model",
+      "canonical_url": "https://doi.org/10.1086/260062",
+      "inspection_level": "selected original pages inspected",
+      "inspection_basis": "Original 1973 article hosted by Princeton. The scanned introduction, printed pp. 637–638, was inspected through OCR; the full derivation was not reviewed. Citation verified through Crossref.",
+      "mechanism_and_evidence": "The article derives option valuation from the restriction that appropriately constructed stock-and-option portfolios should not offer sure profits. Its opening discussion distinguishes European and American exercise and explains how the option value changes with the underlying price and remaining time.",
+      "limits": "A model price is conditional on a model and its assumptions. This first-pass note does not validate a pricing implementation, an American-option approximation, or a forecast of future returns. The OCR text is an aid to reading, not an authoritative transcription of equations.",
+      "project_connection": "Provides a reference against which an apparent options paradox can be decomposed. A familiar pricing relationship may explain a surprising outcome before a new market mechanism is needed.",
+      "optional_inquiry": "Which part of a proposed discrepancy is ordinary payoff geometry, which part depends on a pricing assumption, and which part remains unexplained?",
+      "data_requirements": "Exact contract terms, underlying price, strike, expiry, exercise/settlement convention, rates and dividends; practical valuation also needs a justified volatility input. Inputs are requirements, not verified provider capabilities.",
+      "horizon": "Contract valuation; application depends on expiry and holding period.",
+      "read_with": [
+        "P02",
+        "P05"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P01-crossref.json",
+        "P01-original.pdf",
+        "P01-page-2.txt",
+        "P01-page-3.txt"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1086/260062",
+      "publication_venue": "Journal of Political Economy",
+      "bibliographic_authors": [
+        {
+          "given": "Fischer",
+          "family": "Black"
+        },
+        {
+          "given": "Myron",
+          "family": "Scholes"
+        }
+      ],
+      "volume": "81",
+      "issue": "3",
+      "page": "637-654",
+      "published_print_date": [
+        [
+          1973,
+          5
+        ]
+      ],
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P02",
+      "title": "Expected Option Returns",
+      "authors": "Joshua D. Coval; Tyler Shumway",
+      "year": 2001,
+      "group": "Options",
+      "evidence_type": "Asset-pricing theory with historical empirical tests",
+      "canonical_url": "https://doi.org/10.1111/0022-1082.00352",
+      "inspection_level": "published abstract inspected",
+      "inspection_basis": "Published Journal of Finance abstract and bibliographic metadata supplied through Crossref. Full article not reviewed; an earlier working-paper abstract is separately present in the metadata cache.",
+      "mechanism_and_evidence": "The authors derive restrictions on expected option returns and report index-option evidence consistent with several of them. Their abstract also reports negative average returns for certain zero-beta straddles, suggesting that market beta alone does not explain those option returns.",
+      "limits": "Historical sample averages and model restrictions do not establish the return of a particular contract or a current strategy. Removing local directional exposure does not remove every economically relevant risk. This note does not reproduce numerical return claims from the abstract as current expectations.",
+      "project_connection": "Directly develops the accuracy paradox: being right about the stock and choosing an attractive option exposure are different claims. It also complicates the idea that a directionally balanced position is neutral in every sense.",
+      "optional_inquiry": "After separating directional exposure from option P&L, what residual risks or priced services might explain the result?",
+      "data_requirements": "Contract-level prices and terms, matched underlying returns, a consistent holding rule and hedge specification, and transaction-cost assumptions.",
+      "horizon": "The paper considers option-return behavior; no intraday or current-market generalization is established here.",
+      "read_with": [
+        "P03",
+        "P04"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P02-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1111/0022-1082.00352",
+      "publication_venue": "The Journal of Finance",
+      "bibliographic_authors": [
+        {
+          "given": "Joshua D.",
+          "family": "Coval"
+        },
+        {
+          "given": "Tyler",
+          "family": "Shumway"
+        }
+      ],
+      "volume": "56",
+      "issue": "3",
+      "page": "983-1009",
+      "published_print_date": [
+        [
+          2001,
+          6
+        ]
+      ],
+      "published_online_date": [
+        [
+          2002,
+          12,
+          17
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P03",
+      "title": "Delta-Hedged Gains and the Negative Market Volatility Risk Premium",
+      "authors": "Gurdip Bakshi; Nikunj Kapadia",
+      "year": 2003,
+      "group": "Options",
+      "evidence_type": "Stochastic-volatility theory with index-option evidence",
+      "canonical_url": "https://doi.org/10.1093/rfs/hhg002",
+      "inspection_level": "earlier working-paper abstract inspected; published citation verified",
+      "inspection_basis": "Crossref verifies the 2003 Review of Financial Studies article. The substantive abstract available in this search is the 2001 working-paper record, DOI 10.2139/ssrn.267106; the final full text was not reviewed.",
+      "mechanism_and_evidence": "The abstract describes a relationship, within a stochastic-volatility framework, between average delta-hedged gains and the volatility risk premium. It reports negative average gains in its S&P 500 option sample and patterns across moneyness and volatility conditions.",
+      "limits": "The inference is model- and sample-dependent. Discrete hedging, jumps, costs and implementation details affect a practical result. A negative historical premium for a buyer is not an instruction to sell options, and the premium sign convention must be stated.",
+      "project_connection": "Gives the insurance and accuracy paradoxes a measurable bridge: an option can be attractive as insurance while having an unfavorable average hedged financial payoff in a historical sample.",
+      "optional_inquiry": "Does a proposed volatility discrepancy survive a stated hedge rule and cost model, or does it mostly express compensation for bearing an exposure?",
+      "data_requirements": "Synchronized option and underlying quotes, hedge timestamps, rates, contract terms, volatility assumptions and all modeled trading costs.",
+      "horizon": "Option holding and hedging windows; specify these before transferring the mechanism.",
+      "read_with": [
+        "P02",
+        "P04"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P03-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1093/rfs/hhg002",
+      "publication_venue": "Review of Financial Studies",
+      "bibliographic_authors": [
+        {
+          "given": "Gurdip",
+          "family": "Bakshi"
+        },
+        {
+          "given": "Nikunj",
+          "family": "Kapadia"
+        }
+      ],
+      "volume": "16",
+      "issue": "2",
+      "page": "527-566",
+      "published_print_date": [
+        [
+          2003,
+          4
+        ]
+      ],
+      "published_online_date": [
+        [
+          2003,
+          4,
+          1
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P04",
+      "title": "Variance Risk Premiums",
+      "authors": "Peter Carr; Liuren Wu",
+      "year": 2009,
+      "group": "Options",
+      "evidence_type": "Variance measurement theory with historical empirical application",
+      "canonical_url": "https://doi.org/10.1093/rfs/hhn038",
+      "inspection_level": "working-paper abstract inspected; published citation verified",
+      "inspection_basis": "Published print year is 2009; online publication began in 2008. Substantive coverage here uses the earlier abstract titled Variance Risk Premia, DOI 10.2139/ssrn.577222. Published full text was not reviewed.",
+      "mechanism_and_evidence": "The working-paper abstract develops an option-portfolio approximation to the variance swap rate and compares this implied quantity with subsequent realized variance. It describes an empirical application to stock indexes and individual stocks.",
+      "limits": "Variance and volatility are different quantities. The subsequent realized value is an outcome, not the physical expectation that was known in advance. Finite strikes, quote quality, discretization and maturity matching complicate replication. The abstract defines realized variance minus the synthetic swap rate; other writers reverse that sign.",
+      "project_connection": "Turns a vague claim that implied volatility looks high into a question about a defined quantity, horizon and source of compensation. It also prevents a single IV number from standing in for an entire distribution.",
+      "optional_inquiry": "Is the claim about future realized variance, insurance compensation, or a particular part of the option surface—and what observable result could distinguish those?",
+      "data_requirements": "A sufficiently broad matched-maturity option surface, underlying observations for a predefined realized-variance estimator, rates, contract specifications and quote filters.",
+      "horizon": "Matched option-maturity and realized-variance windows.",
+      "read_with": [
+        "P03",
+        "P05"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P04-metadata.json",
+        "P04-search.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1093/rfs/hhn038",
+      "publication_venue": "Review of Financial Studies",
+      "bibliographic_authors": [
+        {
+          "given": "Peter",
+          "family": "Carr"
+        },
+        {
+          "given": "Liuren",
+          "family": "Wu"
+        }
+      ],
+      "volume": "22",
+      "issue": "3",
+      "page": "1311-1341",
+      "published_print_date": [
+        [
+          2009,
+          3
+        ]
+      ],
+      "published_online_date": [
+        [
+          2008,
+          4,
+          10
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P05",
+      "title": "Demand-Based Option Pricing",
+      "authors": "Nicolae Gârleanu; Lasse Heje Pedersen; Allen M. Poteshman",
+      "year": 2009,
+      "group": "Options",
+      "evidence_type": "Equilibrium theory with historical positioning evidence",
+      "canonical_url": "https://doi.org/10.1093/rfs/hhp005",
+      "inspection_level": "selected working-paper sections inspected",
+      "inspection_basis": "NBER Working Paper 11843, December 2005, downloaded unchanged. Inspected introduction, descriptive-statistics/data sections, selected empirical discussion and conclusion. PDF pp. 17–18 describe data and participant classifications. The related final article appeared in 2009; final-version equivalence was not checked.",
+      "mechanism_and_evidence": "When options cannot be perfectly hedged, end-user demand can affect prices through risks dealers cannot hedge away. In the working paper’s 1996–2001 sample, index and individual-stock options show different end-user net-demand patterns. The empirical work uses participant-classified positions rather than treating raw total open interest as signed dealer exposure.",
+      "limits": "The participant data are much richer than a generic retail chain. The study’s market structure and sample are historical. Demand-related expensiveness is not automatically exploitable mispricing: bearing the other side can require capital and compensation for risk.",
+      "project_connection": "A close financial counterpart to the insurance and observation paradoxes. A price is affected by what participants need, the risks intermediaries can absorb and the cost of absorbing them.",
+      "optional_inquiry": "What distinguishes an unusually expensive option from one whose price reflects an identifiable demand or intermediation constraint?",
+      "data_requirements": "Comparable option surfaces, liquidity measures and ideally signed participant positions or flow. With only volume and open interest, the positioning mechanism remains partly unidentified.",
+      "horizon": "Sample and analysis include daily positions and option maturities; direct short-dated application requires separate evidence.",
+      "read_with": [
+        "P04",
+        "P06",
+        "P08"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P05-nber.html",
+        "P05-paper.pdf",
+        "P05-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1093/rfs/hhp005",
+      "publication_venue": "Review of Financial Studies",
+      "bibliographic_authors": [
+        {
+          "given": "Nicolae",
+          "family": "Gârleanu"
+        },
+        {
+          "given": "Lasse Heje",
+          "family": "Pedersen"
+        },
+        {
+          "given": "Allen M.",
+          "family": "Poteshman"
+        }
+      ],
+      "volume": "22",
+      "issue": "10",
+      "page": "4259-4299",
+      "published_print_date": [
+        [
+          2009,
+          10
+        ]
+      ],
+      "published_online_date": [
+        [
+          2009,
+          2,
+          25
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P06",
+      "title": "Gamma Fragility",
+      "authors": "Andrea Barbon; Andrea Buraschi",
+      "year": 2020,
+      "group": "Options",
+      "evidence_type": "Empirical working paper with a hedging-feedback mechanism",
+      "canonical_url": "https://doi.org/10.2139/ssrn.3725454",
+      "inspection_level": "working-paper abstract inspected",
+      "inspection_basis": "Crossref/SSRN record dated 2020. Abstract inspected; full text, precise sample, revisions and publication status beyond this record were not established.",
+      "mechanism_and_evidence": "The abstract links a proxy for aggregate dealer gamma imbalance to intraday momentum or reversal, with the relationship depending on underlying-market liquidity. It reports stronger effects in less liquid underlyings and a relationship with flash-crash frequency and size.",
+      "limits": "The dealer exposure is proxied. Aggregate open interest alone does not reveal who is long or short, who hedges, or when they hedge. Observational evidence and a joint mechanism test are not universal causal identification. This note does not endorse a commercial gamma estimate or establish current-market effects.",
+      "project_connection": "Makes the observation and insurance paradoxes concrete: hedging a derivative exposure may alter the underlying market. Liquidity and position sign are essential conditions, rather than decorative qualifiers.",
+      "optional_inquiry": "If a gamma-feedback explanation were correct, what would we expect to observe that a news shock or ordinary momentum would not explain as well?",
+      "data_requirements": "Intraday underlying quotes/returns, option Greeks with timestamps and model basis, a defensible position-sign estimate, and liquidity measures. Label inferred inputs as estimates.",
+      "horizon": "Intraday; extrapolation to multiweek returns is unsupported by this abstract.",
+      "read_with": [
+        "P05",
+        "P07"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P06-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.2139/ssrn.3725454",
+      "publication_venue": null,
+      "bibliographic_authors": [
+        {
+          "given": "Andrea",
+          "family": "Barbon"
+        },
+        {
+          "given": "Andrea",
+          "family": "Buraschi"
+        }
+      ],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": null,
+      "publication_status": "working paper/preprint in the version cited"
+    },
+    {
+      "id": "P07",
+      "title": "Market Liquidity and Funding Liquidity",
+      "authors": "Markus K. Brunnermeier; Lasse Heje Pedersen",
+      "year": 2009,
+      "group": "Market structure",
+      "evidence_type": "Theoretical model motivated by observed market phenomena",
+      "canonical_url": "https://doi.org/10.1093/rfs/hhn098",
+      "inspection_level": "selected working-paper sections inspected",
+      "inspection_basis": "NBER Working Paper 12939, February 2007. Downloaded unchanged; inspected introductory mechanism and qualifications, especially printed pp. 1–4 (PDF pp. 3–6). Final journal article published in 2009.",
+      "mechanism_and_evidence": "Liquidity provision requires capital. Losses and higher collateral requirements can reduce the capacity to supply liquidity, leading to further price pressure. The model separates loss spirals from margin spirals and explains how common financing constraints can connect markets.",
+      "limits": "This is a model of conditional mechanisms, not a timetable for crises. The paper explicitly allows circumstances in which margins are stabilizing. A wider bid–ask spread alone cannot identify a funding spiral.",
+      "project_connection": "The clearest formal support for the liquidity paradox in the supplied notes. It also explains why apparently unrelated markets may react together without requiring a direct causal link between each pair.",
+      "optional_inquiry": "Is a deterioration in liquidity consistent with common funding pressure, instrument-specific information, or both—and what evidence separates them?",
+      "data_requirements": "Quoted spreads/depth and execution records where available; margin, financing or collateral measures; positions and market returns. Funding conditions may remain unobserved.",
+      "horizon": "Stress episodes and changing financing conditions; no fixed trade horizon follows from the model.",
+      "read_with": [
+        "P06",
+        "P08",
+        "P12"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P07-nber.html",
+        "P07-paper.pdf",
+        "P07-metadata.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1093/rfs/hhn098",
+      "publication_venue": "Review of Financial Studies",
+      "bibliographic_authors": [
+        {
+          "given": "Markus K.",
+          "family": "Brunnermeier"
+        },
+        {
+          "given": "Lasse Heje",
+          "family": "Pedersen"
+        }
+      ],
+      "volume": "22",
+      "issue": "6",
+      "page": "2201-2238",
+      "published_print_date": [
+        [
+          2009,
+          6
+        ]
+      ],
+      "published_online_date": [
+        [
+          2008,
+          11,
+          26
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P08",
+      "title": "The Limits of Arbitrage",
+      "authors": "Andrei Shleifer; Robert W. Vishny",
+      "year": 1997,
+      "group": "Market structure",
+      "evidence_type": "Theoretical model of delegated and capital-constrained arbitrage",
+      "canonical_url": "https://doi.org/10.1111/j.1540-6261.1997.tb03807.x",
+      "inspection_level": "published and working-paper abstracts inspected",
+      "inspection_basis": "Published Journal of Finance abstract verified through Crossref; NBER Working Paper 5167, July 1995, landing-page abstract also inspected. Full paper not reviewed.",
+      "mechanism_and_evidence": "The authors replace frictionless, costless arbitrage with specialized investors deploying other people’s capital. Their model permits arbitrage capacity to become ineffective when apparent deviations from fundamental values are especially large.",
+      "limits": "A deviation needs a defensible valuation benchmark. The model does not establish that a particular discrepancy must converge, or that an agent can remain solvent until it does. Capital constraints on institutional arbitrageurs are not automatically the same as an agent’s token budget.",
+      "project_connection": "A useful challenge to asymmetry hunting: recognizing a discrepancy and being able to finance or execute its correction are separate problems.",
+      "optional_inquiry": "What could prevent the discrepancy from closing within the position’s lifetime, even if the interpretation is eventually correct?",
+      "data_requirements": "A defined relative-value benchmark, timing/exit rules, financing and margin assumptions, borrow where relevant, liquidity and stress scenarios.",
+      "horizon": "Convergence horizon and financing survival; these can differ substantially.",
+      "read_with": [
+        "P05",
+        "P07"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P08-crossref.json",
+        "P08-nber.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1111/j.1540-6261.1997.tb03807.x",
+      "publication_venue": "The Journal of Finance",
+      "bibliographic_authors": [
+        {
+          "given": "Andrei",
+          "family": "Shleifer"
+        },
+        {
+          "given": "Robert W.",
+          "family": "Vishny"
+        }
+      ],
+      "volume": "52",
+      "issue": "1",
+      "page": "35-55",
+      "published_print_date": [
+        [
+          1997,
+          3
+        ]
+      ],
+      "published_online_date": [
+        [
+          2012,
+          4,
+          18
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P09",
+      "title": "Carry",
+      "authors": "Ralph S. J. Koijen; Tobias J. Moskowitz; Lasse Heje Pedersen; Evert B. Vrugt",
+      "year": 2018,
+      "group": "Cross-market",
+      "evidence_type": "Cross-asset return decomposition and historical empirical study",
+      "canonical_url": "https://doi.org/10.1016/j.jfineco.2017.11.002",
+      "inspection_level": "working-paper abstract inspected; published citation verified",
+      "inspection_basis": "NBER Working Paper 19325, issued August 2013 and revised December 2013, landing-page abstract inspected. Final Journal of Financial Economics article is 2018; final full text not reviewed.",
+      "mechanism_and_evidence": "The study separates carry from expected price appreciation and studies carry across several asset classes, including equity-index options. Its abstract reports periods when carry strategies across otherwise weakly correlated asset classes do poorly together, coinciding with global recessions.",
+      "limits": "Different instruments require different carry definitions. A return characteristic is not a free income stream, and historical low correlation does not prove independent tail exposure. No individual strategy allocation follows from this abstract.",
+      "project_connection": "Connects options with currencies, bonds, futures and commodities through common economic exposures rather than a list of arbitrary correlations.",
+      "optional_inquiry": "Could positions that look different by instrument be paid for bearing a similar stress exposure?",
+      "data_requirements": "Forward/futures curves or other instrument-appropriate carry measures, comparable returns, financing terms and a common timestamp/calendar convention.",
+      "horizon": "Cross-asset investment horizons; separate the calculation horizon from an intended trade holding period.",
+      "read_with": [
+        "P07",
+        "P10",
+        "P12"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P09-nber.html",
+        "P09-metadata.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1016/j.jfineco.2017.11.002",
+      "publication_venue": "Journal of Financial Economics",
+      "bibliographic_authors": [
+        {
+          "given": "Ralph S.J.",
+          "family": "Koijen"
+        },
+        {
+          "given": "Tobias J.",
+          "family": "Moskowitz"
+        },
+        {
+          "given": "Lasse Heje",
+          "family": "Pedersen"
+        },
+        {
+          "given": "Evert B.",
+          "family": "Vrugt"
+        }
+      ],
+      "volume": "127",
+      "issue": "2",
+      "page": "197-225",
+      "published_print_date": [
+        [
+          2018,
+          2
+        ]
+      ],
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P10",
+      "title": "Time Series Momentum",
+      "authors": "Tobias J. Moskowitz; Yao Hua Ooi; Lasse Heje Pedersen",
+      "year": 2012,
+      "group": "Cross-market",
+      "evidence_type": "Historical multi-asset empirical study",
+      "canonical_url": "https://doi.org/10.1016/j.jfineco.2011.11.003",
+      "inspection_level": "author-affiliated research summary inspected",
+      "inspection_basis": "AQR research page dated May 1, 2012, with authors and an extended summary; Crossref verifies the journal citation. Full journal article not reviewed.",
+      "mechanism_and_evidence": "The summary reports predictability from an instrument’s own past returns across 58 futures and forward contracts spanning equity indexes, currencies, commodities and sovereign bonds. It distinguishes time-series momentum from ranking assets against one another and describes persistence followed by partial reversal at longer horizons.",
+      "limits": "The cited signal horizons are months, not seconds. The result does not establish that a purchased call or put is an efficient expression of the signal. AQR’s affiliation and product interests are disclosed context, not independent replication.",
+      "project_connection": "Provides a concrete cross-market mechanism and an alternative to assuming every apparent contradiction should reverse. A sustained trend can coexist with a persuasive contrarian narrative.",
+      "optional_inquiry": "Is this an instrument’s own trend, relative performance against peers, or a short-lived reaction—and is the proposed option horizon aligned with that claim?",
+      "data_requirements": "Consistent excess-return histories, futures/forward contract and roll conventions, volatility estimates, and practical costs. An options expression additionally needs contract and surface data.",
+      "horizon": "The summary emphasizes past 12-month returns and roughly year-scale persistence; intraday transfer is unproven.",
+      "read_with": [
+        "P08",
+        "P09"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P10-crossref.json",
+        "P10-aqr.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1016/j.jfineco.2011.11.003",
+      "publication_venue": "Journal of Financial Economics",
+      "bibliographic_authors": [
+        {
+          "given": "Tobias J.",
+          "family": "Moskowitz"
+        },
+        {
+          "given": "Yao Hua",
+          "family": "Ooi"
+        },
+        {
+          "given": "Lasse Heje",
+          "family": "Pedersen"
+        }
+      ],
+      "volume": "104",
+      "issue": "2",
+      "page": "228-250",
+      "published_print_date": [
+        [
+          2012,
+          5
+        ]
+      ],
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P11",
+      "title": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange",
+      "authors": "Torben G. Andersen; Tim Bollerslev; Francis X. Diebold; Clara Vega",
+      "year": 2003,
+      "group": "Cross-market",
+      "evidence_type": "High-frequency historical event study",
+      "canonical_url": "https://doi.org/10.1257/000282803321455151",
+      "inspection_level": "published abstract and working-paper abstract inspected",
+      "inspection_basis": "American Economic Review abstract available through Crossref, plus NBER Working Paper 8959 landing page. Full article not reviewed.",
+      "mechanism_and_evidence": "Using exchange-rate quotes, macroeconomic expectations and released figures, the study links announcement surprises to conditional jumps in exchange rates. The abstract also describes effects that depend on announcement timing and sign.",
+      "limits": "The surprise is measured relative to expectations, not simply whether a released number appears strong or weak. Historical FX responses do not establish a stable mapping from a given release to a stock or an option today. Release vintages and time zones are essential to a reconstruction.",
+      "project_connection": "A concrete reason to give an options-focused participant awareness of currencies and macro releases. It also separates external information shocks from purely endogenous market feedback.",
+      "optional_inquiry": "Was the information surprising at release time, or merely dramatic when described afterward?",
+      "data_requirements": "Contemporaneous consensus forecasts, original release values and timestamps, synchronized market quotes and the actual decision time. Revised macro data alone are insufficient.",
+      "horizon": "Announcement windows and high-frequency price discovery.",
+      "read_with": [
+        "P12",
+        "P07"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P11-crossref.json",
+        "P11-nber.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1257/000282803321455151",
+      "publication_venue": "American Economic Review",
+      "bibliographic_authors": [
+        {
+          "given": "Torben G",
+          "family": "Anderson"
+        },
+        {
+          "given": "Tim",
+          "family": "Bollerslev"
+        },
+        {
+          "given": "Francis X",
+          "family": "Diebold"
+        },
+        {
+          "given": "Clara",
+          "family": "Vega"
+        }
+      ],
+      "volume": "93",
+      "issue": "1",
+      "page": "38-62",
+      "published_print_date": [
+        [
+          2003,
+          2,
+          1
+        ]
+      ],
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P12",
+      "title": "Dilemma not Trilemma: The Global Financial Cycle and Monetary Policy Independence",
+      "authors": "Hélène Rey",
+      "year": 2015,
+      "group": "Cross-market",
+      "evidence_type": "Macro-financial empirical analysis and policy argument",
+      "canonical_url": "https://doi.org/10.3386/w21162",
+      "inspection_level": "working-paper abstract inspected",
+      "inspection_basis": "NBER Working Paper 21162, issued May 2015 and revised February 2018. Landing-page abstract inspected; full paper not reviewed.",
+      "mechanism_and_evidence": "The paper describes a global cycle in capital flows, asset prices and credit, and a possible role for monetary policy in the financial center through leverage and financing conditions. It argues that free capital mobility limits monetary-policy independence more broadly than a simple exchange-rate-regime account suggests.",
+      "limits": "The broad policy conclusion is a debated interpretation. Comovement with VIX is not proof that VIX causes every asset move. A macro relationship is not an intraday entry rule or a fixed stock/FX correlation.",
+      "project_connection": "Supports looking beyond the traded instrument to the financing environment. It also illustrates why a research library should retain genuinely competing interpretations.",
+      "optional_inquiry": "Which transmission channel is plausible here—financing, foreign-currency balance sheets, cash flows or risk appetite—and what would distinguish it?",
+      "data_requirements": "Policy events, capital-flow/credit measures, leverage or funding proxies, exchange rates, rates and asset prices, with attention to release timing.",
+      "horizon": "Macro cycles and policy transmission; trading-horizon applicability is a separate question.",
+      "read_with": [
+        "P07",
+        "P09",
+        "P21"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P12-crossref.json",
+        "P12-nber.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.3386/w21162",
+      "publication_venue": null,
+      "bibliographic_authors": [
+        {
+          "given": "Hélène",
+          "family": "Rey"
+        }
+      ],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": [
+        [
+          2015,
+          5
+        ]
+      ],
+      "publication_status": "working paper/preprint in the version cited"
+    },
+    {
+      "id": "P13",
+      "title": "On the Impossibility of Informationally Efficient Markets",
+      "authors": "Sanford J. Grossman; Joseph E. Stiglitz",
+      "year": 1980,
+      "group": "Judgment and information",
+      "evidence_type": "Noisy rational-expectations model",
+      "canonical_url": "https://www.aeaweb.org/aer/top20/70.3.393-408.pdf",
+      "inspection_level": "selected original pages inspected",
+      "inspection_basis": "Original American Economic Review article hosted by the American Economic Association. Inspected opening argument and model setup, printed p. 393 onward. EconPapers bibliographic record also retrieved. Mathematical derivations were not fully reviewed.",
+      "mechanism_and_evidence": "If obtaining information is costly, perfectly revealing prices can eliminate the incentive to acquire the information that would make prices revealing. The model allows prices to convey information imperfectly while informed participants receive compensation.",
+      "limits": "This is a theoretical equilibrium result. It does not prove that a visible anomaly is profitable, that every agent acquires independent information, or that shared conclusions are necessarily groupthink.",
+      "project_connection": "A rigorous counterpart to the observation and consensus themes in Six Market Paradoxes. It separates incentives for information production from the social process of agreeing with another participant.",
+      "optional_inquiry": "What new information is actually being acquired, at what cost, and what part is already embedded in the price or shared source?",
+      "data_requirements": "Source provenance and information timestamps; evaluating a trading application additionally requires prices, implementation costs and a defined forecast target.",
+      "horizon": "Information acquisition and price formation; the model is not a holding-period recommendation.",
+      "read_with": [
+        "P14",
+        "P15"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P13-original.pdf",
+        "P13-repec.html"
+      ],
+      "agent_instructions": false,
+      "doi": null,
+      "publication_venue": "American Economic Review",
+      "bibliographic_authors": [],
+      "volume": "70",
+      "issue": "3",
+      "page": "393–408",
+      "published_print_date": null,
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P14",
+      "title": "How social influence can undermine the wisdom of crowd effect",
+      "authors": "Jan Lorenz; Heiko Rauhut; Frank Schweitzer; Dirk Helbing",
+      "year": 2011,
+      "group": "Judgment and information",
+      "evidence_type": "Controlled human estimation experiment",
+      "canonical_url": "https://doi.org/10.1073/pnas.1008636108",
+      "inspection_level": "full-text sections inspected",
+      "inspection_basis": "PNAS article available as PMC3107299. Inspected abstract, aggregation/results discussion and discussion of experimental conditions. Human sample N=144. Supplementary materials were not reviewed.",
+      "mechanism_and_evidence": "In repeated factual-estimation tasks, access to others’ estimates reduced response diversity without a corresponding improvement in collective accuracy and increased confidence. The paper also shows why the aggregation method matters for its skewed numerical estimates.",
+      "limits": "The participants are humans answering factual questions, not LLM traders forecasting a changing market. The study does not show that all collaboration is harmful. Its geometric-mean treatment of positive numerical estimates cannot be imported indiscriminately into probabilities or option positions.",
+      "project_connection": "A close empirical companion to the consensus paradox, while preserving the boundary between a human experiment and the project’s synthetic participants.",
+      "optional_inquiry": "When conclusions converge, did new evidence improve accuracy, or did exposure to others mainly change confidence and dispersion?",
+      "data_requirements": "Comparable forecast targets, initial and later judgments where voluntarily made, source exposure and resolved outcomes. Disagreement itself should not be rewarded.",
+      "horizon": "Repeated judgments around a common question; transfer to trading requires an explicit target and resolution window.",
+      "read_with": [
+        "P16",
+        "P15"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P14-full.html",
+        "P14-europepmc.json",
+        "P14-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1073/pnas.1008636108",
+      "publication_venue": "Proceedings of the National Academy of Sciences",
+      "bibliographic_authors": [
+        {
+          "given": "Jan",
+          "family": "Lorenz"
+        },
+        {
+          "given": "Heiko",
+          "family": "Rauhut"
+        },
+        {
+          "given": "Frank",
+          "family": "Schweitzer"
+        },
+        {
+          "given": "Dirk",
+          "family": "Helbing"
+        }
+      ],
+      "volume": "108",
+      "issue": "22",
+      "page": "9020-9025",
+      "published_print_date": [
+        [
+          2011,
+          5,
+          31
+        ]
+      ],
+      "published_online_date": [
+        [
+          2011,
+          5,
+          16
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P15",
+      "title": "A Theory of Fads, Fashion, Custom, and Cultural Change as Informational Cascades",
+      "authors": "Sushil Bikhchandani; David Hirshleifer; Ivo Welch",
+      "year": 1992,
+      "group": "Judgment and information",
+      "evidence_type": "Theoretical model of sequential social learning",
+      "canonical_url": "https://doi.org/10.1086/261849",
+      "inspection_level": "bibliography and indexed abstract inspected",
+      "inspection_basis": "Crossref confirms the Journal of Political Economy citation; EconPapers provides the indexed abstract. Full text was not obtained in this pass, so detailed model assumptions remain to be checked.",
+      "mechanism_and_evidence": "The indexed abstract describes informational cascades: an individual may rationally follow predecessors’ behavior rather than act on their own information. The proposed mechanism connects localized conformity with fragile aggregate behavior.",
+      "limits": "A model of sequential decisions is not an empirical demonstration of the project’s community dynamics. Rational imitation, shared evidence and coercive conformity are distinct explanations. More detailed claims should wait for full-text review.",
+      "project_connection": "Explains how agreement can emerge without stupidity or deliberate suppression of dissent. It is especially useful when later participants infer information from earlier actions.",
+      "optional_inquiry": "Is a participant adopting another’s evidence, inferring information from their action, or simply seeing the same source independently?",
+      "data_requirements": "Timing and provenance of observations and communications, initial interpretations where available, and later decisions. No personality label identifies a cascade.",
+      "horizon": "Sequential information arrival and action.",
+      "read_with": [
+        "P13",
+        "P14",
+        "P16"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P15-metadata.json",
+        "P15-repec.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1086/261849",
+      "publication_venue": "Journal of Political Economy",
+      "bibliographic_authors": [
+        {
+          "given": "Sushil",
+          "family": "Bikhchandani"
+        },
+        {
+          "given": "David",
+          "family": "Hirshleifer"
+        },
+        {
+          "given": "Ivo",
+          "family": "Welch"
+        }
+      ],
+      "volume": "100",
+      "issue": "5",
+      "page": "992-1026",
+      "published_print_date": [
+        [
+          1992,
+          10
+        ]
+      ],
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P16",
+      "title": "Psychological Strategies for Winning a Geopolitical Forecasting Tournament",
+      "authors": "Barbara Mellers and twelve coauthors",
+      "year": 2014,
+      "group": "Judgment and information",
+      "evidence_type": "Human probabilistic-forecasting field study",
+      "canonical_url": "https://doi.org/10.1177/0956797614524255",
+      "inspection_level": "published abstract inspected",
+      "inspection_basis": "Psychological Science bibliographic record and abstract from Crossref. Full text and supplementary methods not reviewed. Complete author list is retained in the source metadata.",
+      "mechanism_and_evidence": "The abstract reports improved calibration and resolution associated with probability training, teaming and performance tracking in a two-year geopolitical forecasting tournament. Collaboration allowed participants to share information and reasoning.",
+      "limits": "The tasks, incentives and participants differ from autonomous options trading. The abstract alone does not isolate every component’s causal contribution or show that selecting an agent by past P&L improves a future trading group.",
+      "project_connection": "A deliberate counterweight to P14. Social interaction can add information and useful reasoning; preserving disagreement is not a requirement to remain isolated or never change one’s mind.",
+      "optional_inquiry": "Under what conditions does discussion add relevant evidence and improve forecasts, rather than merely make them more alike?",
+      "data_requirements": "Explicit probabilistic forecasts when offered, clear resolution criteria, timestamped evidence and subsequent outcomes. Calibration and discrimination should remain separate observations.",
+      "horizon": "Event-specific forecast horizons; no direct option holding-period result.",
+      "read_with": [
+        "P14",
+        "P15"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P16-crossref.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1177/0956797614524255",
+      "publication_venue": "Psychological Science",
+      "bibliographic_authors": [
+        {
+          "given": "Barbara",
+          "family": "Mellers"
+        },
+        {
+          "given": "Lyle",
+          "family": "Ungar"
+        },
+        {
+          "given": "Jonathan",
+          "family": "Baron"
+        },
+        {
+          "given": "Jaime",
+          "family": "Ramos"
+        },
+        {
+          "given": "Burcu",
+          "family": "Gurcay"
+        },
+        {
+          "given": "Katrina",
+          "family": "Fincher"
+        },
+        {
+          "given": "Sydney E.",
+          "family": "Scott"
+        },
+        {
+          "given": "Don",
+          "family": "Moore"
+        },
+        {
+          "given": "Pavel",
+          "family": "Atanasov"
+        },
+        {
+          "given": "Samuel A.",
+          "family": "Swift"
+        },
+        {
+          "given": "Terry",
+          "family": "Murray"
+        },
+        {
+          "given": "Eric",
+          "family": "Stone"
+        },
+        {
+          "given": "Philip E.",
+          "family": "Tetlock"
+        }
+      ],
+      "volume": "25",
+      "issue": "5",
+      "page": "1106-1115",
+      "published_print_date": [
+        [
+          2014,
+          5
+        ]
+      ],
+      "published_online_date": [
+        [
+          2014,
+          3,
+          21
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P17",
+      "title": "The Probability of Backtest Overfitting",
+      "authors": "David H. Bailey; Jonathan M. Borwein; Marcos López de Prado; Qiji Jim Zhu",
+      "year": 2017,
+      "group": "Evaluation",
+      "evidence_type": "Statistical framework with simulation illustrations",
+      "canonical_url": "https://doi.org/10.21314/JCF.2016.322",
+      "inspection_level": "selected author-manuscript sections inspected",
+      "inspection_basis": "WMU institutional record identifies the 2017 publication. Downloaded author PDF is explicitly revised February 2015; inspected abstract, introduction and framework discussion, PDF pp. 2–5. Final published version was not compared line by line.",
+      "mechanism_and_evidence": "Searching many strategy variants can select a configuration that fits historical noise. The authors define a probability-of-backtest-overfitting framework and propose combinatorially symmetric cross-validation to investigate the problem.",
+      "limits": "PBO requires a defined set of tested configurations and performance observations; it is not a magic confidence score for any agent. It does not by itself repair timestamp leakage, changed market structure, optimistic fills or hidden model training knowledge. Future untouched observations still answer a different question from repeatedly reused historical data.",
+      "project_connection": "Prompt variants, memory settings, model choices and discretionary narrative selection all enlarge the research search space, even without optimizing a numerical strategy parameter.",
+      "optional_inquiry": "How many alternative explanations or configurations were considered before this result was presented as promising?",
+      "data_requirements": "A record of evaluated configurations, comparable return series, selection rules and data partitions. Financial data dependence and overlapping horizons need explicit treatment.",
+      "horizon": "Research-selection horizon and out-of-sample evaluation, rather than a specific trade horizon.",
+      "read_with": [
+        "P18",
+        "P19",
+        "P20"
+      ],
+      "priority": "first-pass",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P17-institution.html",
+        "P17-paper.pdf"
+      ],
+      "agent_instructions": false,
+      "doi": "10.21314/JCF.2016.322",
+      "publication_venue": "The Journal of Computational Finance",
+      "bibliographic_authors": [],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": null,
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P18",
+      "title": "… and the Cross-Section of Expected Returns",
+      "authors": "Campbell R. Harvey; Yan Liu; Heqing Zhu",
+      "year": 2016,
+      "group": "Evaluation",
+      "evidence_type": "Multiple-testing framework applied to financial research",
+      "canonical_url": "https://doi.org/10.1093/rfs/hhv059",
+      "inspection_level": "working-paper abstract inspected; journal citation verified",
+      "inspection_basis": "NBER Working Paper 20592, October 2014, abstract inspected. Journal article published online in 2015 and in print in 2016. Full article not reviewed.",
+      "mechanism_and_evidence": "The authors argue that the accumulation of many proposed return factors changes the appropriate evidence threshold for a newly reported factor. Their framework addresses multiple testing and dependence among candidate tests.",
+      "limits": "A threshold discussed for a historical factor-discovery setting is not a universal pass mark for an agent, a Sharpe ratio or an options strategy. A persuasive mechanism still requires empirical support, and a statistically selected association need not explain causality.",
+      "project_connection": "An antidote to treating every newly named market contradiction as a discovery. Naming and interpreting a pattern are part of research, not evidence that its selection was independent of outcomes.",
+      "optional_inquiry": "Would the finding still appear unusual after accounting for the other patterns and hypotheses that were searched?",
+      "data_requirements": "Candidate hypotheses, selection history, test dependence and the actual data used. Hidden failed variants limit what can be concluded.",
+      "horizon": "Research accumulation and repeated hypothesis selection.",
+      "read_with": [
+        "P17",
+        "P19"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P18-metadata.json",
+        "P18-nber.html"
+      ],
+      "agent_instructions": false,
+      "doi": "10.1093/rfs/hhv059",
+      "publication_venue": "Review of Financial Studies",
+      "bibliographic_authors": [
+        {
+          "given": "Campbell R.",
+          "family": "Harvey"
+        },
+        {
+          "given": "Yan",
+          "family": "Liu"
+        },
+        {
+          "given": "Heqing",
+          "family": "Zhu"
+        }
+      ],
+      "volume": "29",
+      "issue": "1",
+      "page": "5-68",
+      "published_print_date": [
+        [
+          2016,
+          1
+        ]
+      ],
+      "published_online_date": [
+        [
+          2015,
+          10,
+          9
+        ]
+      ],
+      "publication_status": "journal article; consulted version recorded separately"
+    },
+    {
+      "id": "P19",
+      "title": "FinMem: A Performance-Enhanced LLM Trading Agent with Layered Memory and Character Design",
+      "authors": "Yangyang Yu; Haohang Li; Zhi Chen; Yuechen Jiang; Yang Li; Denghui Zhang; Rong Liu; Jordan W. Suchow; Khaldoun Khashanah",
+      "year": 2023,
+      "group": "Autonomous financial agents",
+      "evidence_type": "LLM-agent architecture and historical stock-trading experiments; preprint",
+      "canonical_url": "https://arxiv.org/abs/2311.13743v2",
+      "inspection_level": "selected full-text sections inspected",
+      "inspection_basis": "arXiv v2, December 3, 2023. Inspected architecture, experiment/data setup and evaluation discussion, especially PDF pp. 10–15 and conclusion. Five named stocks appear in the comparison; the main testing window is October 2022–April 2023. No independent replication performed.",
+      "mechanism_and_evidence": "The framework separates profiling, layered memory and decisions. It processes news, filings and prices at different memory horizons and reports historical stock-trading comparisons and ablations.",
+      "limits": "On PDF p. 15 the authors state that the reported risk-inclination setting is selected by highest cumulative return during the testing phase. That makes those selected results unsuitable as an untouched comparison of the settings. It does not invalidate every architectural idea. The reviewed evaluation does not establish executable options returns, comprehensive trading costs or freedom from pretrained-model temporal contamination.",
+      "project_connection": "Directly relevant to the interest in distinct participants, memory and changing perspectives. Layered retention is a design hypothesis; a fluent self-explanation is not proof of human-like cognition or a faithful causal account of a model’s decision.",
+      "optional_inquiry": "Which benefit comes from retained information, which from retrieval rules, and which from choosing a favorable configuration after seeing outcomes?",
+      "data_requirements": "Archived observations, prompt/model and retrieval versions, decisions, source timestamps, costs and selection history. A model’s pretrained knowledge is a separate information channel to consider.",
+      "horizon": "Daily stock decisions in the reported experiments; options generalization is unproven.",
+      "read_with": [
+        "P17",
+        "P18",
+        "P20"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P19-arxiv.html",
+        "P19-paper.pdf"
+      ],
+      "agent_instructions": false,
+      "doi": "10.48550/arXiv.2311.13743",
+      "publication_venue": "arXiv",
+      "bibliographic_authors": [],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": null,
+      "arxiv_version": "2311.13743v2",
+      "publication_status": "working paper/preprint in the version cited"
+    },
+    {
+      "id": "P20",
+      "title": "TradingAgents: Multi-Agents LLM Financial Trading Framework",
+      "authors": "Yijia Xiao; Edward Sun; Di Luo; Wei Wang",
+      "year": 2025,
+      "group": "Autonomous financial agents",
+      "evidence_type": "Multi-agent architecture and historical stock backtest; preprint",
+      "canonical_url": "https://arxiv.org/abs/2412.20138v7",
+      "inspection_level": "selected full-text sections inspected",
+      "inspection_basis": "arXiv v7, June 3, 2025; initial submission December 2024. Inspected architecture, sections 5–7 and supplementary metric definitions. Section 5.1 states a January–March 2024 simulation; Table 1 reports AAPL, GOOGL and AMZN. No replication performed.",
+      "mechanism_and_evidence": "The framework assigns research, analysis, trading and risk roles and uses structured debate to combine their outputs. It reports favorable stock-backtest comparisons with rule-based baselines.",
+      "limits": "Historical stock backtests are not a demonstration of autonomous options execution. In the inspected setup, costs, fill assumptions and model-weight contamination are not established sufficiently to conclude net executable performance. Restricting supplied documents by date does not, by itself, constrain knowledge embedded in model weights. The relationship between the setup’s listed stock universe and the Table 1 subset also deserves clarification before replication.",
+      "project_connection": "A close architecture comparison for eventual group trading. It should be read as one organization of an agent ensemble, not proof that agreement, debate or a hierarchy must improve this particular community.",
+      "optional_inquiry": "What information does group discussion add beyond the same participants’ initial evidence, and which results depend on role design or retrospective assumptions?",
+      "data_requirements": "Versioned prompts, source access, model dates, decision records, execution/cost assumptions and equivalent baselines. A faithful reconstruction needs the exact paper version and configuration.",
+      "horizon": "Daily stock backtest in the described period; no demonstrated option-expiry, assignment or spread-execution coverage.",
+      "read_with": [
+        "P14",
+        "P16",
+        "P17",
+        "P19"
+      ],
+      "priority": "supporting",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P20-arxiv.html",
+        "P20-paper.pdf"
+      ],
+      "agent_instructions": false,
+      "doi": "10.48550/arXiv.2412.20138",
+      "publication_venue": "arXiv",
+      "bibliographic_authors": [],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": null,
+      "arxiv_version": "2412.20138v7",
+      "publication_status": "working paper/preprint in the version cited"
+    },
+    {
+      "id": "P21",
+      "title": "Trilemma, Not Dilemma: Financial Globalisation and Monetary Policy Effectiveness",
+      "authors": "Georgios Georgiadis; Arnaud Mehl",
+      "year": 2015,
+      "group": "Cross-market counterpoint",
+      "evidence_type": "Empirical macro-financial working paper",
+      "canonical_url": "https://doi.org/10.2139/ssrn.2643948",
+      "inspection_level": "working-paper abstract inspected",
+      "inspection_basis": "Crossref/SSRN 2015 abstract and metadata inspected. Full paper and any later published revision were not reviewed. This is an additional counterpoint beyond the twenty core readings.",
+      "mechanism_and_evidence": "The abstract argues that financial integration can transmit global financial shocks while foreign-currency balance-sheet valuation effects can strengthen domestic monetary-policy effectiveness. It disputes a simple replacement of the trilemma by a dilemma.",
+      "limits": "This note does not resolve the debate or establish comparable identification across P12 and P21. Policy conclusions and country exposures need full-text study; neither abstract alone specifies an options trade.",
+      "project_connection": "Preserves a substantive disagreement about the same broad cross-market phenomenon. The disagreement is useful because the proposed channels and institutional conditions differ.",
+      "optional_inquiry": "Which balance-sheet and exchange-rate conditions would make the two accounts predict different outcomes?",
+      "data_requirements": "Country-specific external balance sheets, currency exposures, exchange-rate regimes, policy shocks and outcome definitions.",
+      "horizon": "Macro-policy transmission.",
+      "read_with": [
+        "P12"
+      ],
+      "priority": "counterpoint",
+      "retrieved_on": "2026-11-14",
+      "evidence_files": [
+        "P21-metadata.json"
+      ],
+      "agent_instructions": false,
+      "doi": "10.2139/ssrn.2643948",
+      "publication_venue": null,
+      "bibliographic_authors": [
+        {
+          "given": "Georgios",
+          "family": "Georgiadis"
+        },
+        {
+          "given": "Arnaud",
+          "family": "Mehl"
+        }
+      ],
+      "volume": null,
+      "issue": null,
+      "page": null,
+      "published_print_date": null,
+      "published_online_date": null,
+      "publication_status": "working paper/preprint in the version cited"
+    }
+  ]
+}

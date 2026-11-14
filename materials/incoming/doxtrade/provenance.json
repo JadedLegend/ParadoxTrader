@@ -1,0 +1,448 @@
+{
+  "prepared_on": "2026-11-14",
+  "note": "Retrieval history includes failed attempts; successful retrieval does not imply complete critical review. Inspection scope is recorded per paper in source-catalog.json. Source cache retained outside the authored handoff archive.",
+  "retrievals": [
+    {
+      "id": "P13-original",
+      "requested_url": "https://www.aeaweb.org/aer/top20/70.3.393-408.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.aeaweb.org/aer/top20/70.3.393-408.pdf",
+      "content_type": "application/pdf",
+      "sha256": "d348bec3517acefec693a57504596a6f5e8fd90be0bfcad09379dde347b32a31",
+      "bytes": 461796,
+      "pages": 16,
+      "text_chars": 71478,
+      "status": "saved"
+    },
+    {
+      "id": "P13-repec",
+      "requested_url": "https://econpapers.repec.org/article/aeaaecrev/v_3a70_3ay_3a1980_3ai_3a3_3ap_3a393-408.htm",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://econpapers.repec.org/article/aeaaecrev/v_3a70_3ay_3a1980_3ai_3a3_3ap_3a393-408.htm",
+      "content_type": "text/html",
+      "sha256": "ce859ec5cdf73f8b57350dfa246db368bd58fff16daddd1fc8a1aefff2c8df68",
+      "bytes": 11015,
+      "status": "saved"
+    },
+    {
+      "id": "P14-full",
+      "requested_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3107299/",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3107299/",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "ab5087d2eac5a11c1f89e50cad1975648e09aeea0671742f4b6ea4eb7de66ada",
+      "bytes": 170938,
+      "status": "saved"
+    },
+    {
+      "id": "P15-original",
+      "requested_url": "https://www.ivo-welch.info/research/journalcopy/1992-jpe-cascades.pdf",
+      "retrieved_date": "2026-11-14",
+      "status": "failed",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "P17-paper",
+      "requested_url": "https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf",
+      "content_type": "application/pdf",
+      "sha256": "d8bfbadaaedb430d9dec929646d92f3580fdf18238f34121ae7738fa1c69a63d",
+      "bytes": 1145522,
+      "pages": 34,
+      "text_chars": 68761,
+      "status": "saved"
+    },
+    {
+      "id": "P18-nber",
+      "requested_url": "https://www.nber.org/papers/w20592",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w20592",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "1b7e0671358ef7c5755b1aaba63850c3cf9f9fccd33634416eac2a9b47e1551a",
+      "bytes": 90159,
+      "status": "saved"
+    },
+    {
+      "id": "P04-search",
+      "requested_url": "https://api.crossref.org/works?query.bibliographic=Variance%20Risk%20Premiums%20Carr%20Wu&rows=3",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works?query.bibliographic=Variance%20Risk%20Premiums%20Carr%20Wu&rows=3",
+      "content_type": "application/json",
+      "sha256": "0c61bc48fdc500f33e5f3bf119f605adef514821e36706e711564f916a5b125b",
+      "bytes": 35914,
+      "status": "saved"
+    },
+    {
+      "id": "P09-metadata",
+      "requested_url": "https://api.crossref.org/works/10.1016/j.jfineco.2017.11.002",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.1016/j.jfineco.2017.11.002",
+      "content_type": "application/json",
+      "sha256": "6833ce8583fa6f409f40990b097e08578c133e71aa39487b696e29194f30722b",
+      "bytes": 22468,
+      "status": "saved"
+    },
+    {
+      "id": "P07-metadata",
+      "requested_url": "https://api.crossref.org/works/10.1093/rfs/hhn098",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.1093/rfs/hhn098",
+      "content_type": "application/json",
+      "sha256": "554b279bd91f80075604ac37f132a94c3aacd4e8b5cc494a130854ba9df80697",
+      "bytes": 11443,
+      "status": "saved"
+    },
+    {
+      "id": "P21-metadata",
+      "requested_url": "https://api.crossref.org/works/10.2139/ssrn.2643948",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.2139/ssrn.2643948",
+      "content_type": "application/json",
+      "sha256": "dd2c2e09eeccacc2c46f415fb57cce64e6a5cb75fe4d0ce0e074897227b7fc85",
+      "bytes": 3022,
+      "status": "saved"
+    },
+    {
+      "id": "P15-author-page",
+      "requested_url": "https://www.ivo-welch.info/research/",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.ivo-welch.org/research/",
+      "content_type": "text/html",
+      "sha256": "3cb261a11e65bf8c70834b820c112972a1ebff1ea9cd65ac5fc5747a9900a839",
+      "bytes": 13983,
+      "status": "saved"
+    },
+    {
+      "id": "P14-pdf",
+      "requested_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3107299/pdf/pnas.201008636.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3107299/pdf/pnas.201008636.pdf",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "39281ad7854413d75527c2f7e6a16c642771b36a1e438a42ef472d7b6036d1ac",
+      "bytes": 1817,
+      "status": "saved"
+    },
+    {
+      "id": "P15-repec",
+      "requested_url": "https://econpapers.repec.org/article/ucpjpolec/v_3a100_3ay_3a1992_3ai_3a5_3ap_3a992-1026.htm",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://econpapers.repec.org/article/ucpjpolec/v_3a100_3ay_3a1992_3ai_3a5_3ap_3a992-1026.htm",
+      "content_type": "text/html",
+      "sha256": "ede38799f581a29ceb6fddd772454c77af2fe609b9387c4035ed1e3432ae6163",
+      "bytes": 12200,
+      "status": "saved"
+    },
+    {
+      "id": "P01-original",
+      "requested_url": "https://www.cs.princeton.edu/courses/archive/fall09/cos323/papers/black_scholes73.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.cs.princeton.edu/courses/archive/fall09/cos323/papers/black_scholes73.pdf",
+      "content_type": "application/pdf",
+      "sha256": "5d7fff3799e94a563edd232d4678f898703176d408d213ec4f2984b009c46157",
+      "bytes": 327231,
+      "pages": 19,
+      "text_chars": 1660,
+      "status": "saved"
+    },
+    {
+      "id": "P04-metadata",
+      "requested_url": "https://api.crossref.org/works/10.1093/rfs/hhn038",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.1093/rfs/hhn038",
+      "content_type": "application/json",
+      "sha256": "c74a1c80892a1cde29109c2e85556282c0cfdfaff515621e8d36346db96f573e",
+      "bytes": 7401,
+      "status": "saved"
+    },
+    {
+      "id": "P05-nber",
+      "requested_url": "https://www.nber.org/papers/w11843",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w11843",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "c383589347c309fd3c1dddd86e81ccb1df46aff5a1785110cb436fed0c0ac592",
+      "bytes": 88898,
+      "status": "saved"
+    },
+    {
+      "id": "P05-paper",
+      "requested_url": "https://www.nber.org/system/files/working_papers/w11843/w11843.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/system/files/working_papers/w11843/w11843.pdf",
+      "content_type": "application/pdf",
+      "sha256": "02e1b2107ba6e5c34555a1017e35c2f2a9da1e7eb5d44a528faa6dc0b6bef4ee",
+      "bytes": 467912,
+      "pages": 49,
+      "text_chars": 140366,
+      "status": "saved"
+    },
+    {
+      "id": "P07-nber",
+      "requested_url": "https://www.nber.org/papers/w12939",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w12939",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "ccb012c5e3578f97cc9bf8bd0b5988daf26b58d70ea5459275671bac15a80489",
+      "bytes": 90434,
+      "status": "saved"
+    },
+    {
+      "id": "P07-paper",
+      "requested_url": "https://www.nber.org/system/files/working_papers/w12939/w12939.pdf",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/system/files/working_papers/w12939/w12939.pdf",
+      "content_type": "application/pdf",
+      "sha256": "d29c04f65114e0db651f239b502a8f0cf847be174d07c887a0764bad10af140b",
+      "bytes": 659824,
+      "pages": 48,
+      "text_chars": 113210,
+      "status": "saved"
+    },
+    {
+      "id": "P08-nber",
+      "requested_url": "https://www.nber.org/papers/w5167",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w5167",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "55d3f399261ceb71453d0ca996f4002eac33262f4b511afca8f68c31ddae75a6",
+      "bytes": 87342,
+      "status": "saved"
+    },
+    {
+      "id": "P09-nber",
+      "requested_url": "https://www.nber.org/papers/w19325",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w19325",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "e4f4896eed397315d44dcdfe2bdd0f38e23b8f704605d49d7e94f9b78e41884b",
+      "bytes": 92048,
+      "status": "saved"
+    },
+    {
+      "id": "P10-aqr",
+      "requested_url": "https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "5beaf18db1f52b117b052b416cc579fc716374bdf0ec1983300ea55c8bdfaf1b",
+      "bytes": 71369,
+      "status": "saved"
+    },
+    {
+      "id": "P11-nber",
+      "requested_url": "https://www.nber.org/papers/w8959",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w8959",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "7079dc6f0f555d3cd1e5ce88c82ca6e7371e7c579253dfe152aef2619b4fbc35",
+      "bytes": 89726,
+      "status": "saved"
+    },
+    {
+      "id": "P12-nber",
+      "requested_url": "https://www.nber.org/papers/w21162",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.nber.org/papers/w21162",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "f980490abd3281813a9bb668aff485b9fd051a8ed666cd052213fb314c2326bf",
+      "bytes": 92634,
+      "status": "saved"
+    },
+    {
+      "id": "P13-metadata",
+      "requested_url": "https://api.crossref.org/works/10.2307/1805228",
+      "retrieved_date": "2026-11-14",
+      "status": "failed",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "P14-europepmc",
+      "requested_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:10.1073/pnas.1008636108&format=json&resultType=core",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:10.1073/pnas.1008636108&format=json&resultType=core",
+      "content_type": "application/json;charset=UTF-8",
+      "sha256": "f7167511ffad155a0d4b165ebec20fb66bf894cfb1ce0b10c8a9d63a073c7c38",
+      "bytes": 5846,
+      "status": "saved"
+    },
+    {
+      "id": "P15-metadata",
+      "requested_url": "https://api.crossref.org/works/10.1086/261849",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.1086/261849",
+      "content_type": "application/json",
+      "sha256": "c388cb8aae311ef1c8a6b0aef0b510ed04495607d00cad3898050d021401d7d7",
+      "bytes": 2092,
+      "status": "saved"
+    },
+    {
+      "id": "P17-institution",
+      "requested_url": "https://scholarworks.wmich.edu/math_pubs/42/",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://scholarworks.wmich.edu/math_pubs/42/",
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "c30257300ade538064ae64e066646c76b1a8462d86c099f19f87e2608b5aa6cd",
+      "bytes": 30246,
+      "status": "saved"
+    },
+    {
+      "id": "P18-metadata",
+      "requested_url": "https://api.crossref.org/works/10.1093/rfs/hhv059",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://api.crossref.org/works/10.1093/rfs/hhv059",
+      "content_type": "application/json",
+      "sha256": "f6918d7ac36645f5100d35e0897a78435dd78767c8d35827fe0953b74f88cd6e",
+      "bytes": 61604,
+      "status": "saved"
+    },
+    {
+      "id": "P19-arxiv",
+      "requested_url": "https://arxiv.org/abs/2311.13743",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://arxiv.org/abs/2311.13743",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "0146bb781498fa867a622aaad816c6c69480de81a742a878ab950908fae3c931",
+      "bytes": 45555,
+      "status": "saved"
+    },
+    {
+      "id": "P19-paper",
+      "requested_url": "https://arxiv.org/pdf/2311.13743",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://arxiv.org/pdf/2311.13743",
+      "content_type": "application/pdf",
+      "sha256": "acb7527d02871cfad7d2754314b9a803f917b326847a456579df9cf7b0a648b9",
+      "bytes": 7799225,
+      "pages": 22,
+      "text_chars": 111147,
+      "status": "saved"
+    },
+    {
+      "id": "P20-arxiv",
+      "requested_url": "https://arxiv.org/abs/2412.20138",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://arxiv.org/abs/2412.20138",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "775d6129b8322930bdea6ae8deeb9baa18ee1720d48d2b9d62abf02215b08ecc",
+      "bytes": 42612,
+      "status": "saved"
+    },
+    {
+      "id": "P20-paper",
+      "requested_url": "https://arxiv.org/pdf/2412.20138",
+      "retrieved_date": "2026-11-14",
+      "final_url": "https://arxiv.org/pdf/2412.20138",
+      "content_type": "application/pdf",
+      "sha256": "431d0c39365b4c46b43162371fa15b3dcf8d142b377d642b3e5925dc81f3487b",
+      "bytes": 1903362,
+      "pages": 38,
+      "text_chars": 137706,
+      "status": "saved"
+    },
+    {
+      "id": "P01-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "9995780affcd8de0e57526163b29a621ed1dc15c88fee0fe6108f7aa9b0f8003",
+      "bytes": 5888,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P02-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "3b0e1c402e4e575d0504f458621d59f1710bcd3f9a1d6a50a3ae3696e04ed18a",
+      "bytes": 35531,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P03-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "e9a3333364edae86ce421675239cb6a4d0f139c1fb22d6252bbbfea08dcc8eba",
+      "bytes": 21571,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P05-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "bb66cc52e15e0804ce0dc54efbb7cc85984e8e36ff3238782ef4a5147fa20a97",
+      "bytes": 20300,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P06-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "9ec0a93fe8e66aea235d8b745017816273692e62360351de045e0fab870abb80",
+      "bytes": 29554,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P08-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "d4a05bd8dbd5b8d54541fa411b1d4bcde7dee885e3be1af2afc9f4dba9f22aaa",
+      "bytes": 10478,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P09-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "46c5b9f9ffe39b5d86860b7792724904af88c2d5874a1584118c9bb57beebc39",
+      "bytes": 20877,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P10-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "8145f7d292c741198bf372203744480de07d68f695bf36ea624b9e3a3dca0004",
+      "bytes": 27602,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P11-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "b4681464fb087f572f745ce5a1dd00172ef48950f212876bf4a0d49633d396d8",
+      "bytes": 14525,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P12-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "b6f133ea58b031014b3887297a35af18597d1feac8c0852b80425b8084554487",
+      "bytes": 5607,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P13-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "9b0a8a679576b423b7042e871e5f23fab9d9deee7fce4b01964de1af881802c7",
+      "bytes": 9868,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P14-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "5fae3b8f73714df0e8bd64e020ead5a490129228cc4414bcd0404a89894186ea",
+      "bytes": 15310,
+      "retrieved_date": "2026-11-14"
+    },
+    {
+      "id": "P16-crossref",
+      "status": "saved",
+      "source": "Crossref bibliographic search; query retained in metadata-search.json",
+      "sha256": "b7c7b7c43b42e4f0256a43d78d1425792157b05a4771af0c9e3e4e18d26fed69",
+      "bytes": 34757,
+      "retrieved_date": "2026-11-14"
+    }
+  ]
+}
