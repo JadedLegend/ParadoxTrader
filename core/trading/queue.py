@@ -9,11 +9,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from core.data_dir import DATA_DIR  # noqa: E402  (lightweight; resolves DATA_DIR like every other store)
+def _queue_dir() -> Path:
+    """DATA_DIR when set, else <repo>/data, resolved without touching the disk.
 
-# Follows DATA_DIR like the other legacy stores. With DATA_DIR unset this is still
+    core.data_dir creates directories at import, which this broker-free module
+    must not do; the directory is created only when the queue is opened.
+    """
+    explicit = os.environ.get("DATA_DIR")
+    return Path(explicit) if explicit else Path(__file__).parent.parent.parent / "data"
+
+
+# Follows DATA_DIR like the other stores. With DATA_DIR unset this is still
 # <repo>/data/trade_queue.sqlite3, so existing local queues are not moved.
-QUEUE_DB = DATA_DIR / "trade_queue.sqlite3"
+QUEUE_DB = _queue_dir() / "trade_queue.sqlite3"
 QUEUE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS trade_queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

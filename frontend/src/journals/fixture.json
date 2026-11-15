@@ -359,7 +359,7 @@
       "ended_at": "2026-11-12T00:00:00+00:00",
       "known_cost_usd": "0",
       "limits": {
-        "budget_usd": "1E+1",
+        "budget_usd": "10",
         "max_input_bytes": 24000,
         "max_output_tokens": 1024,
         "max_parallelism": 1,
@@ -370,7 +370,7 @@
       },
       "mode": "offline",
       "request_count": 26,
-      "reserved_usd": "0.497834",
+      "reserved_usd": "0.497802",
       "run_id": "88888888-8888-4888-8888-888888888888",
       "started_at": "2026-11-12T00:00:00+00:00",
       "status": "completed",
