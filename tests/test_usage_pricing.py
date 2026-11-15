@@ -213,5 +213,16 @@ class PricingTests(unittest.TestCase):
                     PricingTable.from_file(path)
 
 
+
+class DecimalTextTests(unittest.TestCase):
+    def test_whole_numbers_are_not_written_in_scientific_notation(self):
+        from decimal import Decimal
+        from core.usage.pricing import decimal_text
+        cases = {"10": "10", "100": "100", "1000.00": "1000", "25": "25", "0": "0",
+                 "10.50": "10.5", "0.001": "0.001", "-20": "-20"}
+        for raw, expected in cases.items():
+            self.assertEqual(decimal_text(Decimal(raw)), expected, raw)
+        self.assertEqual(decimal_text(Decimal("1E-12")), "1E-12")
+
 if __name__ == "__main__":
     unittest.main()
