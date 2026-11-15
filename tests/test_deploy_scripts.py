@@ -172,10 +172,17 @@ class BackupTests(unittest.TestCase):
             backup_data.run_backup(empty, self.dest, keep=1, now=datetime(2026, 11, 3, tzinfo=timezone.utc))
         self.assertEqual(sorted(p.name for p in self.dest.iterdir()), ["20261101T000000Z", "20261102T000000Z"])
 
-    def test_cli_exits_nonzero_on_empty_source(self):
+    def test_cli_exits_nonzero_on_empty_source_after_earlier_snapshots(self):
+        backup_data.run_backup(self.source, self.dest, now=datetime(2026, 11, 1, tzinfo=timezone.utc))
         empty = Path(self.tmp.name) / "unmounted"
         empty.mkdir()
         self.assertEqual(backup_data.main(["--source", str(empty), "--dest", str(self.dest)]), 1)
+
+    def test_fresh_host_with_no_data_is_not_a_failure(self):
+        empty = Path(self.tmp.name) / "fresh"
+        empty.mkdir()
+        self.assertEqual(backup_data.main(["--source", str(empty), "--dest", str(self.dest)]), 0)
+        self.assertEqual(list(self.dest.iterdir()), [])
 
 
 if __name__ == "__main__":

@@ -112,10 +112,14 @@ def run_backup(source, dest, *, keep=14, now=None):
     staging.mkdir(mode=0o700)
     databases = find_databases(source)
     if not databases:
-        # An empty or unmounted data directory must not count as a good backup,
-        # and must never prune the real snapshots that are still on disk.
         shutil.rmtree(staging, ignore_errors=True)
-        raise RuntimeError(f"no_databases_found: {source}")
+        if any(p.is_dir() and SNAPSHOT_NAME.match(p.name) for p in dest.iterdir()):
+            # Data existed before, so an empty source means an unmounted or lost
+            # data directory: fail loudly and never prune the real snapshots.
+            raise RuntimeError(f"no_databases_found: {source}")
+        # A fresh host with no data yet: nothing to back up, nothing to prune.
+        return {"snapshot": None, "databases": [], "cleaned_staging": [p.name for p in cleaned],
+                "pruned": []}
     copied = []
     try:
         for db in databases:
@@ -142,6 +146,9 @@ def main(argv=None):
     except (OSError, RuntimeError) as exc:
         print(f"backup_failed: {exc}", file=sys.stderr)
         return 1
+    if result["snapshot"] is None:
+        print("nothing_to_back_up_yet: no databases and no earlier snapshots")
+        return 0
     print(f"snapshot={result['snapshot']} databases={len(result['databases'])} "
           f"cleaned_staging={len(result['cleaned_staging'])} pruned={len(result['pruned'])}")
     return 0
