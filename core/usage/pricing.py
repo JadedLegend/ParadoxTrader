@@ -57,7 +57,13 @@ def decimal_text(value: Decimal) -> str:
         return "0"
     with localcontext() as ctx:
         ctx.prec = max(28, len(value.as_tuple().digits))
-        return str(value.normalize())
+        normalized = value.normalize()
+    # normalize() turns whole numbers with trailing zeros into exponents
+    # (10 -> "1E+1"); write those as plain integers. Tiny fractions keep
+    # their exponent form, as before.
+    if normalized.as_tuple().exponent > 0 and normalized.adjusted() < 28:
+        return format(normalized, "f")
+    return str(normalized)
 
 
 def decimal_add(left: Decimal, right: Decimal) -> Decimal:
