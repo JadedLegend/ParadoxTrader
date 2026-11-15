@@ -37,15 +37,17 @@ class QueueTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         # QUEUE_DB follows DATA_DIR like every other store; with DATA_DIR unset
         # that is still <repo>/data, so existing local queues are not moved.
-        from core.data_dir import DATA_DIR, get_data_dir
-        self.assertEqual(QUEUE_DB, DATA_DIR / "trade_queue.sqlite3")
+        from core.trading.queue import _queue_dir
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("DATA_DIR", None)
-            self.assertEqual(get_data_dir(), root / "data")
+            self.assertEqual(_queue_dir(), root / "data")
+        with patch.dict(os.environ, {"DATA_DIR": "/srv/paradox"}):
+            self.assertEqual(_queue_dir(), Path("/srv/paradox"))
         source = (root / "core/trading/alpaca.py").read_text()
         self.assertIn("from core.trading.queue import QUEUE_DB, QUEUE_SCHEMA, TradeQueue", source)
         queue_source = (root / "core/trading/queue.py").read_text()
         self.assertNotIn("import requests", queue_source)
+        self.assertNotIn("core.data_dir", queue_source)  # it creates directories at import
         self.assertNotIn("core.runtime", queue_source)
 
     def test_legacy_migration_preserves_rows_and_shape(self):
