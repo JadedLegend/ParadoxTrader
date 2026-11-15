@@ -1,9 +1,0 @@
-{
-  "enabledPlugins": {
-    "productivity-skills@mhattingpete-claude-skills": true,
-    "skill-creator@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true,
-    "figma@claude-plugins-official": true
-  }
-}

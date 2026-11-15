@@ -45,3 +45,7 @@ Thumbs.db
 .idea/
 *.swp
 dist-release/
+
+# Personal Claude Code settings
+.claude/settings.json
+.claude/settings.local.json
