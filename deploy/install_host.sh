@@ -19,7 +19,8 @@ install -d -m 0750 -o root -g "$APP_USER" "$ETC"
 install -d -m 0700 -o "$APP_USER" -g "$APP_USER" "$DATA" "$DATA/sessions"
 install -d -m 0700 "$BACKUPS"
 
-NAME="$(tar -tzf "$TARBALL" | head -1 | cut -d/ -f1)"
+# awk reads the whole listing: head -1 would kill tar with SIGPIPE under pipefail.
+NAME="$(tar -tzf "$TARBALL" | awk -F/ 'NR == 1 { print $1 }')"
 case "$NAME" in paradoxtrader-*) ;; *) echo "Unexpected tarball layout: $NAME" >&2; exit 1;; esac
 if [ ! -d "$BASE/releases/$NAME" ]; then
   tar -xzf "$TARBALL" -C "$BASE/releases"
