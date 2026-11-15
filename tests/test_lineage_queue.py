@@ -47,7 +47,8 @@ class QueueTests(unittest.TestCase):
         self.assertIn("from core.trading.queue import QUEUE_DB, QUEUE_SCHEMA, TradeQueue", source)
         queue_source = (root / "core/trading/queue.py").read_text()
         self.assertNotIn("import requests", queue_source)
-        self.assertNotIn("core.data_dir", queue_source)  # it creates directories at import
+        self.assertNotIn("import core.data_dir", queue_source)  # it creates directories at import
+        self.assertNotIn("from core.data_dir", queue_source)
         self.assertNotIn("core.runtime", queue_source)
 
     def test_legacy_migration_preserves_rows_and_shape(self):
