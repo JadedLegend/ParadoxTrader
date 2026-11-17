@@ -45,9 +45,9 @@ def read_home(store, run_id):
         raw = path.read_bytes()
     except FileNotFoundError:
         return None
-    except OSError:
+    except (OSError, AttributeError, TypeError):
         raise RehearsalError("invalid_home_link") from None
-    if len(raw) > 4096:
+    if not isinstance(raw, bytes) or len(raw) > 4096:
         raise RehearsalError("invalid_home_link")
     try:
         return _validate(json.loads(raw.decode("utf-8")))

@@ -623,7 +623,8 @@ class RehearsalController:
                     memory_path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
                     ensure_private_db_file(memory_path)
                     memory = ThresholdMemory(str(memory_path))
-                    refs = _memory_effect(memory, wake_id, action, output, library_refs, self._key_scope)
+                    scoped = {"key_scope": self._key_scope} if self._key_scope else {}
+                    refs = _memory_effect(memory, wake_id, action, output, library_refs, **scoped)
             self.store.finish_job(self.run_id, wake_id, self._token, status="completed", action=action, record_refs=refs)
         except RehearsalStopped:
             if job is not None:
