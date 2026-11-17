@@ -49,7 +49,7 @@ _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "
 _INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
     "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "library.sqlite3",
-    "witness.sqlite3", "library_corpus.json", "profiles/snapshot.json",
+    "witness.sqlite3", "library_corpus.json", "profiles/snapshot.json", "home.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
     *(f"memory/{owner}.sqlite3" for owner in OWNERS),
     *(f"memory/{owner}-{owner}-r{round_number}-library.json" for owner in OWNERS for round_number in (1, 2)),
@@ -690,11 +690,17 @@ class RehearsalStore:
             raise RehearsalConflict("job owner linkage is invalid")
 
     @classmethod
-    def _local_context_refs(cls, connection, job, refs):
-        """Validate refs against earlier linked jobs, never foreign memory DBs."""
+    def _local_context_refs(cls, connection, job, refs, carried=frozenset()):
+        """Validate refs against earlier linked jobs, never foreign memory DBs.
+
+        ``carried`` holds this owner's journal/episode refs from earlier runs of a
+        continuing home; such refs carry no wake_id of this run.
+        """
         for ref in refs:
             if "agent_id" in ref and ref["agent_id"] != job["agent_id"]:
                 raise RehearsalConflict("context reference is not owner local")
+            if "wake_id" not in ref and (ref["kind"], ref["id"]) in carried:
+                continue
             sources = connection.execute("SELECT wake_id,agent_id,round,record_refs FROM jobs WHERE agent_id=? AND round<?", (job["agent_id"], job["round"])).fetchall()
             matched = False
             for source in sources:
@@ -706,6 +712,17 @@ class RehearsalStore:
                     break
             if not matched:
                 raise RehearsalConflict("context reference is not owner local")
+
+    def _carried_refs(self, run_id, owner):
+        """This owner's journal/episode refs from earlier runs of its home."""
+        from .home import previous_run_ids
+        carried = set()
+        for previous in previous_run_ids(self, run_id):
+            for row in self.list_jobs(previous):
+                if row["agent_id"] == owner:
+                    carried.update((ref["kind"], ref["id"]) for ref in row["record_refs"]
+                                   if ref["kind"] in ("journal", "episode"))
+        return frozenset(carried)
 
     @staticmethod
     def _public_job(row):
@@ -962,7 +979,8 @@ class RehearsalStore:
                               "catalog_source": manifest["catalog_snapshot"].get("source")}
             if metadata["constraints"] != manifest["limits"] or metadata["model"] != expected_model:
                 raise RehearsalConflict("decision context disagrees with frozen assignment")
-            self._local_context_refs(connection, job, metadata["continuity"]["refs"])
+            carried = self._carried_refs(run_id, job["agent_id"])
+            self._local_context_refs(connection, job, metadata["continuity"]["refs"], carried)
 
             def check_private(item):
                 if isinstance(item, list):
@@ -983,7 +1001,7 @@ class RehearsalStore:
                     if {"kind", "id"} <= set(item):
                         _refs([{"kind": item["kind"], "id": item["id"]}])
                         ref = {key: item[key] for key in ("kind", "id", "wake_id", "agent_id") if key in item}
-                        self._local_context_refs(connection, job, [ref])
+                        self._local_context_refs(connection, job, [ref], carried)
                     for child in item.values():
                         check_private(child)
 

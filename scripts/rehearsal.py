@@ -96,6 +96,7 @@ def parser():
     prepare.add_argument('--fetch-catalog', action='store_true', help='Explicit public catalog GET, not inference')
     prepare.add_argument('--budget-usd')
     prepare.add_argument('--run-id')
+    prepare.add_argument('--continues-from', help='Earlier finished run in this root whose memory and witness carry forward')
     for command in ['start', 'resume', 'stop', 'status', 'recover']:
         child = commands.add_parser(command)
         child.add_argument('run_id')
@@ -127,10 +128,21 @@ def main(argv=None):
     if args.command == 'prepare':
         manifest = manifest_for(args.mode, models_file=args.models_file, catalog_file=args.catalog_file,
                                 fetch_catalog=args.fetch_catalog, budget_usd=args.budget_usd)
+        if args.continues_from:
+            # Check the earlier run before creating anything for the new one.
+            from core.runtime.rehearsal.home import CARRIED_STATUSES
+            previous = store.get_run(args.continues_from)
+            if previous['status'] not in CARRIED_STATUSES:
+                raise ValueError('home_previous_run_not_finished')
+            if previous['mode'] != manifest['mode']:
+                raise ValueError('home_mode_mismatch')
         summary = store.prepare(manifest, run_id=args.run_id)
         from core.runtime.rehearsal.controller import snapshot_profiles
         snapshot_profiles(store, summary['run_id'], REPO)
         result = store.get_run(summary['run_id'])
+        if args.continues_from:
+            from core.runtime.rehearsal.home import continue_home
+            result['home'] = continue_home(store, summary['run_id'], args.continues_from)
     elif args.command == 'list':
         result = store.list_runs()
     elif args.command == 'status':
@@ -172,7 +184,8 @@ if __name__ == '__main__':
         safe_codes = {'real_model_session_not_armed', 'dedicated_rehearsal_key_missing',
                       'real_prepare_requires_explicit_models_and_budget', 'real_prepare_requires_one_catalog_source',
                       'synthetic_catalog_not_for_real_prepare', 'rehearsal_root_must_be_outside_repository',
-                      'recovery_not_acknowledged', 'read_operator_token_missing', 'invalid_read_server_port'}
+                      'recovery_not_acknowledged', 'read_operator_token_missing', 'invalid_read_server_port',
+                      'home_previous_run_not_finished', 'home_mode_mismatch'}
         code = str(exc) if isinstance(exc, ValueError) and str(exc) in safe_codes else 'rehearsal_operation_failed'
         print(json.dumps({'error': code, 'type': type(exc).__name__, 'automatic_retry': False}), file=sys.stderr)
         raise SystemExit(1)
