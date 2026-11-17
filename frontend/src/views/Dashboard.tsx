@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IS_PREVIEW, getStatus, getSnapshot, getAnnouncements, getConfig, setPhase, initSystem, wakeAgent } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getStatus, getSnapshot, getAnnouncements, getConfig, setPhase, initSystem, wakeAgent } from '../api'
+import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
+import { dollars, label, text } from '../rehearsal/format'
+import { useRecordedRun } from '../rehearsal/useRecordedRun'
 
 const PHASE_NAMES: Record<number, string> = {
   0: 'Solo Incubation', 1: 'Forum Opens', 2: 'Countdown', 3: 'Council Mode',
@@ -31,6 +34,65 @@ function formatCountdown(seconds: number) {
 }
 
 export default function Dashboard() {
+  return IS_PRIVATE_HOST ? <PrivateDashboard /> : <FullDashboard />
+}
+
+// Private host: only the read-only session API is served, so the dashboard summarises
+// the newest recorded session instead of market data, phases and wakes.
+function PrivateDashboard() {
+  const { runs, runsLoading, runsError, runId, selectRun, detail, detailLoading, detailError, refresh } = useRecordedRun()
+  const run = detail?.run
+  return (
+    <div>
+      <header className="page-header"><h1 className="page-title">Dashboard</h1><p className="page-sub">Latest recorded session on this server</p></header>
+      <p className="notice" role="note">Session records here are read only. Market data, phase controls and wakes are not part of this host.</p>
+      <div className="rehearsal-toolbar">
+        {runs && runs.runs.length > 1 && <><label htmlFor="dashboard-run">Run</label><select id="dashboard-run" className="select" value={runId ?? ''} onChange={event => selectRun(event.target.value || null)}>
+          {runs.runs.map(value => <option key={value.run_id} value={value.run_id}>{value.run_id.slice(0, 8)} · {label(value.status)} · {value.mode}</option>)}
+        </select></>}
+        <button type="button" className="btn btn-ghost" onClick={refresh}>Refresh reads</button>
+        <Link className="btn btn-ghost" to="/rehearsal">Open session details</Link>
+        <Link className="btn btn-ghost" to="/journals">Read journals</Link>
+      </div>
+      {runsLoading && <p role="status">Loading runs…</p>}
+      {runsError && <p role="alert" className="error-msg">Run list unavailable. A failed read is not an empty run list.</p>}
+      {runs && runs.runs.length === 0 && <div className="card"><p>No session runs recorded on this server yet.</p><p className="rehearsal-meta">Runs are started from the CLI (scripts/rehearsal.py) as the paradoxtrader user; see deploy/README.md step 7.</p></div>}
+      {detailLoading && <p role="status">Loading run summary…</p>}
+      {detailError && <p role="alert" className="error-msg">Run summary unavailable. Completion and spend are not inferred from a failed read.</p>}
+      {run && detail && <>
+        <section className="card mb-16" aria-label="Latest run summary">
+          <h2 className="card-title">{label(run.status)} · {run.mode === 'offline' ? 'Offline execution' : 'Real-mode manifest'}</h2>
+          <p className="rehearsal-meta">{run.run_id} · Created {run.created_at} · Ended: {run.ended_at ?? 'Not ended'}</p>
+          <dl className="rehearsal-metrics">
+            <div><dt>Request admissions</dt><dd>{run.request_count} / {run.limits.max_requests}</dd></div>
+            <div><dt>Admission reserved</dt><dd>{dollars(run.reserved_usd)} / {dollars(run.limits.budget_usd)}</dd></div>
+            <div><dt>Known cost</dt><dd>{dollars(run.known_cost_usd)}</dd></div>
+            <div><dt>Unknown-cost requests</dt><dd>{run.unknown_cost_requests}</dd></div>
+          </dl>
+          <p className="rehearsal-meta">Missing costs are unknown, not free; reservations are not an invoice.</p>
+        </section>
+        <section className="card" aria-label="Seven agents">
+          <h2 className="card-title">Seven agents</h2>
+          <div className="rehearsal-table-wrap" role="region" aria-label="Agent summary table" tabIndex={0}><table className="rehearsal-table">
+            <thead><tr><th>Agent / assigned model</th><th>Completed</th><th>Failed</th><th>Recorded actions</th></tr></thead>
+            <tbody>{REHEARSAL_AGENTS.map(agent => {
+              const progress = run.agents.find(item => item.agent_id === agent.id)
+              const jobs = detail.jobs.filter(job => job.agent_id === agent.id)
+              return <tr key={agent.id}>
+                <th scope="row">{agent.name}<div className="rehearsal-meta">{text(run.agent_models?.[agent.id], 200) || 'Unavailable'}</div></th>
+                <td>{progress?.completed ?? 'Unavailable'}</td>
+                <td>{progress?.failed ?? 'Unavailable'}</td>
+                <td>{jobs.length ? jobs.map(job => <div key={job.wake_id}>Round {job.round}: {job.action ? label(job.action) : 'Choice not recorded'} · <span className="rehearsal-state">{label(job.status)}</span></div>) : 'No rounds recorded'}</td>
+              </tr>
+            })}</tbody>
+          </table></div>
+        </section>
+      </>}
+    </div>
+  )
+}
+
+function FullDashboard() {
   const [agents, setAgents] = useState<any[]>([])
   const [snapshot, setSnapshot] = useState<any>({})
   const [countdownTarget, setCountdownTarget] = useState<string | null>(null)

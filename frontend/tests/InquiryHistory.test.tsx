@@ -5,7 +5,7 @@ import InquiryHistory from '../src/views/InquiryHistory'
 import { getLineageInquiries, getLineageInquiry } from '../src/api'
 import type { InquiryMetadata, LineageDetailResponse, LineageListResponse, OptionStructure } from '../src/lineage/contracts'
 
-vi.mock('../src/api', () => ({ IS_PREVIEW: true, getLineageInquiries: vi.fn(), getLineageInquiry: vi.fn() }))
+vi.mock('../src/api', () => ({ IS_PREVIEW: true, IS_PRIVATE_HOST: false, getLineageInquiries: vi.fn(), getLineageInquiry: vi.fn() }))
 const ID = '12345678-1234-4234-8234-123456789abc'
 const OTHER = '22345678-1234-4234-8234-123456789abc'
 const TIME = '2026-01-02T12:00:00Z'
@@ -132,6 +132,8 @@ describe('Inquiry History read-only pilot', () => {
     render(<InquiryHistory />)
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.queryByText(/secret token/)).toBeNull()
+    expect(screen.getByRole('alert').textContent).toMatch(/Inquiry list unavailable\. A failed read is not an empty list\./)
+    expect(screen.queryByText(/operator authorization|browser login/)).toBeNull()
     expect(screen.queryByText('No inquiries recorded on this page.')).toBeNull()
     expect(disabled('Next inquiries')).toBe(true)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Retry inquiries' }))

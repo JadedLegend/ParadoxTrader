@@ -7,11 +7,12 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_RUNTIME_MODE': JSON.stringify(''),
     'import.meta.env.VITE_API_URL': JSON.stringify(''),
+    'import.meta.env.VITE_HOST_PROFILE': JSON.stringify(''),
   },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
-    env: { VITE_RUNTIME_MODE: '', VITE_API_URL: '' },
+    env: { VITE_RUNTIME_MODE: '', VITE_API_URL: '', VITE_HOST_PROFILE: '' },
   },
 })

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getQueue, approveTrade, rejectTrade } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getQueue, approveTrade, rejectTrade } from '../api'
+import HostUnavailable from '../components/HostUnavailable'
 
-export default function TradeQueue() {
+function FullTradeQueue() {
   const [trades, setTrades] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [notes, setNotes] = useState<Record<number, string>>({})
@@ -80,4 +81,16 @@ export default function TradeQueue() {
       </div>)}
     </div>
   )
+}
+
+// The private host serves session records only; this page has no data source there,
+// so nothing is requested and no write control is rendered.
+function PrivateTradeQueue() {
+  return <HostUnavailable title="Trade Queue" sub="Trade proposals and approvals" links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
+    <p>Sessions record inquiries, not trade proposals, and this host accepts no approvals. No orders are placed from this site.</p>
+  </HostUnavailable>
+}
+
+export default function TradeQueue() {
+  return IS_PRIVATE_HOST ? <PrivateTradeQueue /> : <FullTradeQueue />
 }

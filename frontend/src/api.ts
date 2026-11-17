@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { createApiClient, resolveApiMode } from './data/client'
+import { createApiClient, resolveApiMode, resolveHostProfile } from './data/client'
 import { readFixture } from './preview/readFixture'
 import type { AgentSummary, PositionSnapshot } from './data/contracts'
 import type { LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse } from './library/contracts'
@@ -10,12 +10,15 @@ import type { JournalResponse, WitnessResponse } from './journals/contracts'
 
 export const API_MODE = resolveApiMode(import.meta.env.VITE_RUNTIME_MODE)
 export const IS_PREVIEW = API_MODE === 'preview'
+// Set at build time for deploy/private_dashboard.py; ignored in fixture preview.
+export const HOST_PROFILE = resolveHostProfile(import.meta.env.VITE_HOST_PROFILE)
+export const IS_PRIVATE_HOST = !IS_PREVIEW && HOST_PROFILE === 'private'
 const BASE = import.meta.env.VITE_API_URL || ''
 const api = axios.create({ baseURL: BASE, timeout: 15000 })
 const request = createApiClient(API_MODE, readFixture, async (method, path, payload) => {
   const response = method === 'GET' ? await api.get(path) : await api.post(path, payload)
   return response.data
-})
+}, IS_PRIVATE_HOST ? 'private' : 'full')
 
 // Existing views retain their response shapes. The central boundary blocks every
 // preview mutation, even if a disabled UI control is invoked programmatically.

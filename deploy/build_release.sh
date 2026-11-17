@@ -9,7 +9,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 # Force LF: a Windows checkout with core.autocrlf=true would otherwise ship CRLF scripts.
 git -C "$ROOT" -c core.autocrlf=false -c core.eol=lf archive --format=tar --prefix="paradoxtrader-$SHA/" "$REF" | tar -x -C "$WORK"
-( cd "$WORK/paradoxtrader-$SHA/frontend" && npm ci --silent && VITE_RUNTIME_MODE=connected npm run build && rm -rf node_modules )
+( cd "$WORK/paradoxtrader-$SHA/frontend" && npm ci --silent && VITE_RUNTIME_MODE=connected VITE_HOST_PROFILE=private npm run build && rm -rf node_modules )
 # The broad legacy app and its launcher never ship to the host.
 rm -f "$WORK/paradoxtrader-$SHA/api/app.py" "$WORK/paradoxtrader-$SHA/start.sh"
 CR_FILES="$(find "$WORK/paradoxtrader-$SHA" -type f \( -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.timer' \) -exec sh -c 'for f; do [ "$(tr -cd "\015" < "$f" | wc -c)" -eq 0 ] || echo "$f"; done' sh {} +)"

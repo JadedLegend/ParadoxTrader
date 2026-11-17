@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getConfig, updateConfig, setCountdown } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getConfig, updateConfig, setCountdown } from '../api'
+import HostUnavailable from '../components/HostUnavailable'
 
 const AGENTS = ['tempest','siren','alchemist','weaver','oracle','shadow','paradox_hunter']
 
-export default function Config() {
+function FullConfig() {
   const [cfg, setCfg] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -145,4 +146,16 @@ function ConfigField({ label, keyPath, value, type, onSave, saving, saved }: {
     <input id={keyPath} className="input" type={type === 'password' ? 'password' : type === 'number' ? 'number' : 'text'} value={val} onChange={e => setVal(type === 'number' ? Number(e.target.value) : e.target.value)} placeholder={type === 'password' ? '(backend configuration)' : ''} />
     <button className="btn btn-ghost" style={{minWidth:60, fontSize:12}} onClick={() => onSave(keyPath, val)} disabled={saving !== null}>{isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save'}</button>
   </div></div>
+}
+
+// The private host serves session records only; this page has no data source there,
+// so nothing is requested and no write control is rendered.
+function PrivateConfig() {
+  return <HostUnavailable title="Configuration" sub="System settings" links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
+    <p>Configuration is changed on the server, not here. The frozen limits and models of each run are shown under Sessions.</p>
+  </HostUnavailable>
+}
+
+export default function Config() {
+  return IS_PRIVATE_HOST ? <PrivateConfig /> : <FullConfig />
 }

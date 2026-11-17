@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { IS_PREVIEW, getUsageSummary, getUsageEvents } from '../api'
+import { Link } from 'react-router-dom'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getRehearsalRequests, getUsageSummary, getUsageEvents } from '../api'
+import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
+import type { RehearsalRequest, RehearsalRequestsResponse } from '../rehearsal/contracts'
+import { dollars as sessionDollars, label } from '../rehearsal/format'
+import { useRecordedRun } from '../rehearsal/useRecordedRun'
 import agentFixture from '../preview/fixtures.json' with { type: 'json' }
 import type { UsageEvent, UsageEventsResponse, UsageSummary, UsageSummaryResponse } from '../usage/contracts'
 
@@ -49,7 +54,7 @@ function CostCell({ event }: { event: UsageEvent }) {
   </>
 }
 
-export default function Costs() {
+function FullCosts() {
   const [selection, setSelection] = useState({ agentId: '', offset: 0 })
   const [summaryRetry, setSummaryRetry] = useState(0)
   const [eventsRetry, setEventsRetry] = useState(0)
@@ -191,4 +196,125 @@ export default function Costs() {
       </div>
     </section>
   </div>
+}
+
+const MEMBER_LIMIT = 50
+type MemberRead = { status: 'ok'; data: RehearsalRequestsResponse } | { status: 'error' }
+type MembersState = { key: string; reads: Record<string, MemberRead> | null }
+
+// Sums reservations for display only. One event without a readable reservation makes the sum Unavailable.
+function reservedSum(events: RehearsalRequest[]): string {
+  let total = 0
+  for (const event of events) {
+    if (typeof event.reserved_usd !== 'string') return 'Unavailable'
+    const value = Number(event.reserved_usd)
+    if (!Number.isFinite(value)) return 'Unavailable'
+    total += value
+  }
+  return sessionDollars(total.toFixed(12))
+}
+const costStatus = (event: RehearsalRequest) => event.usage?.cost_status ?? event.cost_status ?? 'unknown'
+
+// Private host: only the session API (GET /api/rehearsals*) is served, so costs come from session records.
+function PrivateCosts() {
+  const { runs, runsLoading, runsError, runId, selectRun, detail, detailLoading, detailError, refresh } = useRecordedRun()
+  const [members, setMembers] = useState<MembersState>({ key: '', reads: null })
+  const [memberRetry, setMemberRetry] = useState(0)
+  const membersKey = JSON.stringify([runId, memberRetry])
+  const refreshAll = () => { refresh(); setMemberRetry(value => value + 1) }
+
+  useEffect(() => {
+    if (!runId) return
+    let cancelled = false
+    setMembers({ key: membersKey, reads: null })
+    Promise.allSettled(REHEARSAL_AGENTS.map(agent => Promise.resolve().then(() => getRehearsalRequests(runId, agent.id, MEMBER_LIMIT, 0)))).then(results => {
+      if (cancelled) return
+      const reads: Record<string, MemberRead> = {}
+      results.forEach((result, index) => {
+        const agent = REHEARSAL_AGENTS[index]
+        const valid = result.status === 'fulfilled' && result.value.run_id === runId && Array.isArray(result.value.events)
+          && Number.isFinite(result.value.total) && result.value.events.every(event => event.agent_id === agent.id)
+        reads[agent.id] = valid ? { status: 'ok', data: result.value } : { status: 'error' }
+      })
+      setMembers({ key: membersKey, reads })
+    })
+    return () => { cancelled = true }
+  }, [runId, membersKey])
+
+  const reads = runId && members.key === membersKey ? members.reads : null
+  const membersLoading = !!runId && !reads
+  const memberFailed = !!reads && Object.values(reads).some(read => read.status === 'error')
+  const run = detail?.run
+
+  return <div>
+    <header className="page-header">
+      <h1 className="page-title">Operating costs</h1>
+      <p className="page-sub">Per-session request costs recorded on this server</p>
+    </header>
+    <div className="notice" role="note">This server keeps session records only. These are the request costs a session recorded; subscriptions, data feeds, infrastructure and invoices are not included.</div>
+    <div className="usage-toolbar">
+      <div className="input-group">
+        <label className="input-label" htmlFor="costs-run">Run</label>
+        <select className="select" id="costs-run" value={runId ?? ''} disabled={!runs?.runs.length}
+          onChange={event => selectRun(event.target.value || null)}>
+          {!runs?.runs.length && <option value="">No run selected</option>}
+          {runs?.runs.map(value => <option key={value.run_id} value={value.run_id}>{value.run_id.slice(0, 8)} · {label(value.status)} · {value.mode}</option>)}
+        </select>
+      </div>
+      <button type="button" className="btn btn-ghost" onClick={refreshAll}>Refresh reads</button>
+    </div>
+    {runsLoading && <p role="status">Loading runs…</p>}
+    {runsError && <p role="alert" className="error-msg">Run list unavailable. A failed read is not an empty run list.</p>}
+    {runs?.runs.length === 0 && <div className="card">
+      <p>No session runs recorded on this server yet.</p>
+      <p className="rehearsal-meta">Runs are started from the CLI (scripts/rehearsal.py) as the paradoxtrader user; see deploy/README.md step 7.</p>
+    </div>}
+    {detailLoading && <p role="status">Loading run costs…</p>}
+    {detailError && <p role="alert" className="error-msg">Run summary unavailable. A failed read is not a zero cost.</p>}
+    {run && <section className="card" aria-label="Run cost summary">
+      <h2 className="card-title">Run {run.run_id.slice(0, 8)} · {label(run.status)}</h2>
+      <dl className="rehearsal-metrics">
+        <div><dt>Request admissions</dt><dd>{run.request_count} / {run.limits.max_requests}</dd></div>
+        <div><dt>Admission reserved</dt><dd>{sessionDollars(run.reserved_usd)} / {sessionDollars(run.limits.budget_usd)}</dd></div>
+        <div><dt>Known cost</dt><dd>{sessionDollars(run.known_cost_usd)}</dd></div>
+        <div><dt>Reported subtotal</dt><dd>{sessionDollars(run.reported_cost_usd)}</dd></div>
+        <div><dt>Estimated subtotal</dt><dd>{sessionDollars(run.estimated_cost_usd)}</dd></div>
+        <div><dt>Unknown-cost requests</dt><dd>{run.unknown_cost_requests}</dd></div>
+      </dl>
+      <p className="usage-meta">Missing costs are unknown, not free; reservations are not an invoice.</p>
+    </section>}
+    {runId && <section className="card" aria-label="Costs per member" aria-busy={membersLoading}>
+      <h2 className="card-title">Costs per member</h2>
+      <p className="usage-meta">Reads the first {MEMBER_LIMIT} recorded requests per member. Status counts and reserved sums cover the shown requests only; a request without a recorded cost status counts as unknown.</p>
+      {membersLoading && <p role="status">Loading member requests…</p>}
+      {memberFailed && <p role="alert" className="error-msg">Some member request reads failed. A failed read is not zero requests.</p>}
+      {reads && <div className="rehearsal-table-wrap" role="region" aria-label="Member cost table" tabIndex={0}>
+        <table className="rehearsal-table">
+          <thead><tr>
+            <th scope="col">Member</th><th scope="col">Requests</th><th scope="col">Reserved</th>
+            <th scope="col">Reported</th><th scope="col">Estimated</th><th scope="col">Unknown</th>
+          </tr></thead>
+          <tbody>{REHEARSAL_AGENTS.map(agent => {
+            const read = reads[agent.id]
+            if (!read || read.status === 'error') return <tr key={agent.id}>
+              <th scope="row">{agent.name}</th><td>Unavailable</td><td>Unavailable</td><td>Unavailable</td><td>Unavailable</td><td>Unavailable</td>
+            </tr>
+            const { events, total } = read.data
+            const count = (status: string) => events.filter(event => costStatus(event) === status).length
+            return <tr key={agent.id}>
+              <th scope="row">{agent.name}</th>
+              <td>{total}{total > events.length && <div className="usage-meta">first {events.length} shown</div>}</td>
+              <td>{reservedSum(events)}</td>
+              <td>{count('reported')}</td><td>{count('estimated')}</td><td>{count('unknown')}</td>
+            </tr>
+          })}</tbody>
+        </table>
+      </div>}
+      <Link className="btn btn-ghost" to="/rehearsal">Request details per member</Link>
+    </section>}
+  </div>
+}
+
+export default function Costs() {
+  return IS_PRIVATE_HOST ? <PrivateCosts /> : <FullCosts />
 }

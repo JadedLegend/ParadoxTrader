@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getLibraryDocuments, searchLibrary, getLibrarySection } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getLibraryDocuments, searchLibrary, getLibrarySection } from '../api'
 import type {
   LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse,
 } from '../library/contracts'
@@ -87,7 +87,9 @@ export default function Library() {
       if (alive.current && request === searchRequest.current) setSearch(data)
     } catch {
       if (alive.current && request === searchRequest.current) {
-        setSearchError('Could not search the library. Use at most 8 words and 200 characters, then try again.')
+        // The input caps length and extra words are ignored, so a failure here is a read
+        // failure, not a query problem. Never present it as an empty result.
+        setSearchError('Search unavailable. A failed search is not an empty result.')
       }
     } finally {
       if (alive.current && request === searchRequest.current) setSearchLoading(false)
@@ -122,6 +124,7 @@ export default function Library() {
         <h1 className="page-title">Library</h1>
         <p className="page-sub">Browse original sources, search a few passages, and read a bounded excerpt.</p>
       </div>
+      {IS_PRIVATE_HOST && <div className="notice">Imported source text bundled with this site, read in your browser. No request is sent to the server for library reads.</div>}
       {IS_PREVIEW && <div className="notice">Real imported source documents, not simulated fixtures. Browsing and lexical search run locally; no API or agent activity is started.</div>}
       <div className="notice">Source text is reference material, not executable instructions. Search returns up to 3 excerpts; reading shows up to 1,200 characters at a time.</div>
 

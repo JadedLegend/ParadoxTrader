@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createApiClient, resolveApiMode } from '../src/data/client'
+import { HostUnavailableError, createApiClient, resolveApiMode, resolveHostProfile } from '../src/data/client'
 import type { ApiMode } from '../src/data/client'
 import { readFixture } from '../src/preview/readFixture'
 
@@ -91,6 +91,78 @@ describe('central fixture/connected client boundary', () => {
     const transport = vi.fn(async () => { throw error })
     const request = createApiClient('connected', reader, transport)
     await expect(request('GET', '/mock-only/failure')).rejects.toBe(error)
+    expect(reader).not.toHaveBeenCalled()
+  })
+})
+
+const invalidProfiles: [string, unknown][] = [
+  ['missing', undefined], ['null', null], ['empty', ''], ['full', 'full'], ['uppercase', 'PRIVATE'],
+  ['title case', 'Private'], ['trailing space', 'private '], ['leading space', ' private'],
+  ['boolean', true], ['number', 1], ['object', { profile: 'private' }], ['array', ['private']],
+]
+
+describe('private host profile boundary', () => {
+  it('only the exact private token selects the private host', () => {
+    expect(resolveHostProfile('private')).toBe('private')
+  })
+
+  it.each(invalidProfiles)('%s resolves to the full host', (_name, value) => {
+    expect(resolveHostProfile(value)).toBe('full')
+  })
+
+  function privateClient() {
+    const reader = vi.fn(() => ({ kind: 'local_library' }))
+    const transport = vi.fn(async () => ({ kind: 'server' }))
+    return { reader, transport, request: createApiClient('connected', reader, transport, 'private') }
+  }
+
+  it.each(['/api/rehearsals', '/api/rehearsals?limit=20&offset=0', '/api/rehearsals/x', '/api/rehearsals/x/jobs'])('GET %s reaches the server transport', async path => {
+    const { reader, transport, request } = privateClient()
+    expect(await request('GET', path)).toEqual({ kind: 'server' })
+    expect(transport).toHaveBeenCalledExactlyOnceWith('GET', path, undefined)
+    expect(reader).not.toHaveBeenCalled()
+  })
+
+  it('reads the library locally and never sends it to the server', async () => {
+    const { reader, transport, request } = privateClient()
+    expect(await request('GET', '/api/library/documents?limit=50&offset=0')).toEqual({ kind: 'local_library' })
+    expect(reader).toHaveBeenCalledExactlyOnceWith('/api/library/documents?limit=50&offset=0')
+    expect(transport).not.toHaveBeenCalled()
+  })
+
+  it.each(['/api/status', '/api/forum', '/api/forum/threads', '/api/queue', '/api/config', '/api/lineage/inquiries', '/api/rehearsalsX', '/api/rehearsals-x/jobs', '/api/libraryX'])('GET %s is unavailable and nothing is sent', async path => {
+    const { reader, transport, request } = privateClient()
+    const failure = request('GET', path)
+    await expect(failure).rejects.toBeInstanceOf(HostUnavailableError)
+    await expect(failure).rejects.toThrow(/Not available on this host.*No request was sent/)
+    expect(transport).not.toHaveBeenCalled()
+    expect(reader).not.toHaveBeenCalled()
+  })
+
+  it.each(['/api/rehearsals', '/api/rehearsals/x', '/api/library/documents', '/api/forum', '/api/queue/1/approve', '/api/config'])('POST %s is rejected as read-only and calls nothing', async path => {
+    const { reader, transport, request } = privateClient()
+    await expect(request('POST', path, { value: 1 })).rejects.toThrow(/read-only/)
+    expect(transport).not.toHaveBeenCalled()
+    expect(reader).not.toHaveBeenCalled()
+  })
+
+  it('preview mode ignores the private host profile', async () => {
+    const transport = vi.fn(async () => ({ mustNeverReach: true }))
+    const request = createApiClient('preview', readFixture, transport, 'private')
+    expect(await request('GET', '/api/status')).toMatchObject({ kind: 'fixture' })
+    await expect(request('POST', '/api/init')).rejects.toThrow(/Preview is read-only/)
+    expect(transport).not.toHaveBeenCalled()
+  })
+
+  it('the full connected host still passes every request to the transport', async () => {
+    const reader = vi.fn(() => { throw new Error('full host must not read locally') })
+    const transport = vi.fn(async () => ({ kind: 'server' }))
+    for (const request of [createApiClient('connected', reader, transport, 'full'), createApiClient('connected', reader, transport)]) {
+      expect(await request('GET', '/api/status')).toEqual({ kind: 'server' })
+      expect(await request('GET', '/api/library/documents')).toEqual({ kind: 'server' })
+      expect(await request('POST', '/api/forum', { content: 'x' })).toEqual({ kind: 'server' })
+    }
+    expect(transport).toHaveBeenCalledTimes(6)
     expect(reader).not.toHaveBeenCalled()
   })
 })

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  IS_PREVIEW, getAgents, getAgentJournal, getAgentEpisodes, wakeAgent,
+  IS_PREVIEW, IS_PRIVATE_HOST, getAgents, getAgentJournal, getAgentEpisodes, wakeAgent,
   getSelfDefinition, updateSelfDefinition,
   getAllPositions, writeJournalEntry, writeInnermostEntry,
 } from '../api'
 import type { PositionSnapshot } from '../data/contracts'
+import { useRecordedRun } from '../rehearsal/useRecordedRun'
+import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
+import type { RehearsalJob } from '../rehearsal/contracts'
+import { label, text } from '../rehearsal/format'
 
 const AGENT_COLORS: Record<string, string> = {
   tempest: '#7c6af7', siren: '#f6ad55', alchemist: '#68d391',
@@ -248,7 +252,7 @@ function SelfDefinitionPanel({ agentId }: { agentId: string }) {
   )
 }
 
-export default function Agents() {
+function FullAgents() {
   const [agents, setAgents] = useState<any[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [journal, setJournal] = useState<any[]>([])
@@ -382,4 +386,71 @@ export default function Agents() {
       </div>
     </div>
   )
+}
+
+const provenance = (origin: RehearsalJob['selection_origin']) =>
+  origin === 'model' ? 'Model choice' : origin === 'none' ? 'No committed model choice' : 'Unknown (older record)'
+
+function RoundLine({ job }: { job: RehearsalJob }) {
+  const detail = [job.journal_mode ? label(job.journal_mode) : '', job.channels?.length ? job.channels.map(label).join(', ') : ''].filter(Boolean).join(' · ')
+  const records = Array.isArray(job.record_refs) ? job.record_refs.length : null
+  return <li>
+    <strong>Round {job.round}:</strong> {job.action ? label(job.action) : 'Action not recorded'}{detail && ` (${detail})`}
+    {' · '}Status: {label(job.status)}
+    {' · '}Selection: {provenance(job.selection_origin)}
+    {' · '}{records === null ? 'Linked records unavailable' : `${records} linked private record${records === 1 ? '' : 's'}`}
+  </li>
+}
+
+// Private host: deploy/private_dashboard.py serves only the session records, so the
+// members are shown as recorded in the newest session run. Nothing here writes.
+function PrivateAgents() {
+  const { runs, runsLoading, runsError, runId, selectRun, detail, detailLoading, detailError, refresh } = useRecordedRun()
+  const run = detail?.run
+  return <div>
+    <header className="page-header">
+      <h1 className="page-title">Agents</h1>
+      <p className="page-sub">The seven members in the latest recorded session</p>
+    </header>
+    <div className="notice" role="note">
+      <p>Soul documents, positions and the write actions (wake, journal entry, self-definition) are not served on this host. Agents' private records are read on the <Link to="/journals">Journals</Link> and <Link to="/rehearsal">Sessions</Link> pages.</p>
+    </div>
+    {runsLoading && <p role="status">Loading session runs…</p>}
+    {runsError && <p role="alert" className="error-msg">Run list unavailable. A failed read is not an empty run list.</p>}
+    {runs && runs.runs.length === 0 && <div className="card">
+      <p>No session runs recorded on this server yet.</p>
+      <p className="rehearsal-meta">Runs are started from the CLI (scripts/rehearsal.py) as the paradoxtrader user; see deploy/README.md step 7.</p>
+    </div>}
+    {runs && runs.runs.length > 0 && <div className="rehearsal-toolbar">
+      {runs.runs.length > 1 && <label htmlFor="agents-run">Run
+        <select id="agents-run" className="select" value={runId ?? ''} onChange={event => selectRun(event.target.value || null)}>
+          {runs.runs.map(value => <option key={value.run_id} value={value.run_id}>{value.run_id.slice(0, 8)} · {label(value.status)} · {new Date(value.created_at).toLocaleString()}</option>)}
+        </select>
+      </label>}
+      <button type="button" className="btn btn-ghost" onClick={refresh}>Refresh reads</button>
+      <Link className="btn btn-ghost" to="/rehearsal">Session details</Link>
+    </div>}
+    {runsError && <button type="button" className="btn btn-ghost" onClick={refresh}>Retry</button>}
+    {runId && detailLoading && <p role="status">Loading members for this run…</p>}
+    {runId && detailError && <p role="alert" className="error-msg">Run details unavailable. A failed read is not a run with no activity.</p>}
+    {run && detail && <section aria-label="Members in this run">
+      <p className="page-sub">Run {text(run.run_id, 100).slice(0, 8)} · {label(run.status)} · {run.mode === 'offline' ? 'Offline execution' : 'Real-mode manifest'} · created {new Date(run.created_at).toLocaleString()}</p>
+      <div className="grid-2">
+        {REHEARSAL_AGENTS.map(agent => {
+          const jobs = detail.jobs.filter(job => job.agent_id === agent.id).sort((a, b) => a.round - b.round)
+          const model = text(run.agent_models?.[agent.id], 200)
+          return <article key={agent.id} className="card" aria-label={agent.name}>
+            <h2 className="card-title">{agent.name}</h2>
+            <p>Assigned model: {model || 'Unavailable'}</p>
+            {jobs.length === 0 ? <p>No rounds recorded for this member in this run.</p> : <ul className="member-rounds">{jobs.map(job => <RoundLine key={job.wake_id} job={job} />)}</ul>}
+            <Link className="btn btn-ghost" to="/journals">Read {agent.name}'s journals</Link>
+          </article>
+        })}
+      </div>
+    </section>}
+  </div>
+}
+
+export default function Agents() {
+  return IS_PRIVATE_HOST ? <PrivateAgents /> : <FullAgents />
 }

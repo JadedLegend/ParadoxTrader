@@ -8,7 +8,7 @@ import TradeQueue from './views/TradeQueue'
 import Agents from './views/Agents'
 import Config from './views/Config'
 import WakeChoices from './views/WakeChoices'
-import { IS_PREVIEW } from './api'
+import { IS_PREVIEW, IS_PRIVATE_HOST } from './api'
 import './styles.css'
 
 const Library = lazy(() => import('./views/Library'))
@@ -43,9 +43,11 @@ export default function App() {
           <div className="sidebar-footnote">Individual perspectives.<br />A shared purpose.</div>
         </nav>
         <main className="main-content" id="main" tabIndex={-1}>
-          <div className={`mode-banner ${IS_PREVIEW ? 'preview-mode' : 'connected-mode'}`} role="note">
-            <strong>{IS_PREVIEW ? 'Fixture preview' : 'Connected frontend'}</strong>
-            <span>{IS_PREVIEW ? 'Local agent and portfolio examples; Library reads imported source text. No agents, providers, accounts, or schedules are running through this preview.' : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
+          <div className={`mode-banner ${IS_PREVIEW ? 'preview-mode' : IS_PRIVATE_HOST ? 'private-host-mode' : 'connected-mode'}`} role="note">
+            <strong>{IS_PREVIEW ? 'Fixture preview' : IS_PRIVATE_HOST ? 'Private host · read only' : 'Connected frontend'}</strong>
+            <span>{IS_PREVIEW ? 'Local agent and portfolio examples; Library reads imported source text. No agents, providers, accounts, or schedules are running through this preview.'
+              : IS_PRIVATE_HOST ? 'Recorded session runs from this server; Library reads the bundled source text. Pages with no data source here say so. Nothing on this site starts, wakes, or changes anything.'
+              : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
           </div>
           <ScreenBoundary>
             <Suspense fallback={<div className="loading" role="status">Loading screen...</div>}>
