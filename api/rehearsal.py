@@ -141,7 +141,8 @@ def _request(value):
 PRIVATE_FIELDS = frozenset(('continuity', 'include_metadata', 'include_continuity', 'status', 'refs',
     'truncated', 'chars', 'excerpts', 'unavailable', 'records', 'kind', 'id', 'wake_id', 'agent_id',
     'body', 'content', 'source', 'account_kind', 'body_truncated', 'inquiry_id', 'title', 'state',
-    'title_source', 'title_truncated', 'latest_entry', 'entry_status', 'entry_id', 'created_at', 'record'))
+    'title_source', 'title_truncated', 'latest_entry', 'entry_status', 'entry_id', 'created_at', 'record',
+    'earlier_run_id', 'earlier_wake_id'))
 def _private_context(value, owner, depth=0):
     if depth > 12:
         _error(404, 'rehearsal_decision_not_found')

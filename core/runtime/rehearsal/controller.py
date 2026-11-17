@@ -273,7 +273,7 @@ def snapshot_profiles(store, run_id, repo_root=None):
     return marker
 
 
-def _memory_effect(memory, wake_id, action, output, library_refs=None):
+def _memory_effect(memory, wake_id, action, output, library_refs=None, key_scope=None):
     """Bridge dedupe key and actual memory inserts in the SAME owner transaction.
 
     No legacy write_journal/store_episode double writes. Measurement columns stay
@@ -282,7 +282,9 @@ def _memory_effect(memory, wake_id, action, output, library_refs=None):
     """
     ensure_private_db_file(memory.db_path)
     digest = hashlib.sha256(output.encode("utf-8")).hexdigest()
-    key = f"rehearsal:{wake_id}:{action}"
+    # A continuing home carries memory (and these markers) between runs whose
+    # wake IDs repeat, so continued runs scope their keys to the run.
+    key = f"rehearsal:{key_scope + ':' if key_scope else ''}{wake_id}:{action}"
     with sqlite3.connect(memory.db_path, timeout=30) as conn:
         conn.execute("BEGIN IMMEDIATE")
         conn.execute("""CREATE TABLE IF NOT EXISTS rehearsal_effects (
@@ -328,6 +330,10 @@ class RehearsalController:
         self._witness_lock = RLock()
         self._witness_store = None
         self.witness_errors = []  # Bounded codes, never private errors or outputs.
+        # First visits keep their original operation keys; continued days carry
+        # earlier markers, so their keys include this run ID.
+        from .home import read_home
+        self._key_scope = run_id if read_home(store, run_id) is not None else None
 
     def prepare_profiles(self):
         return snapshot_profiles(self.store, self.run_id, self.repo_root)
@@ -475,7 +481,8 @@ class RehearsalController:
         from core.memory.compost import CompostStore
         mode = choice.get("journal_mode", "note")
         path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
-        key = f"rehearsal:{job['wake_id']}:journal:{mode}"
+        scope = f"{self._key_scope}:" if self._key_scope else ""
+        key = f"rehearsal:{scope}{job['wake_id']}:journal:{mode}"
         with self._memory_lock:
             compost = CompostStore(path, job["agent_id"])
             sources = (compost.prepare_distillation(key, choice.get("source_ids"))
@@ -616,7 +623,8 @@ class RehearsalController:
                     memory_path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
                     ensure_private_db_file(memory_path)
                     memory = ThresholdMemory(str(memory_path))
-                    refs = _memory_effect(memory, wake_id, action, output, library_refs)
+                    scoped = {"key_scope": self._key_scope} if self._key_scope else {}
+                    refs = _memory_effect(memory, wake_id, action, output, library_refs, **scoped)
             self.store.finish_job(self.run_id, wake_id, self._token, status="completed", action=action, record_refs=refs)
         except RehearsalStopped:
             if job is not None:

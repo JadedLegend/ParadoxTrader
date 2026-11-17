@@ -90,7 +90,8 @@ def public_coverage(context):
 
 
 def _refresh(context):
-    context["refs"] = [{"kind": item["kind"], "id": item["id"], "wake_id": item["wake_id"]}
+    context["refs"] = [{"kind": item["kind"], "id": item["id"],
+                        **({"wake_id": item["wake_id"]} if "wake_id" in item else {})}
                        for item in context["excerpts"]]
     context["chars"] = sum(excerpt_chars(item) for item in context["excerpts"])
     # A mix of readable and missing linked sources is partial coverage, not a
@@ -122,8 +123,33 @@ def owner_continuity(store, run_id, job):
             key = (ref["kind"], ref["id"])
             if key not in seen:
                 seen.add(key)
-                candidates.append((row["wake_id"], ref))
-    for wake_id, ref in candidates:
+                candidates.append((row["wake_id"], ref, None))
+    # A continuing home also offers the owner's notes from earlier days, after
+    # anything from earlier rounds today. Their memory was carried into this
+    # run, so the same journal/episode IDs are read from this run's files.
+    # Inquiries are not carried yet, so earlier-day inquiry refs are skipped.
+    from .home import previous_run_ids
+    try:
+        earlier = previous_run_ids(store, run_id)
+    except RehearsalError:
+        earlier = []
+        context["unavailable"] = True
+    for previous in earlier:
+        try:
+            rows = store.list_jobs(previous)
+        except RehearsalError:
+            context["unavailable"] = True
+            continue
+        for row in sorted((row for row in rows if row["agent_id"] == owner),
+                          key=lambda row: (row["round"], row["wake_id"]), reverse=True):
+            for ref in row["record_refs"]:
+                if ref["kind"] not in ("journal", "episode"):
+                    continue
+                key = (ref["kind"], ref["id"])
+                if key not in seen:
+                    seen.add(key)
+                    candidates.append((row["wake_id"], ref, previous))
+    for wake_id, ref, origin in candidates:
         if len(context["excerpts"]) >= MAX_REFS:
             context["truncated"] = True
             break
@@ -141,7 +167,11 @@ def owner_continuity(store, run_id, job):
             continue
         if material.get("entry_status") == "unavailable":
             context["unavailable"] = True
-        item = {"kind": ref["kind"], "id": ref["id"], "wake_id": wake_id, **material}
+        # Today's refs name today's wake. Carried refs name the earlier day
+        # instead, so they can never be mistaken for a wake in this run.
+        where = ({"wake_id": wake_id} if origin is None
+                 else {"earlier_run_id": origin, "earlier_wake_id": wake_id})
+        item = {"kind": ref["kind"], "id": ref["id"], **where, **material}
         context["truncated"] |= cut
         context["excerpts"].append(item)
     return clip_continuity(_refresh(context), MAX_CHARS)
