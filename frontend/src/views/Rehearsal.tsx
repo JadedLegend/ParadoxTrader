@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getRehearsalRuns, getRehearsalRun, getRehearsalJobs, getRehearsalRequests, getRehearsalRecord, getRehearsalDecision } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getRehearsalRuns, getRehearsalRun, getRehearsalJobs, getRehearsalRequests, getRehearsalRecord, getRehearsalDecision } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 import { projectDecisionMetadata } from '../rehearsal/client'
+import { dollars, elapsed, label, text } from '../rehearsal/format'
 import type { RehearsalAgentId, RehearsalDecisionResponse, RehearsalJob, RehearsalRecordRef, RehearsalRecordResponse, RehearsalRequestsResponse, RehearsalRun, RehearsalRunsResponse } from '../rehearsal/contracts'
 
 type ReadState<T> = { key: string; data: T | null; loading: boolean; error: boolean }
@@ -9,17 +10,6 @@ const empty = <T,>(): ReadState<T> => ({ key: '', data: null, loading: false, er
 const LIMIT = 50
 const RUN_LIMIT = 20
 const MAX_OFFSET = 1_000_000
-const text = (value: unknown, max = 1000) => typeof value === 'string' ? value.length > max ? `${value.slice(0, max)}… [truncated]` : value : ''
-const label = (value: string) => text(value, 100).replaceAll('_', ' ').replace(/^./, character => character.toUpperCase())
-function dollars(value: string | null | undefined) {
-  if (value === null || value === undefined) return 'Unavailable'
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) return 'Unavailable'
-  if (numeric === 0 && !/[1-9]/.test(value)) return '$0'
-  if (Math.abs(numeric) < 1e-12) return '<$0.000000000001'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 12 }).format(numeric)
-}
-const elapsed = (value: number | null | undefined) => value === null || value === undefined ? 'Unavailable' : `${value} ms`
 function PrivateRecord({ value }: { value: RehearsalRecordResponse }) {
   const record = value.record
   return <article className="card rehearsal-private-record">
@@ -142,7 +132,7 @@ export default function Rehearsal() {
   return <div className="rehearsal-page">
     <header className="page-header"><h1 className="page-title">Sessions</h1><p className="page-sub">Seven-agent finite nontrading session · after-run inspection, read only.</p></header>
     <div className="notice rehearsal-notice"><strong>{IS_PREVIEW ? 'Mock runs · local fixture' : 'Recorded runs · operator-protected reads'}</strong>
-      <p>{IS_PREVIEW ? 'All examples are mocked. Model names do not verify current real-model availability. No network fallback or paid launch occurs.' : 'No browser operator token or model credentials are configured here. Connected reads require deliberately integrated operator authentication.'}</p>
+      <p>{IS_PREVIEW ? 'All examples are mocked. Model names do not verify current real-model availability. No network fallback or paid launch occurs.' : IS_PRIVATE_HOST ? 'Owner-protected reads: the server adds the operator token; your browser never holds it or any model key.' : 'No browser operator token or model credentials are configured here. Connected reads require deliberately integrated operator authentication.'}</p>
       <p>CLI owns prepare, start, stop and resume. No launch controls are available here; inspect when useful, not continuously.</p>
     </div>
     <div className="rehearsal-toolbar"><label htmlFor="rehearsal-run">Run</label><select id="rehearsal-run" className="select" value={runId ?? ''} onChange={event => { clearSelection(); setRunId(event.target.value || null) }} disabled={!list?.runs.length}>

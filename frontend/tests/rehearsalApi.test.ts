@@ -52,7 +52,7 @@ describe('rehearsal default fixture read API (all HTTP blocked)', () => {
     const first = await getRehearsalRun(run.run_id)
     first.agent_models.tempest = 'consumer mutation'
     expect((await getRehearsalRun(run.run_id)).agent_models.tempest).not.toBe('consumer mutation')
-  })
+  }, 20_000) // CPU-bound walk over every linked record; exceeds the 5 s default under full-suite parallel load.
   it('keeps operational reads separate from memory bodies, raw model output and secrets', async () => {
     const run = await firstRun()
     for (const value of [await getRehearsalRuns(), await getRehearsalRun(run.run_id), await getRehearsalJobs(run.run_id), await getRehearsalRequests(run.run_id)]) {

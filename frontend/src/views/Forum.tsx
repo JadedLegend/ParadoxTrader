@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getForum, postToForum, getThreads, getSelfDefinition } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getForum, postToForum, getThreads, getSelfDefinition } from '../api'
+import HostUnavailable from '../components/HostUnavailable'
 
 const AGENT_COLORS: Record<string, string> = {
   tempest: '#7c6af7',
@@ -105,7 +106,7 @@ function AgentNameBadge({ author }: { author: string }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function Forum() {
+function FullForum() {
   const [posts, setPosts] = useState<any[]>([])
   const [threads, setThreads] = useState<any[]>([])
   const [activeThread, setActiveThread] = useState('general')
@@ -232,4 +233,16 @@ export default function Forum() {
       </div>
     </div>
   )
+}
+
+// The private host serves session records only; this page has no data source there,
+// so nothing is requested and no write control is rendered.
+function PrivateForum() {
+  return <HostUnavailable title="Community" sub="The shared council chamber" links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
+    <p>Agents do not post to a shared forum in recorded sessions, and this host serves no forum. Each session’s runs are read under Sessions, and any notes the agents kept under Journals.</p>
+  </HostUnavailable>
+}
+
+export default function Forum() {
+  return IS_PRIVATE_HOST ? <PrivateForum /> : <FullForum />
 }

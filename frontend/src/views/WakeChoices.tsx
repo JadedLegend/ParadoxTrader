@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { IS_PREVIEW } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST } from '../api'
 import ChoiceDialog from '../components/ChoiceDialog'
 import { fixture } from '../preview/readFixture'
 import { makeReceipt } from '../preview/choiceState'
@@ -23,6 +23,12 @@ export default function WakeChoices() {
   const [receipts, setReceipts] = useState<DemonstrationReceipt[]>([])
   const window = fixture.windows[agent.agent_id][scenario]
 
+  if (IS_PRIVATE_HOST) return (
+    <section><div className="page-header"><h1 className="page-title">Wake Choices</h1></div>
+      <p className="notice">The choice-window demonstration is available in fixture preview only. On this host, the actions each recorded wake offered and their reservation ceilings are shown under Sessions: open a run and use Read decision context.</p>
+      <Link className="btn btn-ghost" to="/rehearsal">Open Sessions</Link>
+    </section>
+  )
   if (!IS_PREVIEW) return (
     <section><div className="page-header"><h1 className="page-title">Wake Choices</h1></div>
       <p className="notice">The choice-window demonstration is available in fixture preview only. Connected choice observation and timer controls have not been implemented.</p>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getJournalNotes, getWitnessAccounts, getRehearsalRuns, getRehearsalRecord } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getJournalNotes, getWitnessAccounts, getRehearsalRuns, getRehearsalRecord } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 import { JOURNAL_CHANNELS } from '../journals/contracts'
 import { projectJournalNote, projectSourceHeader, projectWitnessAccount } from '../journals/client'
@@ -132,7 +132,7 @@ export default function Journals() {
   }
   return <div className="journals-page rehearsal-page">
     <header className="page-header"><h1 className="page-title">Journals</h1><p className="page-sub">Owner-private notes and preserved sources · read only, when useful.</p></header>
-    <div className="notice"><strong>{IS_PREVIEW ? 'Scripted local examples · no live activity' : 'Operator-protected private reads'}</strong><p>{IS_PREVIEW ? 'Examples come from temporary offline stores. No HTTP fallback or model calls.' : 'No browser secrets or launch controls. These reads require integrated operator authentication.'}</p><p>Notes and witness accounts are optional. Release archives routine context; it does not delete or share an original.</p></div>
+    <div className="notice"><strong>{IS_PREVIEW ? 'Scripted local examples · no live activity' : 'Operator-protected private reads'}</strong><p>{IS_PREVIEW ? 'Examples come from temporary offline stores. No HTTP fallback or model calls.' : IS_PRIVATE_HOST ? 'No browser secrets or launch controls. Owner-protected reads: the server adds the operator token; your browser never holds it or any model key.' : 'No browser secrets or launch controls. These reads require integrated operator authentication.'}</p><p>Notes and witness accounts are optional. Release archives routine context; it does not delete or share an original.</p></div>
     <div className="rehearsal-toolbar"><label htmlFor="journal-run">Run</label><select id="journal-run" className="select" value={runId ?? ''} disabled={!runList?.runs.length} onChange={event => { clear(); setRunId(event.target.value || null) }}>
       {!runList?.runs.length && <option value="">No run selected</option>}{runList?.runs.map(run => <option key={run.run_id} value={run.run_id}>{run.run_id.slice(0, 8)} · {run.mode} · {run.status}</option>)}
     </select><label htmlFor="journal-owner">Owner</label><select id="journal-owner" className="select" value={owner} onChange={event => { clear(); setOwner(event.target.value as JournalOwner) }}>{REHEARSAL_AGENTS.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select><button type="button" className="btn btn-ghost" onClick={() => { clear(); setRetry(value => value + 1) }}>Refresh reads</button></div>

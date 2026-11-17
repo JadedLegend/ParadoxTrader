@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { IS_PREVIEW, getLineageInquiries, getLineageInquiry } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getLineageInquiries, getLineageInquiry } from '../api'
+import HostUnavailable from '../components/HostUnavailable'
 import { LINEAGE_AGENTS } from '../lineage/contracts'
 import type { LineageAgentId, LineageDetailResponse, LineageEvent, LineageListResponse, OptionStructure } from '../lineage/contracts'
 
@@ -130,7 +131,7 @@ function HistoryDetail({ data, agentName }: { data: LineageDetailResponse; agent
 }
 
 type ReadState<T> = { key: string; data: T | null; loading: boolean; error: boolean }
-export default function InquiryHistory() {
+function FullInquiryHistory() {
   const [agentId, setAgentId] = useState<LineageAgentId>('alchemist')
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
@@ -197,7 +198,7 @@ export default function InquiryHistory() {
       <section className="card lineage-sidebar" aria-label="Inquiries" aria-busy={listLoading}>
         <h2 className="card-title">Inquiries</h2>
         {listLoading && <p role="status">Loading inquiries…</p>}
-        {listError && <div className="error-msg" role="alert">Inquiry list unavailable. Connected reads require operator authorization; browser login is not configured in this pilot.
+        {listError && <div className="error-msg" role="alert">Inquiry list unavailable. A failed read is not an empty list.
           {' '}<button className="btn btn-ghost" type="button" onClick={() => setListRetry(value => value + 1)}>Retry inquiries</button></div>}
         {list && <>
           {list.truncated && <p className="notice">Inquiry metadata is truncated. Only recorded items available in this example are shown.</p>}
@@ -221,4 +222,16 @@ export default function InquiryHistory() {
       </section>
     </div>
   </div>
+}
+
+// The private host serves session records only; this page has no data source there,
+// so nothing is requested and no write control is rendered.
+function PrivateInquiryHistory() {
+  return <HostUnavailable title="Inquiry History" sub="Optional inquiry, proposal, and mock execution records — read only." links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
+    <p>This host serves no inquiry lineage records. Inquiry requests made during recorded sessions are read under Sessions, and the notes kept about them under Journals.</p>
+  </HostUnavailable>
+}
+
+export default function InquiryHistory() {
+  return IS_PRIVATE_HOST ? <PrivateInquiryHistory /> : <FullInquiryHistory />
 }

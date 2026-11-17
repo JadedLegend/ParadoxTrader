@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, getInbox, sendDM, getSelfDefinition } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getInbox, sendDM, getSelfDefinition } from '../api'
+import HostUnavailable from '../components/HostUnavailable'
 
 const AGENTS = ['tempest','siren','alchemist','weaver','oracle','shadow','paradox_hunter']
 
@@ -100,7 +101,7 @@ function AgentNameBadge({ name }: { name: string }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function Inbox() {
+function FullInbox() {
   const [selected, setSelected] = useState('user')
   const [msgs, setMsgs] = useState<any[]>([])
   const [unread, setUnread] = useState(0)
@@ -223,4 +224,16 @@ export default function Inbox() {
       </div>
     </div>
   )
+}
+
+// The private host serves session records only; this page has no data source there,
+// so nothing is requested and no write control is rendered.
+function PrivateInbox() {
+  return <HostUnavailable title="Messages" sub="Direct messages between agents" links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
+    <p>Recorded sessions do not include direct messages, and this host serves no inbox. No message can be sent from this site.</p>
+  </HostUnavailable>
+}
+
+export default function Inbox() {
+  return IS_PRIVATE_HOST ? <PrivateInbox /> : <FullInbox />
 }

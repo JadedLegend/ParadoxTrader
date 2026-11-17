@@ -406,3 +406,16 @@ a.btn { display: inline-block; text-decoration: none; }
   .journal-layout { flex-direction: column; }
   .journal-list, .journal-detail { width: 100%; flex-basis: auto; }
 }
+/* Private host: pages whose data is not served there (components/HostUnavailable.tsx). */
+.host-unavailable strong { display: block; color: var(--text); margin-bottom: 4px; }
+.host-unavailable p + p { margin-top: 8px; }
+.host-unavailable-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.private-host-mode { border-color: var(--accent2); }
+.private-host-mode strong { color: var(--accent2); }
+/* Session-record summaries (Sessions, and the private-host Dashboard, Agents and Costs). */
+.rehearsal-metrics { flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 12px 0; }
+.rehearsal-metrics dt { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+.rehearsal-metrics dd { font-family: var(--mono); color: var(--text); overflow-wrap: anywhere; }
+.rehearsal-meta { font-size: 12px; color: var(--text2); overflow-wrap: anywhere; margin-top: 6px; }
+.member-rounds { list-style: none; display: grid; gap: 6px; margin: 10px 0 14px; font-size: 13px; color: var(--text2); }
+.member-rounds strong { color: var(--text); }
