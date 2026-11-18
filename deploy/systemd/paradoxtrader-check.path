@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the ParadoxTrader connection check when the Settings page asks
+
+[Path]
+PathExists=/var/lib/paradoxtrader/settings/check/request.json
+Unit=paradoxtrader-check.service
+
+[Install]
+WantedBy=multi-user.target

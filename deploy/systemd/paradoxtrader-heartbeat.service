@@ -19,5 +19,6 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/paradoxtrader/sessions
+# Settings: read the owner's models, budget and key (SQLite needs its lock and journal files).
+ReadWritePaths=/var/lib/paradoxtrader/sessions /var/lib/paradoxtrader/settings
 UMask=0077

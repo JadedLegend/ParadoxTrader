@@ -60,7 +60,9 @@ export interface ConnectionCheck {
   unset: string[]
   free_limits_url: string
 }
-export const checkConnection = () => request<ConnectionCheck>('POST', '/api/settings/check', {})
+export interface CheckState { state: 'none' | 'pending' | 'done'; requested_at: string | null; result: ConnectionCheck | null }
+export const checkConnection = () => request<CheckState>('POST', '/api/settings/check', {})
+export const getConnectionCheck = () => request<CheckState>('GET', '/api/settings/check')
 export const updateConfig = (key_path: string, value: unknown) => request<any>('POST', '/api/config', { key_path, value })
 export const setPhase = (phase: number) => request<any>('POST', '/api/phase', { phase })
 export const setCountdown = (target_iso: string) => request<any>('POST', '/api/countdown', { target_iso })
