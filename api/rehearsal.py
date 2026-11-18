@@ -120,8 +120,7 @@ def _job(value):
         if not isinstance(ref, dict):
             continue
         if ref.get('kind') == 'witness':
-            if (value.get('agent_id') not in AGENTS or value.get('wake_id') not in
-                    (f"{value['agent_id']}-r1", f"{value['agent_id']}-r2")
+            if (value.get('agent_id') not in AGENTS or not _owner_wake(value['agent_id'], value.get('wake_id'))
                     or not isinstance(ref.get('id'), str) or not UUID.fullmatch(ref['id'])
                     or ref.get('agent_id', value['agent_id']) != value['agent_id']):
                 continue
@@ -153,7 +152,7 @@ def _private_context(value, owner, depth=0):
     if not isinstance(value, dict):
         _error(404, 'rehearsal_decision_not_found')
     if ('agent_id' in value and value['agent_id'] != owner or
-            'wake_id' in value and value['wake_id'] not in (f'{owner}-r1', f'{owner}-r2') or
+            'wake_id' in value and not _owner_wake(owner, value['wake_id']) or
             value.get('kind') == 'innermost'):
         _error(404, 'rehearsal_decision_not_found')
     return {key: _private_context(item, owner, depth + 1) for key, item in value.items() if key in PRIVATE_FIELDS}
@@ -186,6 +185,17 @@ def _integer(params, key, default, minimum, maximum):
     if not re.fullmatch(r'[0-9]{1,10}', value) or not minimum <= int(value) <= maximum:
         _error(400, 'invalid_rehearsal_request')
     return int(value)
+
+
+MAX_WAKES_PER_AGENT = 48
+
+
+def _owner_wake(owner, wake):
+    """True when ``wake`` is one of ``owner``'s wake IDs: ``<owner>-r<n>``, 1 <= n <= 48."""
+    if not isinstance(owner, str) or not isinstance(wake, str) or not wake.startswith(owner + '-r'):
+        return False
+    number = wake[len(owner) + 2:]
+    return bool(re.fullmatch(r'[1-9][0-9]?', number)) and int(number) <= MAX_WAKES_PER_AGENT
 
 
 def _owner(params, required=False):
@@ -289,7 +299,7 @@ def _record(store, run_id, params):
         from core.runtime.rehearsal.witness import WitnessStore
         matching = [job for job in jobs if job.get('agent_id') == owner and
                     any(ref.get('kind') == 'witness' and ref.get('id') == record_id for ref in job.get('record_refs', []))]
-        if any(job.get('wake_id') not in (f'{owner}-r1', f'{owner}-r2') for job in matching):
+        if any(not _owner_wake(owner, job.get('wake_id')) for job in matching):
             _error(404, 'rehearsal_record_not_found')
         account = WitnessStore(store.safe_run_file(run_id, 'witness.sqlite3')).get_account(record_id, owner)
         if account is None or account.get('id') != record_id:
@@ -339,7 +349,7 @@ def _journal_note(value, owner):
             or value.get('state') not in ('active', 'released')
             or 'source_mode' not in value or value['source_mode'] not in ('real', 'offline', None)
             or 'source_wake_id' not in value
-            or wake not in (None, f'{owner}-r1', f'{owner}-r2')
+            or (wake is not None and not _owner_wake(owner, wake))
             or not isinstance(sources, list) or len(sources) > 20
             or any(type(source) is not int or not 1 <= source <= 2**31 - 1 for source in sources)
             or len(set(sources)) != len(sources)):
@@ -362,7 +372,7 @@ def _journal_sources(store, run_id, owner, channel, state, limit, offset):
     for job in store.list_jobs(run_id):
         if job.get('agent_id') != owner:
             continue
-        if job.get('wake_id') not in (f'{owner}-r1', f'{owner}-r2'):
+        if not _owner_wake(owner, job.get('wake_id')):
             _error(503, 'rehearsal_unavailable')
         for ref in job.get('record_refs', []):
             if ref.get('kind') == 'inquiry' and isinstance(ref.get('id'), str) and UUID.fullmatch(ref['id']):
@@ -436,7 +446,7 @@ def _witness_account(value, scope):
                 or 'agent_id' in ref and (ref['agent_id'] not in AGENTS or scope != 'steward' and ref['agent_id'] != scope)
                 or 'wake_id' in ref and (not isinstance(ref['wake_id'], str) or ref['wake_id'] not in tuple(f'{owner}-r{round}' for owner in (AGENTS if scope == 'steward' else (scope,)) for round in (1, 2)))):
             _error(503, 'rehearsal_unavailable')
-        if scope != 'steward' and ref['kind'] in ('wake', 'job') and ref['id'] not in (f'{scope}-r1', f'{scope}-r2'):
+        if scope != 'steward' and ref['kind'] in ('wake', 'job') and not _owner_wake(scope, ref['id']):
             _error(503, 'rehearsal_unavailable')
         refs.append(_project(ref, ('kind', 'id', 'agent_id', 'wake_id')))
     return {**_project(value, ('id', 'scope', 'content', 'source_digest', 'author', 'method', 'created_at')), 'source_refs': refs}
@@ -545,7 +555,7 @@ def create_app(root, operator_token=None):
         params = _params(request, ('agent_id', 'wake_id'))
         owner = _owner(params, required=True)
         wake_id = params.get('wake_id')
-        if wake_id not in (f'{owner}-r1', f'{owner}-r2'):
+        if not _owner_wake(owner, wake_id):
             _error(404, 'rehearsal_decision_not_found')
         def fetch():
             store = _store(root)
@@ -558,8 +568,8 @@ def create_app(root, operator_token=None):
             metadata = _decision_metadata(value['metadata'])
             if metadata is None or not isinstance(value['requests'], list):
                 _error(404, 'rehearsal_decision_not_found')
-            if any(ref.get('agent_id', owner) != owner or ref.get('wake_id', f'{owner}-r1') not in
-                   (f'{owner}-r1', f'{owner}-r2') for ref in metadata['continuity']['refs']):
+            if any(ref.get('agent_id', owner) != owner or not _owner_wake(owner, ref.get('wake_id', f'{owner}-r1'))
+                   for ref in metadata['continuity']['refs']):
                 _error(404, 'rehearsal_decision_not_found')
             return {'run_id': run_id, 'agent_id': owner, 'wake_id': wake_id,
                     'decision': {'metadata': metadata, 'private_context': _private_context(value['private_context'], owner),

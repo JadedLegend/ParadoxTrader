@@ -795,7 +795,7 @@ with mock.patch('os.mkdir',side_effect=AssertionError('mkdir')), mock.patch('sql
                 self.assertFalse(path.exists())
         for relative in ("../usage.sqlite3", str(run_path / "usage.sqlite3"), "arbitrary.txt",
                          "profiles/unknown_soul.json", "memory/unknown.sqlite3", "memory/tempest-siren-r1-library.json",
-                         "memory/tempest-tempest-r3-library.json", "usage.sqlite3-wal", "", None):
+                         "memory/tempest-tempest-r49-library.json", "usage.sqlite3-wal", "", None):
             with self.subTest(relative=relative), self.assertRaises(RehearsalError):
                 self.store.safe_run_file(self.run_id, relative)
 

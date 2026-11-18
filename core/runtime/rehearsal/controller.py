@@ -646,8 +646,33 @@ class RehearsalController:
             if job is not None:
                 self._record_witness(job["agent_id"], wake_id)
 
+    def run_wake(self, owner):
+        """Day runs: add and run exactly one wake for ``owner``, then release.
+
+        Same per-request reservation, uncertainty and witness rules as a full
+        rehearsal; the runtime limit applies to this wake only.
+        """
+        if self.manifest.get("kind") != "day":
+            raise RehearsalError("single wakes run only in day runs")
+        marker = _run_file(self.path, "profiles/snapshot.json")
+        if self.manifest["mode"] == "real" and not marker.exists():
+            raise RehearsalError("prepare_profiles_before_real_start")
+        self.prepare_profiles()
+        prepare_cohort(self.run_id, db_path=_run_file(self.path, "trade_queue.sqlite3"))
+        job = self.store.add_wake(self.run_id, owner)
+        self._token = self.store.begin(self.run_id)
+        try:
+            self._execute(job["wake_id"])
+        finally:
+            token, self._token = self._token, None
+            if token is not None:
+                self.store.end(self.run_id, token)
+        return next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+
     def run(self, resume=False):
         """Only explicit invocation dispatches; complete rounds are stable store jobs."""
+        if self.manifest.get("kind") == "day":
+            raise RehearsalError("day runs dispatch single wakes (run_wake)")
         marker = _run_file(self.path, "profiles/snapshot.json")
         if self.manifest["mode"] == "real" and not marker.exists():
             raise RehearsalError("prepare_profiles_before_real_start")
