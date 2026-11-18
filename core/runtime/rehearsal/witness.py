@@ -14,7 +14,7 @@ import stat
 from threading import RLock
 from uuid import uuid4
 
-from .store import (OWNERS, CAPABILITIES, JOURNAL_OPTIONS, LIMIT_CAPS, MAX_WAKES_PER_AGENT, RehearsalStore,
+from .store import (OWNERS, CAPABILITIES, JOURNAL_OPTIONS, RehearsalStore,
                     RehearsalError, RehearsalConflict, _integer, _safe, _uuid, _refs)
 
 _LOCKS = {}
@@ -55,13 +55,13 @@ def _facts(snapshot, scope):
             raise RehearsalError("invalid witness timestamp")
         run[field] = value
     jobs, requests = [], []
-    if not isinstance(snapshot.get("jobs"), list) or len(snapshot["jobs"]) > 7 * MAX_WAKES_PER_AGENT:
+    if not isinstance(snapshot.get("jobs"), list) or len(snapshot["jobs"]) > 14:
         raise RehearsalError("invalid witness jobs")
     for raw in snapshot["jobs"]:
         agent = raw["agent_id"]
         if agent not in expected:
             raise RehearsalError("witness foreign owner")
-        round_number = _integer(raw["round"], "round", 0, MAX_WAKES_PER_AGENT)
+        round_number = _integer(raw["round"], "round", 0, 2)
         wake = _safe(raw["wake_id"], "wake_id")
         if wake != f"{agent}-r{round_number}":
             raise RehearsalError("invalid witness wake")
@@ -100,7 +100,7 @@ def _facts(snapshot, scope):
         jobs.append(job)
     if len({j["wake_id"] for j in jobs}) != len(jobs):
         raise RehearsalError("duplicate witness wake")
-    if not isinstance(snapshot.get("requests"), list) or len(snapshot["requests"]) > LIMIT_CAPS["max_requests"]:
+    if not isinstance(snapshot.get("requests"), list) or len(snapshot["requests"]) > 28:
         raise RehearsalError("invalid witness requests")
     for raw in snapshot["requests"]:
         if not any(j["wake_id"] == raw["wake_id"] and j["agent_id"] == raw["agent_id"] for j in jobs):
@@ -124,17 +124,13 @@ def _render(facts):
     run, jobs, requests = facts["run"], facts["jobs"], facts["requests"]
     refs = [{"kind": "run", "id": run["run_id"]}]
     began = {r["agent_id"] for r in requests if r["dispatched"]}
-    per_owner = {owner: [j for j in jobs if j["agent_id"] == owner] for owner in run["prepared_owners"]}
-    complete_both = {owner for owner, owned in per_owner.items()
-                     if owned and all(j["status"] == "completed" for j in owned)
-                     and (len(owned) == 2 or any(len(o) != 2 for o in per_owner.values()))}
-    # A rehearsal has exactly two wakes per owner; a day run has any number.
-    wakes_phrase = "both wakes" if all(len(o) == 2 for o in per_owner.values()) else "every wake so far"
+    complete_both = {owner for owner in run["prepared_owners"]
+                     if len([j for j in jobs if j["agent_id"] == owner and j["status"] == "completed"]) == 2}
     counts = {status: sum(j["status"] == status for j in jobs)
               for status in ("completed", "failed", "stopped", "uncertain", "pending", "running")}
     lines = ["I keep only recorded facts; reasons and unrecorded events remain unknown.",
              f"This {run['mode']} run is {run['status']}.",
-             f"Prepared owners: {len(run['prepared_owners'])}; owners with a dispatched request (actually began): {len(began)}; owners with {wakes_phrase} completed: {len(complete_both)}.",
+             f"Prepared owners: {len(run['prepared_owners'])}; owners with a dispatched request (actually began): {len(began)}; owners with both wakes completed: {len(complete_both)}.",
              "Wake outcomes: " + "; ".join(f"{key}={value}" for key, value in counts.items() if value) + "."]
     record_counts = {}
     for job in jobs:

@@ -39,12 +39,6 @@ DEFAULT_LIMITS = {
     "max_input_bytes": 24000, "max_runtime_seconds": 900,
     "request_timeout_seconds": 60, "max_parallelism": 3,
 }
-# A "day" run (one continuing day in the agents' home) adds each agent's wakes
-# as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
-MAX_WAKES_PER_AGENT = 48
-LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
-              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7}
-RUN_KINDS = ("rehearsal", "day")
 _SAFE = re.compile(r"[a-zA-Z0-9_.:-]{1,128}\Z")
 _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
 _TERMINAL = frozenset({"completed", "failed", "stopped", "uncertain"})
@@ -58,8 +52,7 @@ _RUN_FILES = frozenset({
     "witness.sqlite3", "library_corpus.json", "profiles/snapshot.json", "home.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
     *(f"memory/{owner}.sqlite3" for owner in OWNERS),
-    *(f"memory/{owner}-{owner}-r{round_number}-library.json" for owner in OWNERS
-      for round_number in range(1, MAX_WAKES_PER_AGENT + 1)),
+    *(f"memory/{owner}-{owner}-r{round_number}-library.json" for owner in OWNERS for round_number in (1, 2)),
 })
 
 
@@ -217,7 +210,7 @@ def _decision_metadata(value):
     limits = value["constraints"]
     if not isinstance(limits, dict) or set(limits) != set(DEFAULT_LIMITS) | {"budget_usd"}:
         raise RehearsalError("invalid constraints")
-    for name, cap in LIMIT_CAPS.items():
+    for name, cap in DEFAULT_LIMITS.items():
         _integer(limits[name], name, 1, cap)
     if not isinstance(limits["budget_usd"], str):
         raise RehearsalError("invalid budget_usd")
@@ -231,8 +224,8 @@ def _decision_metadata(value):
         if not isinstance(snapshot[name], str):
             raise RehearsalError("invalid admission_snapshot")
         _money(snapshot[name], name)
-    _integer(snapshot["request_count"], "request_count", 0, LIMIT_CAPS["max_requests"])
-    _integer(snapshot["remaining_requests"], "remaining_requests", 0, LIMIT_CAPS["max_requests"])
+    _integer(snapshot["request_count"], "request_count", 0, 28)
+    _integer(snapshot["remaining_requests"], "remaining_requests", 0, 28)
     model = value["model"]
     if (not isinstance(model, dict) or set(model) != {"requested_model", "context_length",
             "max_completion_tokens", "catalog_source"}
@@ -270,12 +263,8 @@ def _validate_manifest(raw):
     prepare. This store independently enforces all persisted finite bounds.
     """
     keys = {"schema_version", "mode", "agent_models", "limits", "catalog_snapshot", "capabilities"}
-    if (not isinstance(raw, dict) or set(raw) - {"kind"} != keys
-            or type(raw.get("schema_version")) is not int or raw["schema_version"] != 1):
+    if not isinstance(raw, dict) or set(raw) != keys or type(raw.get("schema_version")) is not int or raw["schema_version"] != 1:
         raise RehearsalError("invalid manifest")
-    kind = raw.get("kind", "rehearsal")
-    if kind not in RUN_KINDS:
-        raise RehearsalError("invalid run kind")
     if raw["mode"] not in ("offline", "real"):
         raise RehearsalError("invalid mode")
     models = raw["agent_models"]
@@ -285,9 +274,8 @@ def _validate_manifest(raw):
     limits = raw["limits"]
     if not isinstance(limits, dict) or set(limits) != set(DEFAULT_LIMITS) | {"budget_usd"}:
         raise RehearsalError("invalid limits")
-    limits = {name: _integer(limits[name], name, 1, cap) for name, cap in LIMIT_CAPS.items()} | {"budget_usd": raw["limits"]["budget_usd"]}
-    if kind == "rehearsal" and (limits["wakes_per_agent"] != 2
-                                or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]):
+    limits = {name: _integer(limits[name], name, 1, cap) for name, cap in DEFAULT_LIMITS.items()} | {"budget_usd": raw["limits"]["budget_usd"]}
+    if limits["wakes_per_agent"] != 2:
         raise RehearsalError("two rounds required")
     if not isinstance(limits["budget_usd"], str):
         raise RehearsalError("invalid budget_usd")
@@ -354,11 +342,8 @@ def _validate_manifest(raw):
         except ValueError:
             raise RehearsalError("invalid catalog capture time") from None
         snapshot["captured_at"] = captured
-    result = {"schema_version": 1, "mode": raw["mode"], "agent_models": models,
-              "limits": limits, "catalog_snapshot": snapshot, "capabilities": list(CAPABILITIES)}
-    if kind == "day":
-        result["kind"] = "day"  # Rehearsal manifests stay byte-identical to before.
-    return result
+    return {"schema_version": 1, "mode": raw["mode"], "agent_models": models,
+            "limits": limits, "catalog_snapshot": snapshot, "capabilities": list(CAPABILITIES)}
 
 
 def _choice(value):
@@ -629,8 +614,7 @@ class RehearsalStore:
             now = _now()
             connection.execute("INSERT INTO runs(run_id,manifest,status,created_at) VALUES(?,?,?,?)",
                                (run_id, _dump(manifest), "prepared", now))
-            fixed_rounds = 0 if manifest.get("kind") == "day" else manifest["limits"]["wakes_per_agent"]
-            for round_number in range(1, fixed_rounds + 1):
+            for round_number in range(1, manifest["limits"]["wakes_per_agent"] + 1):
                 for owner in OWNERS:
                     connection.execute("INSERT INTO jobs(wake_id,agent_id,round,requested_model,updated_at) VALUES(?,?,?,?,?)",
                                        (f"{owner}-r{round_number}", owner, round_number, manifest["agent_models"][owner], now))
@@ -701,7 +685,7 @@ class RehearsalStore:
     @staticmethod
     def _owner_job(job):
         if (job["agent_id"] not in OWNERS or type(job["round"]) is not int
-                or not 1 <= job["round"] <= MAX_WAKES_PER_AGENT
+                or job["round"] not in (1, 2)
                 or job["wake_id"] != f"{job['agent_id']}-r{job['round']}"):
             raise RehearsalConflict("job owner linkage is invalid")
 
@@ -788,8 +772,7 @@ class RehearsalStore:
             for job in connection.execute("SELECT status FROM jobs WHERE agent_id=?", (owner,)):
                 counts["pending" if job["status"] == "running" else job["status"]] += 1
             agents.append(counts)
-        return {"run_id": row["run_id"], "mode": manifest["mode"], **({"kind": "day"} if manifest.get("kind") == "day" else {}),
-                "status": row["status"],
+        return {"run_id": row["run_id"], "mode": manifest["mode"], "status": row["status"],
                 "created_at": row["created_at"], "started_at": row["started_at"], "ended_at": row["ended_at"],
                 "stop_requested": bool(row["stop_requested"]), "limits": manifest["limits"],
                 "agent_models": manifest["agent_models"], "request_count": len(requests),
@@ -887,16 +870,11 @@ class RehearsalStore:
                 raise RehearsalConflict("rehearsal already has a controller; explicit recovery required")
             if row["status"] == "completed":
                 raise RehearsalConflict("rehearsal already completed")
-            manifest = json.loads(row["manifest"])
-            day = manifest.get("kind") == "day"
-            if day and row["status"] not in ("prepared", "open") and not resume:
-                raise RehearsalConflict("explicit resume required")
-            if not day and row["status"] != "prepared" and not resume:
+            if row["status"] != "prepared" and not resume:
                 raise RehearsalConflict("explicit resume required")
             now = time.time()
-            # A day run's runtime limit applies to each wake, not to the whole day.
-            deadline = (now + manifest["limits"]["max_runtime_seconds"]) if day else (
-                row["deadline"] if row["deadline"] is not None else now + manifest["limits"]["max_runtime_seconds"])
+            manifest = json.loads(row["manifest"])
+            deadline = row["deadline"] if row["deadline"] is not None else now + manifest["limits"]["max_runtime_seconds"]
             if now >= deadline:
                 raise RehearsalStopped("rehearsal deadline exceeded")
             token = str(uuid4())
@@ -922,66 +900,13 @@ class RehearsalStore:
             return "stopped"
         return "partial"
 
-    @classmethod
-    def _day_status(cls, connection, row):
-        """An open day stays open between wakes. None for rehearsal runs, or for
-        a day that was stopped or left uncertain (those settle as usual)."""
-        if json.loads(row["manifest"]).get("kind") != "day" or row["stop_requested"]:
-            return None
-        settled = cls._settled_status(connection, row)
-        return None if settled == "uncertain" else "open"
-
-    def add_wake(self, run_id, owner):
-        """Add one owner's next wake to an open day run and return its job.
-
-        No model call. The wake's number is the owner's next sequence number
-        today, so continuity treats earlier wakes today as earlier rounds.
-        """
-        if owner not in OWNERS:
-            raise RehearsalError("invalid owner")
-        with self._connection(run_id, write=True) as connection:
-            row = self._run(connection)
-            manifest = json.loads(row["manifest"])
-            if manifest.get("kind") != "day":
-                raise RehearsalError("wakes are added only to day runs")
-            if row["status"] not in ("prepared", "open") or row["stop_requested"]:
-                raise RehearsalConflict("day is not open")
-            if row["controller_token"] is not None:
-                raise RehearsalConflict("a wake is already running")
-            previous = connection.execute("SELECT MAX(round) FROM jobs WHERE agent_id=?", (owner,)).fetchone()[0] or 0
-            if previous >= manifest["limits"]["wakes_per_agent"]:
-                raise RehearsalError("daily wake limit reached")
-            unfinished = connection.execute(
-                "SELECT 1 FROM jobs WHERE agent_id=? AND status IN ('pending','running','uncertain') LIMIT 1",
-                (owner,)).fetchone()
-            if unfinished:
-                raise RehearsalConflict("an earlier wake for this owner is unfinished")
-            round_number = previous + 1
-            wake_id = f"{owner}-r{round_number}"
-            connection.execute("INSERT INTO jobs(wake_id,agent_id,round,requested_model,updated_at) VALUES(?,?,?,?,?)",
-                               (wake_id, owner, round_number, manifest["agent_models"][owner], _now()))
-            return self._public_job(self._job(connection, wake_id))
-
-    def close_day(self, run_id):
-        """Close an open day run so the next day can continue from it."""
-        with self._connection(run_id, write=True) as connection:
-            row = self._run(connection)
-            if json.loads(row["manifest"]).get("kind") != "day":
-                raise RehearsalError("only day runs are closed")
-            if row["controller_token"] is not None:
-                raise RehearsalConflict("a wake is still running")
-            if row["status"] in ("open", "prepared"):
-                status = self._settled_status(connection, row)
-                connection.execute("UPDATE runs SET status=?,ended_at=?", (status, _now()))
-            return self._summary(connection)
-
     def end(self, run_id, token):
         with self._connection(run_id, write=True) as connection:
             row = self._run(connection)
             self._token(row, token)
             # Ending with an unfinished request cannot authorize a retry.
             self._recover_jobs(connection, stopped=self._is_stopped(row))
-            status = self._day_status(connection, row) or self._settled_status(connection, row)
+            status = self._settled_status(connection, row)
             connection.execute("UPDATE runs SET status=?,controller_token=NULL,ended_at=?", (status, _now()))
             return self._summary(connection)
 
@@ -1341,6 +1266,6 @@ class RehearsalStore:
             if row["status"] == "completed":
                 return self._summary(connection)
             self._recover_jobs(connection, stopped=self._is_stopped(row))
-            status = self._day_status(connection, row) or self._settled_status(connection, row)
+            status = self._settled_status(connection, row)
             connection.execute("UPDATE runs SET controller_token=NULL,status=?,ended_at=?", (status, _now()))
             return self._summary(connection)

@@ -7,7 +7,7 @@ export const REHEARSAL_AGENTS = [
   { id: 'paradox_hunter', name: 'ParadoxHunter' },
 ] as const
 export type RehearsalAgentId = typeof REHEARSAL_AGENTS[number]['id']
-export type RehearsalStatus = 'prepared' | 'open' | 'running' | 'completed' | 'partial' | 'stopped' | 'uncertain'
+export type RehearsalStatus = 'prepared' | 'running' | 'completed' | 'partial' | 'stopped' | 'uncertain'
 export type RehearsalJobStatus = 'pending' | 'running' | 'claimed' | 'completed' | 'failed' | 'stopped' | 'uncertain'
 export type RehearsalAction = 'rest' | 'journal' | 'inquire' | 'library' | 'roam'
 export type RehearsalRecordKind = 'journal' | 'episode' | 'inquiry' | 'library' | 'witness'
