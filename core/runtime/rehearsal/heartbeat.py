@@ -75,12 +75,13 @@ class Schedule:
     max_wakes_per_tick: int
     models_file: str = None
     settings_dir: str = None   # The owner's Settings page (models, budget, key) wins when set.
+    choices_per_wake: int = 1  # Turns in one wake: choose, do it, then maybe choose once more.
 
     @classmethod
     def from_config(cls, raw):
         allowed = {"timezone", "active_window", "active_interval_minutes", "quiet_window",
                    "quiet_interval_minutes", "grace_minutes", "daily_budget_usd", "mode",
-                   "dispatch", "max_wakes_per_tick", "models_file", "settings_dir"}
+                   "dispatch", "max_wakes_per_tick", "models_file", "settings_dir", "choices_per_wake"}
         if not isinstance(raw, dict) or set(raw) - allowed:
             raise RehearsalError("invalid_heartbeat_config")
         try:
@@ -108,22 +109,29 @@ class Schedule:
             dispatch = raw.get("dispatch", "clock-only")
             per_tick = int(raw.get("max_wakes_per_tick", 3))
             models_file = raw.get("models_file")
+            choices = raw.get("choices_per_wake", 1)
+            if type(choices) is not int:
+                raise ValueError
         except (KeyError, TypeError, ValueError, ArithmeticError):
             raise RehearsalError("invalid_heartbeat_config") from None
-        if (not 1 <= grace <= 60 or mode not in ("offline", "real")
+        if (not 1 <= grace <= 60 or mode not in ("offline", "real") or not 1 <= choices <= 3
                 or dispatch not in ("clock-only", "live") or not 1 <= per_tick <= 7
                 or not Decimal("0") <= budget <= Decimal("100")
                 or (mode == "real" and not isinstance(models_file, str) and not isinstance(raw.get("settings_dir"), str))
                 or (raw.get("settings_dir") is not None and not isinstance(raw.get("settings_dir"), str))):
             raise RehearsalError("invalid_heartbeat_config")
         schedule = cls(name, tuple(windows), grace, budget, mode, dispatch, per_tick, models_file,
-                       raw.get("settings_dir"))
-        if schedule.wakes_per_agent() > MAX_WAKES_PER_AGENT:
+                       raw.get("settings_dir"), choices)
+        if schedule.rounds_per_agent() > MAX_WAKES_PER_AGENT:
             raise RehearsalError("invalid_heartbeat_config")
         return schedule
 
     def wakes_per_agent(self):
         return sum(len(range(start, end, step)) for start, end, step, _ in self.windows)
+
+    def rounds_per_agent(self):
+        """Stored turns a day can hold: every wake may use all its choices."""
+        return self.wakes_per_agent() * self.choices_per_wake
 
     def slots(self, local_date):
         """Every agent's wake times on ``local_date``, as (aware local time, agent, window).
@@ -328,7 +336,8 @@ class Heartbeat:
             if run["status"] in ("prepared", "open"):
                 allowed = self.daily_budget() - spent_before
                 stale = ((models is not None and run["agent_models"] != models)
-                         or Decimal(run["limits"]["budget_usd"]) < allowed)
+                         or Decimal(run["limits"]["budget_usd"]) < allowed
+                         or run["limits"]["wakes_per_agent"] < self.schedule.rounds_per_agent())
                 if not stale:
                     return run["run_id"], None
                 try:
@@ -339,7 +348,7 @@ class Heartbeat:
         runs = self._runs()
         previous = self._previous(runs)
         budget = max(Decimal(0), self.daily_budget() - spent_before)
-        run_id = self.prepare_day(format(budget, "f"), self.schedule.wakes_per_agent(), models)
+        run_id = self.prepare_day(format(budget, "f"), self.schedule.rounds_per_agent(), models)
         if previous is not None:
             continue_home(self.store, run_id, previous)
         conn.execute("INSERT INTO days(local_date,run_id,opened_at,continued_from) VALUES (?,?,?,?)",
@@ -404,14 +413,14 @@ class Heartbeat:
                                      note=f"{remaining} USD left of today's budget")
                         continue
                     try:
-                        job = self.run_wake(run_id, owner)
+                        job, actions = self._wake(conn, today, run_id, owner)
                     except RehearsalConflict as error:
                         self._record(conn, slot, "blocked", run_id=run_id, note=str(error))
                         continue
                     except RehearsalError as error:
                         self._record(conn, slot, "not_started", run_id=run_id, note=str(error))
                         continue
-                    note = None
+                    note = ("choices: " + ", ".join(actions)) if len(actions) > 1 else None
                     if job.get("status") not in (None, "completed"):
                         # Name the agent and model so a model that stops answering is easy to find.
                         note = (f"{owner} on {job.get('requested_model') or 'unknown model'}: "
@@ -423,6 +432,32 @@ class Heartbeat:
                     started.append({"agent_id": owner, "wake_id": job["wake_id"], "status": job["status"]})
             return {"outcome": "woke" if started else "nothing_started", "run_id": run_id,
                     "continued_from": previous, "wakes": started, "missed": missed}
+
+    def _wake(self, conn, today, run_id, owner):
+        """One wake: up to ``choices_per_wake`` turns, each a choice and its doing.
+
+        Each turn is its own stored step (same reservation, recovery and witness
+        rules), and later turns see earlier ones through today's continuity.
+        The wake ends early when the agent rests, a turn does not complete, a
+        pause arrives, or the budget runs low. Returns the last turn's job and
+        the actions taken.
+        """
+        total = self.schedule.choices_per_wake
+        if total == 1:
+            job = self.run_wake(run_id, owner)
+            return job, [job.get("action") or job.get("status") or "unknown"]
+        job = self.run_wake(run_id, owner, step=(1, total))
+        actions = [job.get("action") or job.get("status") or "unknown"]
+        for step in range(2, total + 1):
+            if (job.get("status") != "completed" or job.get("action") in (None, "rest") or self.paused()
+                    or self.daily_budget() - self._reserved_today(conn, today) < MIN_REMAINING_USD):
+                break
+            try:
+                job = self.run_wake(run_id, owner, step=(step, total))
+            except (RehearsalConflict, RehearsalError):
+                break  # The earlier turn already counts as the wake.
+            actions.append(job.get("action") or job.get("status") or "unknown")
+        return job, actions
 
     # ---- status -----------------------------------------------------------
     def status(self):
