@@ -207,6 +207,24 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ManifestError):
                 validate_manifest(bad)
 
+    def test_live_catalog_price_lines_translate_and_stay_strict(self):
+        raw = manifest("real")
+        catalog = {"data": deepcopy(raw["catalog_snapshot"]["models"])}
+        for row in catalog["data"]:  # Shape OpenRouter returns today: no "request", extra lines.
+            row["pricing"] = {"prompt": "0.000002", "completion": "0.00001", "image": "0.000002",
+                              "audio": "0.000002", "web_search": "0.014", "internal_reasoning": "0.00001",
+                              "input_cache_read": "0.0000001", "input_cache_write": "0.0000001875"}
+        rows = catalog_snapshot(raw["agent_models"], catalog)["models"]
+        self.assertEqual(rows[0]["pricing"], {"prompt": "0.000002", "completion": "0.00001", "request": "0"})
+        for unit, value in (("input_cache_write", "0.0000025"), ("internal_reasoning", "0.00002"),
+                            ("video", "0.01"), ("image", "NaN")):
+            bad = deepcopy(catalog); bad["data"][0]["pricing"][unit] = value
+            with self.subTest(unit=unit), self.assertRaises(ManifestError):
+                catalog_snapshot(raw["agent_models"], bad)
+        bad = deepcopy(catalog); del bad["data"][0]["pricing"]["completion"]
+        with self.assertRaisesRegex(ManifestError, "missing_catalog_price"):
+            catalog_snapshot(raw["agent_models"], bad)
+
     def test_overrides_rejected_during_catalog_normalization(self):
         raw = manifest("real")
         for override in ({"pricing_overrides": {"prompt": "0.1"}},

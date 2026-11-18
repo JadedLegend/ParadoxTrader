@@ -431,3 +431,20 @@ a.btn { display: inline-block; text-decoration: none; }
 .settings-history li { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .settings-history time { color: var(--text3); font-size: 12px; min-width: 150px; }
 @media (max-width: 720px) { .settings .grid-2 { grid-template-columns: 1fr; } }
+.settings-secrets { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 4px 16px; }
+.settings-secret { margin-bottom: 8px; }
+.settings-group { border-top: 1px solid var(--border, rgba(255,255,255,.08)); padding: 4px 0; }
+.settings-group > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; cursor: pointer; padding: 12px 0; list-style-position: outside; }
+.settings-group > summary:focus-visible { outline: 2px solid var(--accent, #7c6cf0); outline-offset: 2px; border-radius: 4px; }
+.settings-group-title { font-weight: 600; }
+.settings-group[open] > summary { padding-bottom: 4px; }
+.settings-group > .settings-secrets { margin-top: 12px; }
+.settings-check { margin-top: 16px; }
+.settings-check-summary { font-weight: 600; margin-bottom: 8px; }
+.settings-check-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.settings-check-list li { display: flex; gap: 10px; align-items: baseline; line-height: 1.5; overflow-wrap: anywhere; }
+.check-mark { flex: none; width: 1.2em; text-align: center; font-weight: 700; }
+.check-ok .check-mark { color: var(--success); }
+.check-warn .check-mark { color: #f6c453; }
+.check-fail .check-mark { color: var(--danger); }
+.check-fail strong { color: var(--danger); }

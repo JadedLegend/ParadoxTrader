@@ -1,10 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getSettings, saveSettings, type OwnerSettings, type SettingsChanges } from '../api'
+import { checkConnection, getConnectionCheck, getSettings, saveSettings, type ConnectionCheck, type OwnerSettings, type SettingsChanges } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 
 const SLOTS = [...REHEARSAL_AGENTS.map(agent => ({ id: agent.id as string, name: agent.name })), { id: 'witness', name: 'Witness' }]
 const CATALOG_URL = 'https://openrouter.ai/api/v1/models'
-const FIELD_LABEL: Record<string, string> = { daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key' }
+// Data and broker keys: stored for later steps; nothing uses them yet.
+interface SecretItem { id: string; name: string; placeholder: string; note: string }
+const entry = (id: string, name: string, placeholder = '', note = ''): SecretItem => ({ id, name, placeholder, note })
+const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretItem[] }[] = [
+  { id: 'alpaca', title: 'Paper trading: one Alpaca account per agent',
+    help: 'Paper-trading keys only. Live keys (AK...) are refused.',
+    items: REHEARSAL_AGENTS.flatMap(agent => [
+      entry(`alpaca_${agent.id}_key_id`, `${agent.name}: key ID`, 'PK...'),
+      entry(`alpaca_${agent.id}_secret`, `${agent.name}: secret`),
+    ]) },
+  { id: 'data', title: 'Market data', help: 'For prices, fundamentals and filings.',
+    items: [entry('public_com', 'Public.com', '', 'For market data. Nothing here places orders.'), entry('alphavantage', 'Alpha Vantage'),
+      entry('fmp', 'Financial Modeling Prep'), entry('bigdata', 'Bigdata.com'), entry('massive', 'Massive.com'),
+      entry('unusual_whales', 'Unusual Whales API token'), entry('eodhd', 'EODHD API token')] },
+  { id: 'social', title: 'News, search and social', help: 'For reading the wider conversation.',
+    items: [entry('brave_search', 'Brave Search API'), entry('reddit_client_id', 'Reddit client ID'),
+      entry('reddit_client_secret', 'Reddit client secret', '', 'From an approved Reddit Data API app (script type).'),
+      entry('x_bearer_token', 'X bearer token', '', 'From your app in the X Developer Console. X charges per post read from prepaid credits.')] },
+  { id: 'brokers', title: 'Brokers and signal routes', help: 'Stored only. Nothing here places orders, and these stay unused until you decide otherwise.',
+    items: [entry('etoro_api_key', 'eToro API key'), entry('etoro_user_key', 'eToro user key'),
+      entry('signalstack_webhook', 'SignalStack webhook', 'https://...')] },
+]
+const SECRETS = SECRET_GROUPS.flatMap(group => group.items)
+const FIELD_LABEL: Record<string, string> = {
+  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key',
+  ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
+}
+
+const MARK = { ok: '✓', warn: '!', fail: '✕' } as const
+const CHECK_POLL_MS = 2000
+const CHECK_WAIT_MS = 120000
 
 interface CatalogModel { id: string; prompt: number; completion: number }
 
@@ -40,10 +70,36 @@ export default function Settings() {
   const [models, setModels] = useState<Record<string, string>>({})
   const [budget, setBudget] = useState('')
   const [key, setKey] = useState('')
+  const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const alive = useRef(true)
+  const [check, setCheck] = useState<ConnectionCheck | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checkError, setCheckError] = useState('')
+
+  // The dashboard stays offline; a separate service runs the check and leaves the answer here.
+  const runCheck = async () => {
+    if (checking) return
+    setChecking(true)
+    setCheckError('')
+    try {
+      let state = await checkConnection()
+      const deadline = Date.now() + CHECK_WAIT_MS
+      while (alive.current && state.state === 'pending' && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, CHECK_POLL_MS))
+        state = await getConnectionCheck()
+      }
+      if (!alive.current) return
+      if (state.state === 'done' && state.result) setCheck(state.result)
+      else setCheckError('No answer from the check service yet. Try again in a minute.')
+    } catch {
+      if (alive.current) setCheckError('The check could not run. Wait a few seconds and try again.')
+    } finally {
+      if (alive.current) setChecking(false)
+    }
+  }
 
   const apply = (value: OwnerSettings) => {
     setSettings(value)
@@ -58,6 +114,7 @@ export default function Settings() {
       .catch(() => { if (alive.current) setLoadError('Settings could not be loaded. Reload this page to try again; nothing was changed.') })
     loadCatalog(controller.signal).then(rows => { if (alive.current) setCatalog(rows) })
       .catch(() => { if (alive.current) setCatalogFailed(true) })
+    getConnectionCheck().then(value => { if (alive.current && value?.result) setCheck(value.result) }).catch(() => undefined)
     return () => { alive.current = false; controller.abort() }
   }, [])
 
@@ -65,14 +122,27 @@ export default function Settings() {
 
   const save = async (what: string, changes: SettingsChanges, done: string) => {
     if (saving) return
+    const secretSlot = what.startsWith('secret.') ? what.slice(7) : null
+    const submittedDraft = secretSlot ? secretDrafts[secretSlot] : undefined
+    const submittedModels = models
+    const submittedBudget = budget
     setSaving(what)
     setError('')
     setMessage('')
     try {
       const value = await saveSettings(changes)
       if (!alive.current) return
-      apply(value)
+      setModels(current => Object.fromEntries(SLOTS.map(slot => {
+        const baseline = changes.models?.[slot.id] !== undefined
+          ? submittedModels[slot.id] : settings?.models[slot.id] ?? ''
+        return [slot.id, current[slot.id] === baseline ? value.models[slot.id] ?? '' : current[slot.id]]
+      })))
+      setBudget(current => current === (changes.daily_budget_usd !== undefined
+        ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
+      setSettings(value)
       if (what === 'key') setKey('')
+      if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
+        ? { ...current, [secretSlot]: '' } : current)
       setMessage(done)
     } catch {
       if (alive.current) setError('That was not saved. Check the value and try again; your input is still here.')
@@ -160,6 +230,74 @@ export default function Settings() {
           <p className="settings-note">Stored only on your server, readable by the agents' service. This page never receives it back.</p>
         </section>
       </div>
+
+      <section className="card mb-16" aria-labelledby="settings-check">
+        <h2 className="card-title" id="settings-check">Connection</h2>
+        <p className="settings-help">Checks your key and each model you chose. Free models get a tiny reply test with every
+          price cap at zero; paid models get an endpoint check, so no paid reply is sent. Free tests count toward
+          {' '}<a href={check?.free_limits_url ?? 'https://openrouter.ai/collections/free-models'} target="_blank" rel="noreferrer">OpenRouter's free-model limits</a>.
+          It checks the saved settings, so save first.</p>
+        <button className="btn btn-primary" disabled={checking} onClick={() => void runCheck()}>
+          {checking ? 'Checking...' : 'Check connection'}
+        </button>
+        {checkError && <div className="error-msg mt-8" role="alert">{checkError}</div>}
+        {check && <div className="settings-check" aria-live="polite">
+          <p className="settings-check-summary">{check.status === 'ok' ? 'Everything answered.'
+            : check.status === 'warn' ? 'Working, with something to look at.' : 'Something is not working.'}
+            {' '}<span className="settings-note">Checked {new Date(check.checked_at).toLocaleString()}</span></p>
+          <ul className="settings-check-list">
+            <li className={`check-${check.key.status}`}><span className="check-mark">{MARK[check.key.status]}</span>
+              <span><strong>OpenRouter key</strong> {check.key.message}</span></li>
+            {check.models.map(row => <li key={row.model} className={`check-${row.status}`}>
+              <span className="check-mark">{MARK[row.status]}</span>
+              <span><strong>{row.used_by.join(', ')}</strong> <code>{row.model}</code>
+                {' '}<span className="tag">{row.kind}</span> {row.message}</span>
+            </li>)}
+            {check.unset.map(name => <li key={name} className={name === 'Witness' ? 'check-ok' : 'check-warn'}>
+              <span className="check-mark">{name === 'Witness' ? '–' : MARK.warn}</span>
+              <span><strong>{name}</strong> {name === 'Witness' ? 'No model yet. That is fine for now.' : 'No model chosen, so this agent cannot wake.'}</span>
+            </li>)}
+          </ul>
+        </div>}
+      </section>
+
+      <section className="card mb-16" aria-labelledby="settings-secrets">
+        <h2 className="card-title" id="settings-secrets">Data and broker keys</h2>
+        <p className="settings-help">Stored on your server for the market-data and paper-trading steps. Nothing uses them yet, and like the OpenRouter key they are never shown again.</p>
+        {SECRET_GROUPS.map(group => {
+          const count = group.items.filter(item => settings.secrets?.[item.id]?.set).length
+          return <details className="settings-group" key={group.id}>
+          <summary><span className="settings-group-title">{group.title}</span>
+            <span className="settings-note">{count} of {group.items.length} set</span></summary>
+          <p className="settings-note">{group.help}</p>
+        <div className="settings-secrets">
+          {group.items.map(item => {
+            const state = settings.secrets?.[item.id]
+            const draft = secretDrafts[item.id] ?? ''
+            return <form className="input-group settings-secret" key={item.id} onSubmit={event => {
+              event.preventDefault()
+              if (draft.trim()) void save(`secret.${item.id}`, { secrets: { [item.id]: draft.trim() } }, `${item.name} saved.`)
+            }}>
+              <label className="input-label" htmlFor={`secret-${item.id}`}>{item.name}</label>
+              <span className="settings-note">{state?.error === 'secret_unreadable' ? 'Credential unreadable. Replace it or try removing it.' : state?.set ? <>Set, ends in <code>…{state.ends_with}</code></> : 'Not set'}</span>
+              <div className="flex gap-8">
+                <input id={`secret-${item.id}`} className="input" type="password" autoComplete="off" spellCheck={false}
+                  value={draft} placeholder={item.placeholder} onChange={event => setSecretDrafts(current => ({ ...current, [item.id]: event.target.value }))} />
+                <button type="submit" className="btn btn-primary" disabled={saving !== null || !draft.trim()} aria-label={`Save ${item.name}`}>
+                  {saving === `secret.${item.id}` ? 'Saving...' : 'Save'}
+                </button>
+                {(state?.set || state?.error) && <button type="button" className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
+                  onClick={() => { if (window.confirm(`Remove the ${item.name} key?`)) void save(`secret.${item.id}`, { secrets: { [item.id]: '' } }, `${item.name} removed.`) }}>
+                  Remove
+                </button>}
+              </div>
+              {item.note && <span className="settings-note">{item.note}</span>}
+            </form>
+          })}
+        </div>
+        </details>
+        })}
+      </section>
 
       <section className="card" aria-labelledby="settings-history">
         <h2 className="card-title" id="settings-history">Recent changes</h2>

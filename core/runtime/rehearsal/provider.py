@@ -114,6 +114,8 @@ def _model(row, *, api=False):
             or len(set(params)) != len(params) or "max_tokens" not in params):
         raise ManifestError("unsupported_output_cap")
     pricing = row.get("pricing")
+    if api and isinstance(pricing, dict):
+        pricing = _api_pricing(pricing)
     if not isinstance(pricing, dict) or not {"prompt", "completion", "request"} <= pricing.keys():
         raise ManifestError("missing_catalog_price")
     # Unknown units fail closed even when malformed; explicitly zero extra units
@@ -128,6 +130,33 @@ def _model(row, *, api=False):
         "supported_parameters": sorted(params),
         "pricing": {key: _rate(pricing[key]) for key in ("prompt", "completion", "request")},
     }
+
+
+# OpenRouter's live catalog lists extra price lines. Only these are understood;
+# anything else still fails closed below. The frozen snapshot keeps just
+# prompt/completion/request, so a stored manifest stays strict.
+_TEXT_ONLY_UNITS = ("image", "audio", "input_audio_cache", "web_search")  # Wakes send text only, no plugins.
+_NO_DEARER_THAN = {"input_cache_read": "prompt", "input_cache_write": "prompt", "internal_reasoning": "completion"}
+
+
+def _api_pricing(pricing):
+    """Translate a live catalog price row into prompt/completion/request."""
+    if "prompt" not in pricing or "completion" not in pricing:
+        raise ManifestError("missing_catalog_price")
+    out = {"prompt": pricing["prompt"], "completion": pricing["completion"],
+           "request": pricing.get("request", "0")}  # No per-request line means no per-request charge.
+    for unit, value in pricing.items():
+        if unit in out:
+            continue
+        if unit in _TEXT_ONLY_UNITS:
+            _rate(value)  # Still must be a well-formed price.
+        elif unit in _NO_DEARER_THAN:
+            # Reservations are priced at the base rate, so these may only ever be cheaper.
+            if Decimal(_rate(value)) > Decimal(_rate(out[_NO_DEARER_THAN[unit]])):
+                raise ManifestError("unsupported_billed_unit")
+        else:
+            out[unit] = value  # Unknown: left for the strict check to reject unless zero.
+    return out
 
 
 def catalog_snapshot(model_map, catalog):

@@ -50,9 +50,12 @@ ENV
   chmod 0640 "$ETC/dashboard.env"
 fi
 
-install -m 0644 "$REL"/deploy/systemd/paradoxtrader-*.service "$REL"/deploy/systemd/paradoxtrader-*.timer /etc/systemd/system/
+install -m 0644 "$REL"/deploy/systemd/paradoxtrader-*.service "$REL"/deploy/systemd/paradoxtrader-*.timer \
+  "$REL"/deploy/systemd/paradoxtrader-*.path /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now paradoxtrader-backup.timer
+# Settings "Check connection": the page leaves a request, this runs the check (no paid replies).
+systemctl enable --now paradoxtrader-check.path
 
 if grep -q '^PARADOX_DASHBOARD_PASSWORD_HASH=pbkdf2_sha256' "$ETC/dashboard.env"; then
   systemctl enable paradoxtrader-dashboard.service

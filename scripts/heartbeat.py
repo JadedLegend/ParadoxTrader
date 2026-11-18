@@ -62,19 +62,19 @@ def build(root, config_path):
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
         return store.prepare(manifest)["run_id"]
 
-    def run_wake(run_id, owner):
+    def run_wake(run_id, owner, step=None):
         from core.runtime.rehearsal.controller import RehearsalController, snapshot_profiles
         from core.runtime.rehearsal.provider import OpenRouterTransport
         snapshot_profiles(store, run_id, REPO)
         if schedule.mode == "real":
             transport = OpenRouterTransport(key())
-            return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner)
+            return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner, step=step)
         from core.runtime.rehearsal.examples import ScriptedHTTP
         transport = OpenRouterTransport("offline-scripted-not-a-credential", http_post=ScriptedHTTP())
         with ExitStack() as blocked:
             for target, method in [(socket, "create_connection"), (socket.socket, "connect"), (socket.socket, "connect_ex")]:
                 blocked.enter_context(mock.patch.object(target, method, side_effect=AssertionError("Offline wakes forbid networking")))
-            return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner)
+            return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner, step=step)
 
     return Heartbeat(store, schedule, prepare_day=prepare_day, run_wake=run_wake,
                      settings=settings, key_present=lambda: key() is not None)

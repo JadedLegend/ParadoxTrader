@@ -43,11 +43,26 @@ export interface OwnerSettings {
   models: Record<string, string | null>
   daily_budget_usd: string | null
   key: { set: boolean; ends_with: string | null }
+  secrets?: Record<string, { set: boolean; ends_with: string | null; error?: "secret_unreadable" }>
   history: { changed_at: string; field: string; value: unknown }[]
 }
-export interface SettingsChanges { models?: Record<string, string>; daily_budget_usd?: string; openrouter_key?: string }
+export interface SettingsChanges {
+  models?: Record<string, string>; daily_budget_usd?: string; openrouter_key?: string; secrets?: Record<string, string>
+}
 export const getSettings = () => request<OwnerSettings>('GET', '/api/settings')
 export const saveSettings = (changes: SettingsChanges) => request<OwnerSettings>('POST', '/api/settings', changes)
+export type CheckStatus = 'ok' | 'warn' | 'fail'
+export interface ConnectionCheck {
+  checked_at: string
+  status: CheckStatus
+  key: { status: CheckStatus; message: string }
+  models: { model: string; used_by: string[]; kind: 'free' | 'paid' | 'unknown'; status: CheckStatus; message: string }[]
+  unset: string[]
+  free_limits_url: string
+}
+export interface CheckState { state: 'none' | 'pending' | 'done'; requested_at: string | null; result: ConnectionCheck | null }
+export const checkConnection = () => request<CheckState>('POST', '/api/settings/check', {})
+export const getConnectionCheck = () => request<CheckState>('GET', '/api/settings/check')
 export const updateConfig = (key_path: string, value: unknown) => request<any>('POST', '/api/config', { key_path, value })
 export const setPhase = (phase: number) => request<any>('POST', '/api/phase', { phase })
 export const setCountdown = (target_iso: string) => request<any>('POST', '/api/countdown', { target_iso })

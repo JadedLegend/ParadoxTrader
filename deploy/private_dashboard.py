@@ -7,6 +7,8 @@ Boundaries (see README "VPS handoff"):
 - Never imports the broad legacy app (``api/app.py``); no scheduler, model call
   or broker access exists here. Only GET/HEAD are accepted, with one exception:
   ``POST /api/settings`` saves the owner's settings (key, models, daily budget).
+  ``POST /api/settings/check`` asks the separate check service to test the key and chosen
+  models (no paid generation); ``GET`` reads its answer. The dashboard itself stays offline.
   It needs the owner login, a same-origin ``Origin`` header and a JSON body of
   at most 8 KB, and its responses never contain the key.
 - The operator token stays server-side: the gateway injects it into the
@@ -86,16 +88,17 @@ def _check_basic(header, user, password_hash):
 
 
 SETTINGS_PATH = "/api/settings"
+CHECK_PATH = "/api/settings/check"
 MAX_SETTINGS_BODY = 8192
 
 
 def _same_origin_write(scope, headers):
-    """The single allowed write: POST /api/settings, JSON, from this site only.
+    """The only writes: POST /api/settings and /api/settings/check, JSON, from this site only.
 
     Browsers always send Origin on a POST, so a page on another site (which
     could otherwise reuse the cached login) is refused before any handler runs.
     """
-    if scope["method"] != "POST" or scope.get("path") != SETTINGS_PATH:
+    if scope["method"] != "POST" or scope.get("path") not in (SETTINGS_PATH, CHECK_PATH):
         return False
     origin, host = headers.get("origin"), headers.get("host")
     if not origin or not host or origin not in (f"http://{host}", f"https://{host}"):
@@ -193,6 +196,7 @@ class _Dispatch:
 
 def _settings_app(settings_dir):
     from core.runtime.owner_settings import OwnerSettings, SettingsError
+    from starlette.concurrency import run_in_threadpool
     store = OwnerSettings(settings_dir)
 
     async def handle(request):
@@ -204,12 +208,27 @@ def _settings_app(settings_dir):
                     return JSONResponse({"error": "settings_body_too_large"}, status_code=413, headers=SECURITY_HEADERS)
             try:
                 import json
-                return JSONResponse(store.update(json.loads(body.decode("utf-8"))), headers=SECURITY_HEADERS)
+                return JSONResponse(await run_in_threadpool(store.update, json.loads(body.decode("utf-8"))), headers=SECURITY_HEADERS)
             except SettingsError as error:
                 return JSONResponse({"error": str(error)}, status_code=400, headers=SECURITY_HEADERS)
             except (ValueError, UnicodeError):
                 return JSONResponse({"error": "invalid_settings_body"}, status_code=400, headers=SECURITY_HEADERS)
-        return JSONResponse(store.read(), headers=SECURITY_HEADERS)
+        return JSONResponse(await run_in_threadpool(store.read), headers=SECURITY_HEADERS)
+
+    return handle
+
+
+def _check_app(settings_dir):
+    """Check connection. The dashboard has no internet on purpose, so POST only
+    leaves a request for the separate check service; GET reads its answer."""
+    from core.runtime.openrouter_check import check_state, request_check
+    from starlette.concurrency import run_in_threadpool
+
+    async def handle(request):
+        if request.method == "POST":
+            return JSONResponse(await run_in_threadpool(request_check, settings_dir),
+                                status_code=202, headers=SECURITY_HEADERS)
+        return JSONResponse(await run_in_threadpool(check_state, settings_dir), headers=SECURITY_HEADERS)
 
     return handle
 
@@ -226,6 +245,7 @@ def create_gateway(*, sessions_root, frontend_dist, operator_token, user, passwo
     site = Starlette(
         routes=[
             Route(SETTINGS_PATH, _settings_app(settings_dir), methods=["GET", "HEAD", "POST"]),
+            Route(CHECK_PATH, _check_app(settings_dir), methods=["GET", "HEAD", "POST"]),
             Route("/api/{rest:path}", _unknown_api, methods=["GET", "HEAD"]),
             Route("/{path:path}", _static_app(frontend_dist), methods=["GET", "HEAD"]),
         ],

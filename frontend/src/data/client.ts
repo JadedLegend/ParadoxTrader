@@ -26,14 +26,17 @@ const SESSION_PREFIX = '/api/rehearsals'
 const LIBRARY_PREFIX = '/api/library/'
 // The owner's Settings (models, key, daily budget): the private host's one write.
 export const SETTINGS_PATH = '/api/settings'
+// Check connection: tests the saved key and models; sends no paid reply.
+export const CHECK_PATH = '/api/settings/check'
 
 export function servedByPrivateHost(path: string): boolean {
   const route = new URL(path, 'https://host.invalid').pathname
-  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`) || route === SETTINGS_PATH
+  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`) || route === SETTINGS_PATH || route === CHECK_PATH
 }
 
 export function isSettingsWrite(method: Method, path: string): boolean {
-  return method === 'POST' && new URL(path, 'https://host.invalid').pathname === SETTINGS_PATH
+  const route = new URL(path, 'https://host.invalid').pathname
+  return method === 'POST' && (route === SETTINGS_PATH || route === CHECK_PATH)
 }
 
 /** The source library is imported text bundled with the site, read in the browser. */
