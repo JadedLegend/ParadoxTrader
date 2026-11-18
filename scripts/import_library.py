@@ -114,7 +114,15 @@ def text_units(path):
         raise ValueError('Unsupported source format')
 
 
+TITLES_FILE = Path(__file__).resolve().parents[1] / 'library' / 'titles.json'
+
+
 def source_title(filename):
+    # Edited display titles (library/titles.json) win over names derived from
+    # file names, which glue short words together ("Physicsof", "Rewardin").
+    titles = json.loads(TITLES_FILE.read_text(encoding='utf-8')) if TITLES_FILE.is_file() else {}
+    if filename in titles:
+        return titles[filename]
     known = {'opte.md': 'OPTE', 'pasted_content.txt': 'Original project README and agents'}
     if filename in known:
         return known[filename]
