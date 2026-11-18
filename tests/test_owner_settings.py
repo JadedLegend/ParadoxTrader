@@ -162,6 +162,33 @@ class SecretSlotTests(unittest.TestCase):
         self.assertIs(raised.exception, failure)
         self.assertEqual(list((self.settings.directory / "secrets").iterdir()), [])
 
+    def test_commit_failure_recovers_clear_without_replaying_it(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32}})
+        with patch("core.runtime.owner_settings._SettingsConnection.commit",
+                   side_effect=sqlite3.OperationalError("database is locked")):
+            with self.assertRaises(sqlite3.OperationalError):
+                self.settings.update({"secrets": {"fmp": ""}})
+        self.assertFalse(self.settings._secret_path("fmp").exists())
+        recovered = OwnerSettings(self.settings.directory)
+        with patch.object(Path, "unlink", side_effect=AssertionError("clear replayed")):
+            history = recovered.read()["history"]
+            self.assertEqual(history[0]["value"], "cleared")
+            self.assertEqual(recovered.read()["history"], history)
+        with sqlite3.connect(self.settings.directory / "settings.sqlite3") as conn:
+            self.assertEqual(conn.execute("SELECT count(*) FROM pending_credentials").fetchone()[0], 0)
+
+    def test_symlink_slot_does_not_block_budget_but_still_rejects_writes(self):
+        self.settings.update({"secrets": {"bigdata": "b" * 20}})
+        path = self.settings._secret_path("fmp")
+        path.symlink_to(self.settings._secret_path("bigdata"))
+        result = self.settings.update({"daily_budget_usd": "2"})
+        self.assertEqual(result["daily_budget_usd"], "2.00")
+        self.assertEqual(result["secrets"]["fmp"]["error"], "secret_unreadable")
+        self.assertTrue(result["secrets"]["bigdata"]["set"])
+        with self.assertRaises(SettingsError):
+            self.settings.update({"secrets": {"fmp": ""}})
+        self.assertTrue(path.is_symlink())
+
     def test_later_write_failure_records_completed_clear(self):
         self.settings.update({"secrets": {"fmp": "f" * 32}})
         with patch.object(self.settings, "_write_private", side_effect=OSError("failure")):

@@ -20,6 +20,8 @@ Live Alpaca key IDs (AK...) are rejected; only paper key IDs (PK...) are accepte
 from contextlib import closing
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -55,6 +57,19 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
+class _SettingsConnection(sqlite3.Connection):
+    """Keep journal preparation, file writes and recovery under one process lock."""
+    lock_fd = None
+
+    def close(self):
+        try:
+            super().close()
+        finally:
+            if self.lock_fd is not None:
+                os.close(self.lock_fd)
+                self.lock_fd = None
+
+
 class OwnerSettings:
     def __init__(self, directory):
         raw = Path(directory)
@@ -85,16 +100,51 @@ class OwnerSettings:
             os.close(fd)
         except FileExistsError:
             pass
-        conn = sqlite3.connect(path, timeout=30)
-        conn.row_factory = sqlite3.Row
-        conn.execute("""CREATE TABLE IF NOT EXISTS history (
-            seq INTEGER PRIMARY KEY AUTOINCREMENT, change_id TEXT NOT NULL,
-            changed_at TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL)""")
-        conn.execute("CREATE TRIGGER IF NOT EXISTS history_no_update BEFORE UPDATE ON history "
-                     "BEGIN SELECT RAISE(ABORT,'append only settings history'); END")
-        conn.execute("CREATE TRIGGER IF NOT EXISTS history_no_delete BEFORE DELETE ON history "
-                     "BEGIN SELECT RAISE(ABORT,'append only settings history'); END")
+        lock_path = self._check(self.directory / "settings.lock")
+        lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | _NOFOLLOW, 0o600)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            conn = sqlite3.connect(path, timeout=30, factory=_SettingsConnection)
+        except BaseException:
+            os.close(lock_fd)
+            raise
+        conn.lock_fd = lock_fd
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("""CREATE TABLE IF NOT EXISTS history (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT, change_id TEXT NOT NULL,
+                changed_at TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL)""")
+            conn.execute("CREATE TRIGGER IF NOT EXISTS history_no_update BEFORE UPDATE ON history "
+                         "BEGIN SELECT RAISE(ABORT,'append only settings history'); END")
+            conn.execute("CREATE TRIGGER IF NOT EXISTS history_no_delete BEFORE DELETE ON history "
+                         "BEGIN SELECT RAISE(ABORT,'append only settings history'); END")
+            conn.execute("""CREATE TABLE IF NOT EXISTS pending_credentials (
+                change_id TEXT NOT NULL, changed_at TEXT NOT NULL,
+                field TEXT PRIMARY KEY, value TEXT NOT NULL, digest TEXT)""")
+            self._recover_credentials(conn)
+        except BaseException:
+            conn.close()
+            raise
         return conn
+
+    @staticmethod
+    def _digest(path):
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except FileNotFoundError:
+            return None
+
+    def _recover_credentials(self, conn):
+        # Intent contains only metadata and a digest, never the credential itself.
+        with conn:
+            for operation in conn.execute("SELECT * FROM pending_credentials").fetchall():
+                field = operation["field"]
+                path = (self._key_path() if field == "openrouter_key"
+                        else self._secret_path(field.removeprefix("secret.")))
+                if self._digest(path) == operation["digest"]:
+                    conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
+                                 (operation["change_id"], operation["changed_at"], field, operation["value"]))
+                conn.execute("DELETE FROM pending_credentials WHERE field=?", (field,))
 
     def _key_path(self):
         return self._check(self.directory / "openrouter.key")
@@ -159,7 +209,7 @@ class OwnerSettings:
         for slot in SECRET_SLOTS:
             try:
                 value = self.secret(slot)
-            except (OSError, UnicodeError):
+            except (OSError, UnicodeError, SettingsError):
                 secrets[slot] = {"set": False, "ends_with": None, "error": "secret_unreadable"}
                 continue
             secrets[slot] = {"set": value is not None, "ends_with": value[-4:] if value else None}
@@ -235,8 +285,8 @@ class OwnerSettings:
             raise
 
     def update(self, changes):
-        """Apply validated changes atomically enough: the key file is replaced in
-        one rename, and history rows are written in one transaction."""
+        """Replace credentials atomically and journal their intended metadata
+        before mutation, so a failed history commit can be recovered on access."""
         rows, key, secrets = self._validate(changes)
         change_id, now = str(uuid4()), _now()
         if secrets:
@@ -251,6 +301,15 @@ class OwnerSettings:
                 conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
                              (change_id, now, field, json.dumps(value)))
 
+            # Commit intent before touching files. The connection's lock prevents
+            # another process from recovering an operation still being applied.
+            with conn:
+                for path, value, field in mutations:
+                    recorded = ("cleared" if value == "" else
+                                "set, ends in ..." + value[-4:] if field == "openrouter_key" else "set")
+                    digest = hashlib.sha256((value + "\n").encode()).hexdigest() if value else None
+                    conn.execute("INSERT INTO pending_credentials VALUES (?,?,?,?,?)",
+                                 (change_id, now, field, json.dumps(recorded), digest))
             conn.execute("BEGIN IMMEDIATE")
             applied = []
             try:
@@ -270,9 +329,11 @@ class OwnerSettings:
                 # Preserve the audit trail for mutations already completed.
                 for field, value in applied:
                     record(field, value)
+                conn.execute("DELETE FROM pending_credentials WHERE change_id=?", (change_id,))
                 conn.commit()
                 raise
             for field, value in rows + applied:
                 record(field, value)
+            conn.execute("DELETE FROM pending_credentials WHERE change_id=?", (change_id,))
             conn.commit()
         return self.read()

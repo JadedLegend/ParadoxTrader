@@ -86,7 +86,11 @@ export default function Settings() {
     try {
       const value = await saveSettings(changes)
       if (!alive.current) return
-      apply(value)
+      setSettings(value)
+      if (changes.models) setModels(current => ({ ...current,
+        ...Object.fromEntries(Object.keys(changes.models!).map(slot => [slot, value.models[slot] ?? ''])),
+      }))
+      if (changes.daily_budget_usd !== undefined) setBudget(value.daily_budget_usd ?? '')
       if (what === 'key') setKey('')
       if (secretSlot) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)
@@ -190,14 +194,14 @@ export default function Settings() {
               if (draft.trim()) void save(`secret.${item.id}`, { secrets: { [item.id]: draft.trim() } }, `${item.name} saved.`)
             }}>
               <label className="input-label" htmlFor={`secret-${item.id}`}>{item.name}</label>
-              <span className="settings-note">{state?.set ? <>Set, ends in <code>…{state.ends_with}</code></> : 'Not set'}</span>
+              <span className="settings-note">{state?.error === 'secret_unreadable' ? 'Credential unreadable. Replace it or try removing it.' : state?.set ? <>Set, ends in <code>…{state.ends_with}</code></> : 'Not set'}</span>
               <div className="flex gap-8">
                 <input id={`secret-${item.id}`} className="input" type="password" autoComplete="off" spellCheck={false}
                   value={draft} placeholder={item.placeholder} onChange={event => setSecretDrafts(current => ({ ...current, [item.id]: event.target.value }))} />
                 <button type="submit" className="btn btn-primary" disabled={saving !== null || !draft.trim()} aria-label={`Save ${item.name}`}>
                   {saving === `secret.${item.id}` ? 'Saving...' : 'Save'}
                 </button>
-                {state?.set && <button type="button" className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
+                {(state?.set || state?.error) && <button type="button" className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
                   onClick={() => { if (window.confirm(`Remove the ${item.name} key?`)) void save(`secret.${item.id}`, { secrets: { [item.id]: '' } }, `${item.name} removed.`) }}>
                   Remove
                 </button>}

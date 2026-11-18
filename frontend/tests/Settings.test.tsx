@@ -115,6 +115,40 @@ describe('Settings page', () => {
     expect(api.saveSettings).toHaveBeenCalledExactlyOnceWith({ secrets: { fmp: 'a'.repeat(32) } })
   })
 
+  it('retains unsent model and budget edits when saving a credential', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, secrets: { fmp: { set: true, ends_with: 'aaaa' } } })
+    render(<Settings />)
+    const model = await screen.findByLabelText('Oracle') as HTMLInputElement
+    const budget = screen.getByLabelText(/US dollars per day/) as HTMLInputElement
+    fireEvent.change(model, { target: { value: 'example/unsaved' } })
+    fireEvent.change(budget, { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText('Financial Modeling Prep'), { target: { value: 'a'.repeat(32) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Financial Modeling Prep' }))
+    expect(await screen.findByText('Financial Modeling Prep saved.')).toBeTruthy()
+    expect(model.value).toBe('example/unsaved')
+    expect(budget.value).toBe('3')
+    expect(screen.getByText('…aaaa')).toBeTruthy()
+  })
+
+  it('shows unreadable credentials and reports a failed confirmed clear', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ ...EMPTY, secrets: {
+      fmp: { set: false, ends_with: null, error: 'secret_unreadable' },
+    } })
+    vi.mocked(api.saveSettings).mockRejectedValue(new Error('clear failed'))
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Settings />)
+    expect(await screen.findByText('Credential unreadable. Replace it or try removing it.')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Financial Modeling Prep'), { target: { value: 'a'.repeat(32) } })
+    expect((screen.getByRole('button', { name: 'Save Financial Modeling Prep' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Financial Modeling Prep' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(api.saveSettings).toHaveBeenCalledExactlyOnceWith({ secrets: { fmp: '' } })
+    expect(screen.queryByText('Financial Modeling Prep removed.')).toBeNull()
+    expect(screen.getByText('Credential unreadable. Replace it or try removing it.')).toBeTruthy()
+    confirm.mockRestore()
+  })
+
   it('lets a model ID be typed when the catalog cannot load', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     render(<Settings />)

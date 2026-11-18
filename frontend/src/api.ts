@@ -43,7 +43,7 @@ export interface OwnerSettings {
   models: Record<string, string | null>
   daily_budget_usd: string | null
   key: { set: boolean; ends_with: string | null }
-  secrets?: Record<string, { set: boolean; ends_with: string | null }>
+  secrets?: Record<string, { set: boolean; ends_with: string | null; error?: "secret_unreadable" }>
   history: { changed_at: string; field: string; value: unknown }[]
 }
 export interface SettingsChanges {
