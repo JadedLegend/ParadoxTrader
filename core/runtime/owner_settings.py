@@ -20,7 +20,6 @@ Live Alpaca key IDs (AK...) are rejected; only paper key IDs (PK...) are accepte
 from contextlib import closing
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-import fcntl
 import hashlib
 import json
 import os
@@ -29,6 +28,11 @@ import re
 import sqlite3
 import stat
 from uuid import uuid4
+
+try:
+    import fcntl
+except ImportError:  # Windows dev previews only; the server is Linux.
+    fcntl = None
 
 from core.usage.pricing import validate_model
 
@@ -103,7 +107,8 @@ class OwnerSettings:
         lock_path = self._check(self.directory / "settings.lock")
         lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | _NOFOLLOW, 0o600)
         try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            if fcntl is not None:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
             conn = sqlite3.connect(path, timeout=30, factory=_SettingsConnection)
         except BaseException:
             os.close(lock_fd)
@@ -183,11 +188,11 @@ class OwnerSettings:
         return None if value is None else Decimal(value)
 
     def key(self):
-        """The key itself, for the heartbeat only. None when not set."""
+        """The key itself, for the heartbeat only. None when not set or unreadable."""
         path = self._key_path()
         try:
             raw = path.read_text(encoding="utf-8").strip()
-        except FileNotFoundError:
+        except (OSError, UnicodeError):  # Missing or damaged: never break the page.
             return None
         return raw if KEY_PATTERN.fullmatch(raw) else None
 

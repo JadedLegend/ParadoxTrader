@@ -189,6 +189,12 @@ class SecretSlotTests(unittest.TestCase):
             self.settings.update({"secrets": {"fmp": ""}})
         self.assertTrue(path.is_symlink())
 
+    def test_a_damaged_openrouter_key_file_does_not_break_the_page(self):
+        self.settings.update({"openrouter_key": KEY})
+        (self.settings.directory / "openrouter.key").write_bytes(bytes([0xff, 0xfe]) + b" not text")
+        self.assertIsNone(self.settings.key())
+        self.assertFalse(self.settings.read()["key"]["set"])
+
     def test_recovery_keeps_unreadable_intent_and_recovers_other_slots(self):
         self.settings.update({"secrets": {"fmp": "f" * 32, "bigdata": "b" * 20}})
         with patch("core.runtime.owner_settings._SettingsConnection.commit", side_effect=sqlite3.OperationalError("locked")):
