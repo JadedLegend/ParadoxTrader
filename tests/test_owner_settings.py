@@ -194,7 +194,7 @@ class SecretSlotTests(unittest.TestCase):
         for agent in AGENTS:
             self.assertIn(f"alpaca_{agent}_key_id", SECRET_SLOTS)
             self.assertIn(f"alpaca_{agent}_secret", SECRET_SLOTS)
-        for slot in ("massive", "brave_search", "reddit_client_id", "reddit_client_secret",
+        for slot in ("massive", "unusual_whales", "eodhd", "brave_search", "reddit_client_id", "reddit_client_secret",
                      "x_bearer_token", "etoro_api_key", "etoro_user_key", "signalstack_webhook"):
             self.assertIn(slot, SECRET_SLOTS)
         self.settings.update({"secrets": {"alpaca_siren_key_id": "PKSIREN123456789",

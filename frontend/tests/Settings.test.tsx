@@ -108,6 +108,8 @@ describe('Settings page', () => {
     expect(screen.getByText(/Live keys .AK.... are refused/)).toBeTruthy()
     expect(screen.getByLabelText('Shadow: key ID')).toBeTruthy()
     expect(screen.getByLabelText('SignalStack webhook')).toBeTruthy()
+    expect(screen.getByLabelText('Unusual Whales API token')).toBeTruthy()
+    expect(screen.getByLabelText('EODHD API token')).toBeTruthy()
     expect(screen.getByText('Brokers and signal routes')).toBeTruthy()
   })
 
