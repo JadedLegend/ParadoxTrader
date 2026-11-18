@@ -68,26 +68,30 @@ The installer does not start any agent, scheduler, model session or broker conne
 
 ## The heartbeat (installed, off until you switch it on)
 
-The heartbeat offers the agents a gathering at a few chosen times each day. Each gathering continues the home from the one before. The installer copies its timer but does not enable it.
+The heartbeat wakes each agent on its own staggered clock through the day. One day is one "day run" that continues the agents' home from the day before. The installer copies its timer but does not enable it.
 
-Every limit is enforced in code (`core/runtime/rehearsal/heartbeat.py`):
-- **Slot times only.** Nothing runs between slots, and nights are quiet.
-- **No catch-up.** A slot that's more than its grace window late is recorded as missed and never run.
-- **Spending.** A daily budget and a per-gathering budget.
-- **Pause.** A pause switch stops new gatherings; `stop` also halts a running one.
-- **Recovery.** If the latest run is unfinished or uncertain, the heartbeat waits for you instead of starting another.
+Every limit is enforced in code (`core/runtime/rehearsal/heartbeat.py` and the session store):
+- **Scheduled wake times only.** Nights are quiet.
+- **No catch-up.** A wake that's more than its grace window late is recorded as missed and never run.
+- **Spending.** A daily budget that the store enforces on every request.
+- **Pause.** A pause switch stops new wakes; `stop` also halts the day.
+- **One wake at a time per agent.** An agent whose last wake is unfinished or uncertain is skipped until you recover it; the others carry on.
+- **Clock-only mode.** It records wake times and dispatches nothing.
 
 To switch it on:
 
-1. Write `/etc/paradoxtrader/heartbeat.json` (owned `root:paradoxtrader`, mode `0640`):
+1. Write `/etc/paradoxtrader/heartbeat.json` (owned `root:paradoxtrader`, mode `0640`). Start with `"dispatch": "clock-only"` to watch it keep time without spending anything:
 
    ```json
-   {"timezone": "America/New_York", "slots": ["09:45", "12:30", "15:30"],
-    "grace_minutes": 20, "daily_budget_usd": "1.00", "gathering_budget_usd": "0.35",
-    "mode": "real", "models_file": "/etc/paradoxtrader/models.json"}
+   {"timezone": "America/New_York",
+    "active_window": ["09:00", "17:00"], "active_interval_minutes": 30,
+    "quiet_window": ["17:00", "21:00"], "quiet_interval_minutes": 60,
+    "grace_minutes": 10, "daily_budget_usd": "1.00",
+    "mode": "real", "models_file": "/etc/paradoxtrader/models.json",
+    "dispatch": "clock-only"}
    ```
 
-   For real models, also put `REHEARSAL_OPENROUTER_API_KEY=...` in `/etc/paradoxtrader/heartbeat.env` (mode `0640`). Use `"mode": "offline"` to watch it work with scripted examples first; that needs no key or models file.
+   For real wakes, change `dispatch` to `"live"` and put `REHEARSAL_OPENROUTER_API_KEY=...` in `/etc/paradoxtrader/heartbeat.env` (mode `0640`). The Settings page (coming next) will replace the models file and the key file.
 
 2. Enable it:
 
@@ -95,11 +99,11 @@ To switch it on:
    systemctl enable --now paradoxtrader-heartbeat.timer
    ```
 
-3. Check, pause or stop:
+3. Check, pause or stop. `status` always says why nothing is happening:
 
    ```bash
    cd /opt/paradoxtrader/current
-   sudo -u paradoxtrader /opt/paradoxtrader/venv/bin/python scripts/heartbeat.py      --root /var/lib/paradoxtrader/sessions --config /etc/paradoxtrader/heartbeat.json status
+   sudo -u paradoxtrader /opt/paradoxtrader/venv/bin/python scripts/heartbeat.py --root /var/lib/paradoxtrader/sessions --config /etc/paradoxtrader/heartbeat.json status
    ```
 
    Swap `status` for `pause`, `resume` or `stop`.
