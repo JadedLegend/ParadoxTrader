@@ -241,6 +241,45 @@ class HeartbeatTests(unittest.TestCase):
         beat.tick()
         self.assertEqual(calls, [(1, 2)])
 
+    def test_a_restart_mid_wake_never_reruns_or_adds_turns(self):
+        calls = []
+
+        def crashing(run_id, owner, step=None):
+            calls.append((owner, step))
+            if step == (2, 2):
+                raise KeyboardInterrupt  # The service dies before the second turn returns.
+            job = self.store.add_wake(run_id, owner)
+            return {**job, "status": "completed", "action": "journal"}
+
+        def beat():
+            return Heartbeat(self.store, Schedule.from_config({**CONFIG, "choices_per_wake": 2}),
+                             prepare_day=self.prepare_day, run_wake=crashing, now=lambda: self.clock)
+
+        self.clock = at(9, 0)
+        with self.assertRaises(KeyboardInterrupt):
+            beat().tick()
+        self.assertEqual(calls, [("tempest", (1, 2)), ("tempest", (2, 2))])
+        self.assertIn(("tempest", "09:00", "woke"), self.slots())  # Saved after the first turn.
+        self.clock = at(9, 1)
+        beat().tick()  # Restart: the slot is done, so no turn runs again.
+        self.assertEqual([c for c in calls if c[0] == "tempest"], [("tempest", (1, 2)), ("tempest", (2, 2))])
+
+    def test_a_key_cleared_mid_wake_ends_the_wake_and_keeps_the_first_turn(self):
+        from core.runtime.rehearsal.provider import ProviderError
+
+        def keyless_second(run_id, owner, step=None):
+            if step == (2, 2):
+                raise ProviderError("explicit_api_key_required")
+            job = self.store.add_wake(run_id, owner)
+            return {**job, "status": "completed", "action": "journal"}
+
+        beat = Heartbeat(self.store, Schedule.from_config({**CONFIG, "choices_per_wake": 2}),
+                         prepare_day=self.prepare_day, run_wake=keyless_second, now=lambda: self.clock)
+        self.clock = at(9, 3)
+        result = beat.tick()
+        self.assertEqual([w["agent_id"] for w in result["wakes"]], ["tempest", "siren"])  # The tick went on.
+        self.assertIn(("tempest", "09:00", "woke"), self.slots())
+
     def test_choices_per_wake_is_bounded(self):
         for value in (0, 4, "2", True):
             with self.subTest(value=value), self.assertRaises(RehearsalError):

@@ -48,6 +48,7 @@ import sqlite3
 from zoneinfo import ZoneInfo
 
 from .home import CARRIED_STATUSES, continue_home, read_home
+from .provider import ProviderError
 from .store import MAX_WAKES_PER_AGENT, OWNERS, RehearsalConflict, RehearsalError
 
 LEDGER = "heartbeat.sqlite3"
@@ -413,51 +414,62 @@ class Heartbeat:
                                      note=f"{remaining} USD left of today's budget")
                         continue
                     try:
-                        job, actions = self._wake(conn, today, run_id, owner)
+                        job = self._wake(conn, today, run_id, slot)
                     except RehearsalConflict as error:
                         self._record(conn, slot, "blocked", run_id=run_id, note=str(error))
                         continue
                     except RehearsalError as error:
                         self._record(conn, slot, "not_started", run_id=run_id, note=str(error))
                         continue
-                    note = ("choices: " + ", ".join(actions)) if len(actions) > 1 else None
-                    if job.get("status") not in (None, "completed"):
-                        # Name the agent and model so a model that stops answering is easy to find.
-                        note = (f"{owner} on {job.get('requested_model') or 'unknown model'}: "
-                                f"{job.get('failure_code') or job.get('status')}")
-                    self._record(conn, slot, "woke", run_id=run_id, wake_id=job["wake_id"], note=note)
-                    conn.execute("UPDATE wake_slots SET wake_status=?,finished_at=? WHERE slot_key=?",
-                                 (job["status"], self.now().isoformat(), self._key(slot)))
-                    conn.commit()
                     started.append({"agent_id": owner, "wake_id": job["wake_id"], "status": job["status"]})
             return {"outcome": "woke" if started else "nothing_started", "run_id": run_id,
                     "continued_from": previous, "wakes": started, "missed": missed}
 
-    def _wake(self, conn, today, run_id, owner):
+    @staticmethod
+    def _slot_note(owner, job, actions):
+        if job.get("status") not in (None, "completed"):
+            # Name the agent and model so a model that stops answering is easy to find.
+            return (f"{owner} on {job.get('requested_model') or 'unknown model'}: "
+                    f"{job.get('failure_code') or job.get('status')}")
+        return ("choices: " + ", ".join(actions)) if len(actions) > 1 else None
+
+    def _wake(self, conn, today, run_id, slot):
         """One wake: up to ``choices_per_wake`` turns, each a choice and its doing.
 
         Each turn is its own stored step (same reservation, recovery and witness
         rules), and later turns see earlier ones through today's continuity.
+        The slot is recorded as woken as soon as the first turn returns, and
+        updated after every later turn, so a restart mid-wake finds the slot
+        done and never reruns finished turns or exceeds the wake's choices.
         The wake ends early when the agent rests, a turn does not complete, a
-        pause arrives, or the budget runs low. Returns the last turn's job and
-        the actions taken.
+        pause arrives, or the budget runs low. Returns the last turn's job.
         """
+        _, owner, _ = slot
         total = self.schedule.choices_per_wake
-        if total == 1:
-            job = self.run_wake(run_id, owner)
-            return job, [job.get("action") or job.get("status") or "unknown"]
-        job = self.run_wake(run_id, owner, step=(1, total))
+        job = self.run_wake(run_id, owner, step=(1, total)) if total > 1 else self.run_wake(run_id, owner)
         actions = [job.get("action") or job.get("status") or "unknown"]
+        self._record(conn, slot, "woke", run_id=run_id, wake_id=job["wake_id"],
+                     note=self._slot_note(owner, job, actions))
+        self._progress(conn, slot, job, actions)
         for step in range(2, total + 1):
             if (job.get("status") != "completed" or job.get("action") in (None, "rest") or self.paused()
                     or self.daily_budget() - self._reserved_today(conn, today) < MIN_REMAINING_USD):
                 break
             try:
                 job = self.run_wake(run_id, owner, step=(step, total))
-            except (RehearsalConflict, RehearsalError):
-                break  # The earlier turn already counts as the wake.
+            except (RehearsalConflict, RehearsalError, ProviderError):
+                # Refused before this turn started (for example the key was cleared
+                # mid-wake): the wake ends here and the earlier turns stand.
+                break
             actions.append(job.get("action") or job.get("status") or "unknown")
-        return job, actions
+            self._progress(conn, slot, job, actions)
+        return job
+
+    def _progress(self, conn, slot, job, actions):
+        conn.execute("UPDATE wake_slots SET wake_id=?,wake_status=?,note=?,finished_at=? WHERE slot_key=?",
+                     (job["wake_id"], job["status"], self._slot_note(slot[1], job, actions),
+                      self.now().isoformat(), self._key(slot)))
+        conn.commit()
 
     # ---- status -----------------------------------------------------------
     def status(self):
