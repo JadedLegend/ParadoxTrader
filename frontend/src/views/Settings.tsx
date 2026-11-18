@@ -5,14 +5,26 @@ import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 const SLOTS = [...REHEARSAL_AGENTS.map(agent => ({ id: agent.id as string, name: agent.name })), { id: 'witness', name: 'Witness' }]
 const CATALOG_URL = 'https://openrouter.ai/api/v1/models'
 // Data and broker keys: stored for later steps; nothing uses them yet.
-const SECRETS = [
-  { id: 'alpaca_key_id', name: 'Alpaca key ID (paper)', placeholder: 'PK...', note: 'Paper-trading keys only. Live keys (AK...) are refused.' },
-  { id: 'alpaca_secret', name: 'Alpaca secret (paper)', placeholder: '', note: '' },
-  { id: 'public_com', name: 'Public.com', placeholder: '', note: 'For market data. Nothing here places orders.' },
-  { id: 'alphavantage', name: 'Alpha Vantage', placeholder: '', note: '' },
-  { id: 'fmp', name: 'Financial Modeling Prep', placeholder: '', note: '' },
-  { id: 'bigdata', name: 'Bigdata.com', placeholder: '', note: '' },
-] as const
+interface SecretItem { id: string; name: string; placeholder: string; note: string }
+const entry = (id: string, name: string, placeholder = '', note = ''): SecretItem => ({ id, name, placeholder, note })
+const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretItem[] }[] = [
+  { id: 'alpaca', title: 'Paper trading: one Alpaca account per agent',
+    help: 'Paper-trading keys only. Live keys (AK...) are refused.',
+    items: REHEARSAL_AGENTS.flatMap(agent => [
+      entry(`alpaca_${agent.id}_key_id`, `${agent.name}: key ID`, 'PK...'),
+      entry(`alpaca_${agent.id}_secret`, `${agent.name}: secret`),
+    ]) },
+  { id: 'data', title: 'Market data', help: 'For prices, fundamentals and filings.',
+    items: [entry('public_com', 'Public.com', '', 'For market data. Nothing here places orders.'), entry('alphavantage', 'Alpha Vantage'),
+      entry('fmp', 'Financial Modeling Prep'), entry('bigdata', 'Bigdata.com'), entry('massive', 'Massive.com')] },
+  { id: 'social', title: 'News, search and social', help: 'For reading the wider conversation.',
+    items: [entry('brave_search', 'Brave Search API'), entry('reddit_client_id', 'Reddit client ID'),
+      entry('reddit_client_secret', 'Reddit client secret'), entry('x_bearer_token', 'X bearer token')] },
+  { id: 'brokers', title: 'Brokers and signal routes', help: 'Stored only. Nothing here places orders, and these stay unused until you decide otherwise.',
+    items: [entry('etoro_api_key', 'eToro API key'), entry('etoro_user_key', 'eToro user key'),
+      entry('signalstack_webhook', 'SignalStack webhook', 'https://...')] },
+]
+const SECRETS = SECRET_GROUPS.flatMap(group => group.items)
 const FIELD_LABEL: Record<string, string> = {
   daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key',
   ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
@@ -190,8 +202,14 @@ export default function Settings() {
       <section className="card mb-16" aria-labelledby="settings-secrets">
         <h2 className="card-title" id="settings-secrets">Data and broker keys</h2>
         <p className="settings-help">Stored on your server for the market-data and paper-trading steps. Nothing uses them yet, and like the OpenRouter key they are never shown again.</p>
+        {SECRET_GROUPS.map(group => {
+          const count = group.items.filter(item => settings.secrets?.[item.id]?.set).length
+          return <details className="settings-group" key={group.id}>
+          <summary><span className="settings-group-title">{group.title}</span>
+            <span className="settings-note">{count} of {group.items.length} set</span></summary>
+          <p className="settings-note">{group.help}</p>
         <div className="settings-secrets">
-          {SECRETS.map(item => {
+          {group.items.map(item => {
             const state = settings.secrets?.[item.id]
             const draft = secretDrafts[item.id] ?? ''
             return <form className="input-group settings-secret" key={item.id} onSubmit={event => {
@@ -215,6 +233,8 @@ export default function Settings() {
             </form>
           })}
         </div>
+        </details>
+        })}
       </section>
 
       <section className="card" aria-labelledby="settings-history">

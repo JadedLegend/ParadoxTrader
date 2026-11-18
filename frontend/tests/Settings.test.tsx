@@ -86,6 +86,9 @@ describe('Settings page', () => {
     expect(document.body.textContent).not.toContain('abcdefghijklmnopqrstuvwxyz')
     expect(field.value).toBe('')
     expect(screen.getByText(/Live keys .AK.... are refused/)).toBeTruthy()
+    expect(screen.getByLabelText('Shadow: key ID')).toBeTruthy()
+    expect(screen.getByLabelText('SignalStack webhook')).toBeTruthy()
+    expect(screen.getByText('Brokers and signal routes')).toBeTruthy()
   })
 
   it.each(['save', 'remove'])('preserves a draft edited during a %s request', async action => {

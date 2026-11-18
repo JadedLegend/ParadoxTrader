@@ -93,7 +93,7 @@ class SecretSlotTests(unittest.TestCase):
         self.settings = OwnerSettings(Path(self.temp.name) / "settings")
 
     def test_data_and_broker_keys_are_write_only(self):
-        values = {"alpaca_key_id": "PKABCDEFGH12345678", "alpaca_secret": "s" * 40,
+        values = {"alpaca_tempest_key_id": "PKABCDEFGH12345678", "alpaca_tempest_secret": "s" * 40,
                   "public_com": "pub-key-123456789", "alphavantage": "ABCDEF123456",
                   "fmp": "f" * 32, "bigdata": "bd_key_0123456789"}
         result = self.settings.update({"secrets": values})
@@ -189,6 +189,21 @@ class SecretSlotTests(unittest.TestCase):
             self.settings.update({"secrets": {"fmp": ""}})
         self.assertTrue(path.is_symlink())
 
+    def test_each_agent_has_its_own_paper_account_and_new_sources_have_slots(self):
+        from core.runtime.owner_settings import AGENTS, SECRET_SLOTS
+        for agent in AGENTS:
+            self.assertIn(f"alpaca_{agent}_key_id", SECRET_SLOTS)
+            self.assertIn(f"alpaca_{agent}_secret", SECRET_SLOTS)
+        for slot in ("massive", "brave_search", "reddit_client_id", "reddit_client_secret",
+                     "x_bearer_token", "etoro_api_key", "etoro_user_key", "signalstack_webhook"):
+            self.assertIn(slot, SECRET_SLOTS)
+        self.settings.update({"secrets": {"alpaca_siren_key_id": "PKSIREN123456789",
+                                          "signalstack_webhook": "https://app.signalstack.com/hook/abc123"}})
+        self.assertEqual(self.settings.secret("alpaca_siren_key_id"), "PKSIREN123456789")
+        self.assertIsNone(self.settings.secret("alpaca_weaver_key_id"))
+        with self.assertRaisesRegex(SettingsError, "invalid_secret_alpaca_oracle_key_id"):
+            self.settings.update({"secrets": {"alpaca_oracle_key_id": "AKLIVE123456789"}})
+
     def test_a_damaged_openrouter_key_file_does_not_break_the_page(self):
         self.settings.update({"openrouter_key": KEY})
         (self.settings.directory / "openrouter.key").write_bytes(bytes([0xff, 0xfe]) + b" not text")
@@ -263,7 +278,7 @@ class SecretSlotTests(unittest.TestCase):
         self.assertEqual(self.settings.secret("fmp"), "f" * 32)
 
     def test_live_alpaca_keys_and_unknown_slots_are_refused(self):
-        for bad in ({"secrets": {"alpaca_key_id": "AKLIVEKEY123456789"}}, {"secrets": {"unknown": "x" * 20}},
+        for bad in ({"secrets": {"alpaca_shadow_key_id": "AKLIVEKEY123456789"}}, {"secrets": {"unknown": "x" * 20}},
                     {"secrets": {"fmp": "has spaces in it 1234"}}, {"secrets": {"public_com": 5}}, {"secrets": {}}):
             with self.subTest(bad=bad), self.assertRaises(SettingsError):
                 self.settings.update(bad)
