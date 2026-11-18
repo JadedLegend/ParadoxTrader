@@ -39,12 +39,14 @@ Any step can be "rest", "wait" or "nothing more". Each action does exactly what 
 
 Each step works on its own before the next one starts. The order was revised with Manus's review: market work comes right after the home is steady, because trading is the purpose.
 
-1. **One continuing home.** Today every session is a separate visit and memory ends when it ends. Make it one place that keeps going, so notes and the witness carry forward. *In progress.*
+1. **One continuing home.** Today every session is a separate visit and memory ends when it ends. Make it one place that keeps going, so notes, open questions and the witness carry forward. *Done (#26, #27).*
 2. **A safe heartbeat.** A gentle clock on the droplet that offers wakes on the rhythm above. Limits are enforced in code, never in a prompt:
    - a daily and a per-wake spending limit;
    - a pause switch;
    - quiet nights by default;
    - no rush of catch-up wakes after a restart.
+
+   *Built; switched off until models and budget are chosen.*
 3. **Market windows.** One or two trustworthy market-data sources, each reading stamped with its time and cost.
 4. **Several steps per wake.** Each step is its own record (offered, chosen, done, cost), so an intention is never mistaken for a completed act. "Nothing more" is a real ending, not silence.
 5. **Structured trade proposals:** symbol, contract, side, size, time horizon, what would prove it wrong, and how unsure the agent is.

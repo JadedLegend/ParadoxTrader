@@ -1,0 +1,12 @@
+[Unit]
+Description=ParadoxTrader heartbeat tick
+
+[Timer]
+# Every five minutes. The heartbeat itself decides whether a slot is due;
+# missed slots are never caught up, so no catch-up after downtime.
+OnCalendar=*:0/5
+Persistent=false
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
