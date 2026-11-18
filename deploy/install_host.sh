@@ -16,7 +16,7 @@ BACKUPS=/var/backups/paradoxtrader
 id "$APP_USER" >/dev/null 2>&1 || useradd --system --home-dir "$DATA" --shell /usr/sbin/nologin "$APP_USER"
 install -d -m 0755 "$BASE" "$BASE/releases"
 install -d -m 0750 -o root -g "$APP_USER" "$ETC"
-install -d -m 0700 -o "$APP_USER" -g "$APP_USER" "$DATA" "$DATA/sessions"
+install -d -m 0700 -o "$APP_USER" -g "$APP_USER" "$DATA" "$DATA/sessions" "$DATA/settings"
 install -d -m 0700 "$BACKUPS"
 
 # awk reads the whole listing: head -1 would kill tar with SIGPIPE under pipefail.

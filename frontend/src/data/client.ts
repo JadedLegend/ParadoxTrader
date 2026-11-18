@@ -24,10 +24,16 @@ export class HostUnavailableError extends Error {
 
 const SESSION_PREFIX = '/api/rehearsals'
 const LIBRARY_PREFIX = '/api/library/'
+// The owner's Settings (models, key, daily budget): the private host's one write.
+export const SETTINGS_PATH = '/api/settings'
 
 export function servedByPrivateHost(path: string): boolean {
   const route = new URL(path, 'https://host.invalid').pathname
-  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`)
+  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`) || route === SETTINGS_PATH
+}
+
+export function isSettingsWrite(method: Method, path: string): boolean {
+  return method === 'POST' && new URL(path, 'https://host.invalid').pathname === SETTINGS_PATH
 }
 
 /** The source library is imported text bundled with the site, read in the browser. */
@@ -49,7 +55,7 @@ export function createApiClient(mode: ApiMode, readFixture: FixtureReader, trans
       return local<T>(path)
     }
     if (host === 'private') {
-      if (method !== 'GET') throw new Error('This private host is read-only. No backend action was sent.')
+      if (method !== 'GET' && !isSettingsWrite(method, path)) throw new Error('This private host is read-only. No backend action was sent.')
       if (readLocallyOnPrivateHost(path)) return local<T>(path)
       if (!servedByPrivateHost(path)) throw new HostUnavailableError(path)
     }

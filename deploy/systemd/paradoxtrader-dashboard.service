@@ -1,5 +1,5 @@
 [Unit]
-Description=ParadoxTrader private owner dashboard (read-only, loopback)
+Description=ParadoxTrader private owner dashboard (loopback; read-only except owner Settings)
 After=network.target
 
 [Service]
@@ -12,14 +12,14 @@ ExecStart=/opt/paradoxtrader/venv/bin/python deploy/private_dashboard.py serve -
 Restart=on-failure
 RestartSec=5
 
-# Read-only inspection only: no outbound network, no writes outside its state.
+# Inspection plus the owner Settings save: no outbound network, no writes outside its state.
 IPAddressDeny=any
 IPAddressAllow=localhost
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-# SQLite readers may need the -shm/-wal sidecars; the app itself is GET-only.
+# SQLite readers need the -shm/-wal sidecars; the one write is /var/lib/paradoxtrader/settings.
 ReadWritePaths=/var/lib/paradoxtrader
 ProtectKernelTunables=true
 ProtectKernelModules=true

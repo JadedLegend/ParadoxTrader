@@ -91,7 +91,7 @@ To switch it on:
     "dispatch": "clock-only"}
    ```
 
-   For real wakes, change `dispatch` to `"live"` and put `REHEARSAL_OPENROUTER_API_KEY=...` in `/etc/paradoxtrader/heartbeat.env` (mode `0640`). The Settings page (coming next) will replace the models file and the key file.
+   Add `"settings_dir": "/var/lib/paradoxtrader/settings"` so the dashboard's **Settings** page chooses the models, the key and the daily budget; with it, `models_file` and `heartbeat.env` are not needed. For real wakes, change `dispatch` to `"live"`.
 
 2. Enable it:
 
