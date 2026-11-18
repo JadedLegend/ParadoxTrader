@@ -54,6 +54,8 @@ SECRET_SLOTS = {
     "fmp": re.compile(r"[A-Za-z0-9]{16,64}"),
     "bigdata": _GENERIC,
     "massive": _GENERIC,
+    "unusual_whales": _GENERIC,
+    "eodhd": _GENERIC,
     # News and social.
     "brave_search": _GENERIC,
     "reddit_client_id": _GENERIC,
