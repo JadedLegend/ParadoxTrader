@@ -60,7 +60,7 @@ class DecisionAPI(unittest.TestCase):
     def test_auth_and_owner_validation_precede_all_store_io(self):
         with mock.patch.object(rehearsal, '_store', side_effect=AssertionError('no IO')) as factory:
             self.assertEqual(self.request(authorization=None)[0], 403)
-            for query in ('agent_id=siren&wake_id=tempest-r1', 'agent_id=tempest&wake_id=tempest-r3', 'agent_id=tempest&wake_id=tempest-r1&wake_id=tempest-r2', 'agent_id=outsider&wake_id=tempest-r1', 'agent_id=tempest', 'agent_id=tempest&wake_id=tempest-r1&operator=true'):
+            for query in ('agent_id=siren&wake_id=tempest-r1', 'agent_id=tempest&wake_id=tempest-r49', 'agent_id=tempest&wake_id=tempest-r1&wake_id=tempest-r2', 'agent_id=outsider&wake_id=tempest-r1', 'agent_id=tempest', 'agent_id=tempest&wake_id=tempest-r1&operator=true'):
                 self.assertIn(self.request(f'/api/rehearsals/{self.run_id}/decisions?{query}')[0], (400, 404))
             for method in ('POST', 'PUT', 'PATCH', 'DELETE'):
                 self.assertEqual(self.request(method=method)[0], 405)
