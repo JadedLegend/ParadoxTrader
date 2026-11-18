@@ -6,7 +6,7 @@ wakes that are due, each on its own staggered clock, at most a few per tick;
 see core/runtime/rehearsal/heartbeat.py for every limit it enforces. With
 ``"dispatch": "clock-only"`` it only records the wake times.
 
-Real-model gatherings additionally need ``mode: real``, a ``models_file`` in
+Real-model wakes additionally need ``mode: real``, a ``models_file`` in
 the config, and REHEARSAL_OPENROUTER_API_KEY in the environment. Without the
 key a real tick refuses before preparing anything. Nothing here can trade.
 

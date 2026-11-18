@@ -187,7 +187,7 @@ class HeartbeatTests(unittest.TestCase):
                 self.assertEqual(instants, sorted(instants))
                 keys = {(moment.isoformat(), owner) for moment, owner, _ in slots}
                 self.assertEqual(len(keys), len(slots))
-                self.assertEqual(len(set(instants)), len(instants) // 1)
+                self.assertEqual(len(set(instants)), len(instants))
         spring = [m.strftime("%H:%M") for m, owner, _ in schedule.slots(date(2026, 3, 8)) if owner == "tempest"]
         self.assertEqual(spring, ["00:30", "01:00", "01:30", "03:00", "03:30"])  # 02:00 and 02:30 never exist.
 

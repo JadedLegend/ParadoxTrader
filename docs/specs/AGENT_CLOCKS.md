@@ -57,7 +57,7 @@ Design for review, 17 November 2026. Builds on the merged continuing home (#26, 
 Each phase is a separate PR that works on its own.
 
 1. **Day runs with wakes added as they happen.** Store, controller and API changes, offline only. Tested with a two-day, seven-agent fixture on a scripted clock. *Built. In this first version each agent's model and the day's budget are fixed when the day opens; changing them mid-day arrives with the Settings page (phase 3).*
-2. **Individual clocks** replace gatherings in the heartbeat:
+2. **Individual clocks** replace gatherings in the heartbeat *(built)*:
    - the 60-second tick and stagger;
    - clock-only mode;
    - the "why nothing happened" status;
