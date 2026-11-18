@@ -97,7 +97,7 @@ export default function Settings() {
         ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
       setSettings(value)
       if (what === 'key') setKey('')
-      if (secretSlot) setSecretDrafts(current => current[secretSlot] === submittedDraft
+      if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)
       setMessage(done)
     } catch {

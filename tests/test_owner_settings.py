@@ -204,7 +204,28 @@ class SecretSlotTests(unittest.TestCase):
         with self.assertRaisesRegex(SettingsError, "credential_recovery_pending"):
             self.settings.update({"secrets": {"fmp": "g" * 32}})
         path.rmdir()
-        self.assertEqual(self.settings.read()["history"][0]["value"], "cleared")
+        recovered = self.settings.read()["history"][0]
+        self.assertEqual((recovered["field"], recovered["value"]), ("secret.fmp", "cleared"))
+        with sqlite3.connect(self.settings.directory / "settings.sqlite3") as conn:
+            self.assertEqual(conn.execute("SELECT count(*) FROM pending_credentials WHERE field='secret.fmp'").fetchone()[0], 0)
+
+    def test_unattempted_intents_are_discarded_without_destination_access(self):
+        for field, getter in (("secret.fmp", "_secret_path"), ("openrouter_key", "_key_path")):
+            with self.subTest(field=field):
+                conn = self.settings._db()
+                try:
+                    with conn:
+                        conn.execute("INSERT INTO pending_credentials VALUES (?,?,?,?,?,?)",
+                                     ("unstarted", "now", field, '"cleared"', None, 0))
+                finally:
+                    conn.close()
+                # A rejected path or unreadable destination must never be consulted.
+                with patch.object(self.settings, getter, side_effect=AssertionError("destination accessed")):
+                    conn = self.settings._db()
+                    try:
+                        self.assertEqual(conn.execute("SELECT count(*) FROM pending_credentials").fetchone()[0], 0)
+                    finally:
+                        conn.close()
 
     def test_recovery_does_not_record_unattempted_matching_intent(self):
         self.settings.update({"secrets": {"fmp": "f" * 32, "bigdata": "b" * 20}})

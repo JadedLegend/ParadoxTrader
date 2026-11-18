@@ -141,6 +141,9 @@ class OwnerSettings:
         with conn:
             for operation in conn.execute("SELECT * FROM pending_credentials").fetchall():
                 field = operation["field"]
+                if operation["attempted"] == 0:
+                    conn.execute("DELETE FROM pending_credentials WHERE field=?", (field,))
+                    continue
                 try:
                     path = (self._key_path() if field == "openrouter_key"
                             else self._secret_path(field.removeprefix("secret.")))

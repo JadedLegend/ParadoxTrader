@@ -105,6 +105,20 @@ describe('Settings page', () => {
     confirm.mockRestore()
   })
 
+  it('keeps an unsent replacement draft after removing the stored credential', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ ...EMPTY, secrets: { fmp: { set: true, ends_with: 'aaaa' } } })
+    vi.mocked(api.saveSettings).mockResolvedValue(EMPTY)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Settings />)
+    const field = await screen.findByLabelText('Financial Modeling Prep') as HTMLInputElement
+    fireEvent.change(field, { target: { value: 'b'.repeat(32) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Financial Modeling Prep' }))
+    expect(await screen.findByText('Financial Modeling Prep removed.')).toBeTruthy()
+    expect(api.saveSettings).toHaveBeenCalledExactlyOnceWith({ secrets: { fmp: '' } })
+    expect(field.value).toBe('b'.repeat(32))
+    confirm.mockRestore()
+  })
+
   it('saves a credential with Enter', async () => {
     const user = userEvent.setup()
     vi.mocked(api.saveSettings).mockResolvedValue(EMPTY)
