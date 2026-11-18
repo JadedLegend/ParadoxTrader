@@ -196,6 +196,60 @@ class HeartbeatTests(unittest.TestCase):
         self.assertEqual(problems[0]["agent_id"], "tempest")
         self.assertEqual(problems[0]["note"], "tempest on flaky/model: http_rejected")
 
+    def test_two_choices_per_wake_run_back_to_back_and_stop_at_rest(self):
+        http, prompts, steps = ScriptedHTTP(), [], []
+
+        def recording(url, **kwargs):
+            prompts.append(chr(10).join(str(m.get("content", "")) for m in kwargs["json"]["messages"]))
+            return http(url, **kwargs)
+
+        def run_wake(run_id, owner, step=None):
+            steps.append((owner, step))
+            return RehearsalController(self.store, run_id, transport=OpenRouterTransport(
+                "scripted-offline", http_post=recording)).run_wake(owner, step=step)
+
+        beat = Heartbeat(self.store, Schedule.from_config({**CONFIG, "choices_per_wake": 2}),
+                         prepare_day=self.prepare_day, run_wake=run_wake, now=lambda: self.clock)
+        self.clock = at(9, 3)  # Tempest (rests) at 9:00, Siren (journals, then rests) at 9:02.
+        result = beat.tick()
+        self.assertEqual(steps, [("tempest", (1, 2)), ("siren", (1, 2)), ("siren", (2, 2))])
+        jobs = {(j["agent_id"], j["round"]): j for j in self.store.list_jobs(result["run_id"])}
+        self.assertEqual((jobs[("siren", 1)]["action"], jobs[("siren", 2)]["action"]), ("journal", "rest"))
+        self.assertNotIn(("tempest", 2), jobs)  # Rest ends the wake.
+        self.assertEqual(self.store.get_run(result["run_id"])["limits"]["wakes_per_agent"],
+                         2 * Schedule.from_config(CONFIG).wakes_per_agent())
+        choices = [p for p in prompts if "choice 2 of 2" in p]
+        self.assertEqual(len(choices), 1)
+        self.assertIn("Stable owner ID: siren", choices[0])
+        notes = dict(((owner, when), note) for owner, when, note in sqlite3.connect(
+            self.store.root / "heartbeat.sqlite3").execute(
+            "SELECT agent_id,substr(scheduled_at,12,5),note FROM wake_slots WHERE outcome='woke'"))
+        self.assertEqual(notes[("siren", "09:02")], "choices: journal, rest")
+        self.assertIsNone(notes[("tempest", "09:00")])
+
+    def test_a_failed_first_choice_ends_the_wake(self):
+        calls = []
+
+        def failing(run_id, owner, step=None):
+            calls.append(step)
+            job = self.store.add_wake(run_id, owner)
+            return {**job, "status": "failed", "action": "journal", "failure_code": "http_rejected"}
+
+        beat = Heartbeat(self.store, Schedule.from_config({**CONFIG, "choices_per_wake": 2}),
+                         prepare_day=self.prepare_day, run_wake=failing, now=lambda: self.clock)
+        self.clock = at(9, 1)
+        beat.tick()
+        self.assertEqual(calls, [(1, 2)])
+
+    def test_choices_per_wake_is_bounded(self):
+        for value in (0, 4, "2", True):
+            with self.subTest(value=value), self.assertRaises(RehearsalError):
+                Schedule.from_config({**CONFIG, "choices_per_wake": value})
+        too_many = {**CONFIG, "active_window": ["00:00", "20:00"], "active_interval_minutes": 60}
+        Schedule.from_config({**too_many, "choices_per_wake": 2})  # 20 wakes x 2 = 40 turns: allowed.
+        with self.assertRaises(RehearsalError):
+            Schedule.from_config({**too_many, "choices_per_wake": 3})  # 60 turns: over the daily cap.
+
     def test_daylight_saving_days_keep_every_wake_distinct_and_in_order(self):
         schedule = Schedule.from_config({**CONFIG, "timezone": "America/New_York",
                                          "active_window": ["00:30", "04:00"], "active_interval_minutes": 30})

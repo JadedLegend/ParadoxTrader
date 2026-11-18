@@ -362,8 +362,13 @@ class RehearsalController:
         continuity = owner_continuity(self.store, self.run_id, job)
         # Exactly one shared ledger observation; this does not reserve anything.
         metadata = decision_metadata(self.manifest, job, self.store.get_run(self.run_id), continuity)
+        instructions = CHOICE_INSTRUCTIONS
+        step = getattr(self, "_step", None)
+        if step and step[1] > 1:
+            instructions += (f"\nThis wake allows up to {step[1]} choices; this is choice {step[0]} of {step[1]}. "
+                             + ("Choosing rest ends the wake." if step[0] < step[1] else "It is the last one."))
         private = {"continuity": continuity, "include_metadata": True, "include_continuity": True,
-                   "choice_instructions": CHOICE_INSTRUCTIONS}
+                   "choice_instructions": instructions}
         cap = self.manifest["limits"]["max_input_bytes"]
 
         def candidate(chars):
@@ -646,12 +651,15 @@ class RehearsalController:
             if job is not None:
                 self._record_witness(job["agent_id"], wake_id)
 
-    def run_wake(self, owner):
+    def run_wake(self, owner, step=None):
         """Day runs: add and run exactly one wake for ``owner``, then release.
 
         Same per-request reservation, uncertainty and witness rules as a full
-        rehearsal; the runtime limit applies to this wake only.
+        rehearsal; the runtime limit applies to this wake only. ``step`` is
+        ``(turn, turns)`` when a wake allows several choices, so the agent is
+        told which choice this is and that rest ends the wake.
         """
+        self._step = step
         if self.manifest.get("kind") != "day":
             raise RehearsalError("single wakes run only in day runs")
         marker = _run_file(self.path, "profiles/snapshot.json")
