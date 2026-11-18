@@ -9,6 +9,7 @@ import stat
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -107,6 +108,74 @@ class SecretSlotTests(unittest.TestCase):
         self.settings.update({"secrets": {"fmp": ""}})
         self.assertIsNone(self.settings.secret("fmp"))
         self.assertEqual(self.settings.secret("bigdata"), values["bigdata"])
+
+    def test_slot_read_errors_do_not_hide_settings_or_fail_budget_updates(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32, "bigdata": "b" * 20}})
+        path = self.settings._secret_path("fmp")
+        path.write_bytes(b"\xff")
+        result = self.settings.update({"daily_budget_usd": "2"})
+        self.assertEqual(result["daily_budget_usd"], "2.00")
+        self.assertEqual(result["secrets"]["fmp"]["error"], "secret_unreadable")
+        self.assertTrue(result["secrets"]["bigdata"]["set"])
+        original = Path.read_text
+        def unreadable(path, *args, **kwargs):
+            if path.name == "fmp":
+                raise PermissionError("sensitive detail")
+            return original(path, *args, **kwargs)
+        with patch.object(Path, "read_text", unreadable):
+            self.assertNotIn("sensitive detail", json.dumps(self.settings.read()))
+
+    def test_only_literal_empty_string_clears_and_history_has_no_suffix(self):
+        self.settings.update({"secrets": {"fmp": "  " + "f" * 32 + "  "}})
+        for value in (" ", "\t\n"):
+            with self.assertRaises(SettingsError):
+                self.settings.update({"secrets": {"fmp": value}})
+        self.assertEqual(self.settings.secret("fmp"), "f" * 32)
+        self.assertEqual(self.settings.read()["history"][0]["value"], "set")
+        self.settings.update({"secrets": {"fmp": ""}})
+        self.assertEqual(self.settings.read()["history"][0]["value"], "cleared")
+
+    def test_failed_replace_removes_temporary_file(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32}})
+        with patch("core.runtime.owner_settings.os.replace", side_effect=OSError("failure")):
+            with self.assertRaises(OSError):
+                self.settings.update({"secrets": {"fmp": "g" * 32}})
+        self.assertEqual(list((self.settings.directory / "secrets").glob(".*")), [])
+        self.assertEqual(self.settings.secret("fmp"), "f" * 32)
+
+    def test_failed_write_removes_temporary_file_and_preserves_error(self):
+        failure = OSError("write failed")
+        original = os.fdopen
+        def failing_handle(*args, **kwargs):
+            handle = original(*args, **kwargs)
+            class FailingWriter:
+                def __enter__(self):
+                    return self
+                def write(self, value):
+                    raise failure
+                def __exit__(self, *args):
+                    handle.close()
+            return FailingWriter()
+        with patch("core.runtime.owner_settings.os.fdopen", failing_handle):
+            with self.assertRaises(OSError) as raised:
+                self.settings.update({"secrets": {"fmp": "f" * 32}})
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(list((self.settings.directory / "secrets").iterdir()), [])
+
+    def test_later_write_failure_records_completed_clear(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32}})
+        with patch.object(self.settings, "_write_private", side_effect=OSError("failure")):
+            with self.assertRaises(OSError):
+                self.settings.update({"secrets": {"fmp": "", "bigdata": "b" * 20}})
+        self.assertIsNone(self.settings.secret("fmp"))
+        self.assertEqual(self.settings.read()["history"][0]["value"], "cleared")
+
+    def test_all_destinations_are_checked_before_mutation(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32}})
+        self.settings._secret_path("bigdata").symlink_to(self.settings._secret_path("fmp"))
+        with self.assertRaises(SettingsError):
+            self.settings.update({"secrets": {"fmp": "", "bigdata": "b" * 20}})
+        self.assertEqual(self.settings.secret("fmp"), "f" * 32)
 
     def test_live_alpaca_keys_and_unknown_slots_are_refused(self):
         for bad in ({"secrets": {"alpaca_key_id": "AKLIVEKEY123456789"}}, {"secrets": {"unknown": "x" * 20}},

@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../src/api'
@@ -81,8 +82,37 @@ describe('Settings page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Financial Modeling Prep' }))
     await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ secrets: { fmp: 'abcdefghijklmnopqrstuvwxyz' } }))
     expect(await screen.findByText('…wxyz')).toBeTruthy()
+    expect(api.saveSettings).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).not.toContain('abcdefghijklmnopqrstuvwxyz')
     expect(field.value).toBe('')
     expect(screen.getByText(/Live keys .AK.... are refused/)).toBeTruthy()
+  })
+
+  it.each(['save', 'remove'])('preserves a draft edited during a %s request', async action => {
+    vi.mocked(api.getSettings).mockResolvedValue({ ...EMPTY, secrets: { fmp: { set: true, ends_with: 'aaaa' } } })
+    let finish!: (value: api.OwnerSettings) => void
+    vi.mocked(api.saveSettings).mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Settings />)
+    const field = await screen.findByLabelText('Financial Modeling Prep') as HTMLInputElement
+    fireEvent.change(field, { target: { value: 'a'.repeat(32) } })
+    fireEvent.click(screen.getByRole('button', { name: `${action === 'save' ? 'Save' : 'Remove'} Financial Modeling Prep` }))
+    fireEvent.change(field, { target: { value: 'b'.repeat(32) } })
+    finish(EMPTY)
+    expect(await screen.findByText(`Financial Modeling Prep ${action === 'save' ? 'saved' : 'removed'}.`)).toBeTruthy()
+    expect(field.value).toBe('b'.repeat(32))
+    expect(api.saveSettings).toHaveBeenCalledTimes(1)
+    confirm.mockRestore()
+  })
+
+  it('saves a credential with Enter', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.saveSettings).mockResolvedValue(EMPTY)
+    render(<Settings />)
+    const field = await screen.findByLabelText('Financial Modeling Prep')
+    await user.type(field, 'a'.repeat(32) + '{Enter}')
+    expect(await screen.findByText('Financial Modeling Prep saved.')).toBeTruthy()
+    expect(api.saveSettings).toHaveBeenCalledExactlyOnceWith({ secrets: { fmp: 'a'.repeat(32) } })
   })
 
   it('lets a model ID be typed when the catalog cannot load', async () => {

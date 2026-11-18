@@ -78,6 +78,8 @@ export default function Settings() {
 
   const save = async (what: string, changes: SettingsChanges, done: string) => {
     if (saving) return
+    const secretSlot = what.startsWith('secret.') ? what.slice(7) : null
+    const submittedDraft = secretSlot ? secretDrafts[secretSlot] : undefined
     setSaving(what)
     setError('')
     setMessage('')
@@ -86,7 +88,8 @@ export default function Settings() {
       if (!alive.current) return
       apply(value)
       if (what === 'key') setKey('')
-      if (what.startsWith('secret.')) setSecretDrafts(current => ({ ...current, [what.slice(7)]: '' }))
+      if (secretSlot) setSecretDrafts(current => current[secretSlot] === submittedDraft
+        ? { ...current, [secretSlot]: '' } : current)
       setMessage(done)
     } catch {
       if (alive.current) setError('That was not saved. Check the value and try again; your input is still here.')
@@ -182,23 +185,25 @@ export default function Settings() {
           {SECRETS.map(item => {
             const state = settings.secrets?.[item.id]
             const draft = secretDrafts[item.id] ?? ''
-            return <div className="input-group settings-secret" key={item.id}>
+            return <form className="input-group settings-secret" key={item.id} onSubmit={event => {
+              event.preventDefault()
+              if (draft.trim()) void save(`secret.${item.id}`, { secrets: { [item.id]: draft.trim() } }, `${item.name} saved.`)
+            }}>
               <label className="input-label" htmlFor={`secret-${item.id}`}>{item.name}</label>
               <span className="settings-note">{state?.set ? <>Set, ends in <code>…{state.ends_with}</code></> : 'Not set'}</span>
               <div className="flex gap-8">
                 <input id={`secret-${item.id}`} className="input" type="password" autoComplete="off" spellCheck={false}
                   value={draft} placeholder={item.placeholder} onChange={event => setSecretDrafts(current => ({ ...current, [item.id]: event.target.value }))} />
-                <button className="btn btn-primary" disabled={saving !== null || !draft.trim()} aria-label={`Save ${item.name}`}
-                  onClick={() => save(`secret.${item.id}`, { secrets: { [item.id]: draft.trim() } }, `${item.name} saved.`)}>
+                <button type="submit" className="btn btn-primary" disabled={saving !== null || !draft.trim()} aria-label={`Save ${item.name}`}>
                   {saving === `secret.${item.id}` ? 'Saving...' : 'Save'}
                 </button>
-                {state?.set && <button className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
+                {state?.set && <button type="button" className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
                   onClick={() => { if (window.confirm(`Remove the ${item.name} key?`)) void save(`secret.${item.id}`, { secrets: { [item.id]: '' } }, `${item.name} removed.`) }}>
                   Remove
                 </button>}
               </div>
               {item.note && <span className="settings-note">{item.note}</span>}
-            </div>
+            </form>
           })}
         </div>
       </section>

@@ -5,7 +5,7 @@ Set from the private dashboard's Settings page and read by the heartbeat.
 - The key is write-only. It lives in its own file (mode 0600) and is never
   returned: reads show only whether it is set and its last four characters.
 - Every change is an append-only history row (who, when, field, new value).
-  The key's row records only "set, ends in ...abcd" or "cleared".
+  OpenRouter rows include the suffix; data and broker rows record only "set" or "cleared".
 - Model choices apply from each agent's next wake, the budget from the next
   wake too; nothing here starts or stops a wake.
 
@@ -14,9 +14,8 @@ Storage, under ``directory`` (normally /var/lib/paradoxtrader/settings):
   openrouter.key     the key, mode 0600
   secrets/<slot>     data and broker keys (see SECRET_SLOTS), each mode 0600
 
-The data and broker keys are only stored here. Nothing uses them until a later
-step connects that source, and none of them grants trading: Alpaca accepts
-paper keys only.
+The data and broker keys are only stored here and are not used to place orders.
+Live Alpaca key IDs (AK...) are rejected; only paper key IDs (PK...) are accepted.
 """
 from contextlib import closing
 from datetime import datetime, timezone
@@ -158,7 +157,11 @@ class OwnerSettings:
                                                    "ORDER BY seq DESC LIMIT ?", (history_limit,))]
         secrets = {}
         for slot in SECRET_SLOTS:
-            value = self.secret(slot)
+            try:
+                value = self.secret(slot)
+            except (OSError, UnicodeError):
+                secrets[slot] = {"set": False, "ends_with": None, "error": "secret_unreadable"}
+                continue
             secrets[slot] = {"set": value is not None, "ends_with": value[-4:] if value else None}
         return {"models": {slot: latest.get(f"model.{slot}") for slot in MODEL_SLOTS},
                 "daily_budget_usd": latest.get("daily_budget_usd"),
@@ -199,7 +202,7 @@ class OwnerSettings:
             if not isinstance(given, dict) or not given or set(given) - set(SECRET_SLOTS):
                 raise SettingsError("invalid_secret_slot")
             for slot, value in given.items():
-                if not isinstance(value, str):
+                if not isinstance(value, str) or (value != "" and not value.strip()):
                     raise SettingsError(f"invalid_secret_{slot}")
                 value = value.strip()
                 if value and not SECRET_SLOTS[slot].fullmatch(value):
@@ -218,9 +221,18 @@ class OwnerSettings:
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         temporary = self._check(path.parent / f".{path.name}.{uuid4().hex}")
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(value + "\n")
-        os.replace(temporary, path)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(value + "\n")
+            os.replace(temporary, path)
+        except BaseException as error:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as cleanup_error:
+                raise error from cleanup_error
+            raise
 
     def update(self, changes):
         """Apply validated changes atomically enough: the key file is replaced in
@@ -229,32 +241,38 @@ class OwnerSettings:
         change_id, now = str(uuid4()), _now()
         if secrets:
             self._ensure_directory()
-        for slot, value in secrets.items():
-            path = self._secret_path(slot)
-            if value == "":
-                try:
-                    path.unlink()
-                except FileNotFoundError:
-                    pass
-                rows.append((f"secret.{slot}", "cleared"))
-            else:
-                self._write_private(path, value)
-                rows.append((f"secret.{slot}", "set, ends in ..." + value[-4:]))
+        # Check every destination before the first mutation, including OpenRouter.
+        mutations = [(self._secret_path(slot), value, f"secret.{slot}")
+                     for slot, value in secrets.items()]
         if key is not None:
-            self._ensure_directory()
-            path = self._key_path()
-            if key == "":
-                try:
-                    path.unlink()
-                except FileNotFoundError:
-                    pass
-                rows.append(("openrouter_key", "cleared"))
-            else:
-                self._write_private(path, key)
-                rows.append(("openrouter_key", "set, ends in ..." + key[-4:]))
+            mutations.append((self._key_path(), key, "openrouter_key"))
         with closing(self._db()) as conn:
-            with conn:
-                for field, value in rows:
-                    conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
-                                 (change_id, now, field, json.dumps(value)))
+            def record(field, value):
+                conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
+                             (change_id, now, field, json.dumps(value)))
+
+            conn.execute("BEGIN IMMEDIATE")
+            applied = []
+            try:
+                for path, value, field in mutations:
+                    if value == "":
+                        try:
+                            path.unlink()
+                        except FileNotFoundError:
+                            pass
+                        recorded = "cleared"
+                    else:
+                        self._write_private(path, value)
+                        recorded = ("set, ends in ..." + value[-4:]
+                                    if field == "openrouter_key" else "set")
+                    applied.append((field, recorded))
+            except OSError:
+                # Preserve the audit trail for mutations already completed.
+                for field, value in applied:
+                    record(field, value)
+                conn.commit()
+                raise
+            for field, value in rows + applied:
+                record(field, value)
+            conn.commit()
         return self.read()
