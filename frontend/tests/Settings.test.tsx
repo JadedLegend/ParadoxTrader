@@ -1,0 +1,103 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as api from '../src/api'
+import Settings from '../src/views/Settings'
+import { createApiClient } from '../src/data/client'
+
+vi.mock('../src/api', async importOriginal => ({
+  ...(await importOriginal<typeof import('../src/api')>()),
+  getSettings: vi.fn(), saveSettings: vi.fn(),
+}))
+
+const EMPTY: api.OwnerSettings = { models: {}, daily_budget_usd: null, key: { set: false, ends_with: null }, history: [] }
+const CATALOG = { data: [
+  { id: 'deepseek/deepseek-v3.2', pricing: { prompt: '0.00000027', completion: '0.0000011' } },
+  { id: 'google/gemini-2.5-pro', pricing: { prompt: '0.00000125', completion: '0.00001' } },
+] }
+
+beforeEach(() => {
+  vi.mocked(api.getSettings).mockReset().mockResolvedValue(EMPTY)
+  vi.mocked(api.saveSettings).mockReset()
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => CATALOG }))
+})
+afterEach(() => vi.unstubAllGlobals())
+
+describe('Settings page', () => {
+  it('shows all seven agents plus the witness, and that no key is set', async () => {
+    render(<Settings />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
+    for (const name of ['Tempest', 'Siren', 'Alchemist', 'Weaver', 'Oracle', 'Shadow', 'ParadoxHunter', 'Witness']) {
+      expect(screen.getByLabelText(name)).toBeTruthy()
+    }
+    expect(screen.getByText(/Not set: the agents cannot wake with real models/)).toBeTruthy()
+    expect(screen.getByText(/It uses no model yet/)).toBeTruthy()
+  })
+
+  it('reads the public catalog without credentials and shows prices per million tokens', async () => {
+    render(<Settings />)
+    const tempest = await screen.findByLabelText('Tempest')
+    fireEvent.change(tempest, { target: { value: 'deepseek/deepseek-v3.2' } })
+    expect(await screen.findByText('$0.27 / $1.10')).toBeTruthy()
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('https://openrouter.ai/api/v1/models', expect.objectContaining({ credentials: 'omit' }))
+  })
+
+  it('saves only the models that changed', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, models: { oracle: 'google/gemini-2.5-pro' } })
+    render(<Settings />)
+    fireEvent.change(await screen.findByLabelText('Oracle'), { target: { value: 'google/gemini-2.5-pro' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save models' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ models: { oracle: 'google/gemini-2.5-pro' } }))
+    expect(await screen.findByText(/from its next wake/)).toBeTruthy()
+  })
+
+  it('saves the budget with two decimals', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, daily_budget_usd: '1.50' })
+    render(<Settings />)
+    fireEvent.change(await screen.findByLabelText(/US dollars per day/), { target: { value: '1.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ daily_budget_usd: '1.50' }))
+  })
+
+  it('sends the key once, clears the field, and only ever shows its last four characters', async () => {
+    const key = 'sk-or-v1-' + 'abcd1234'.repeat(8)
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, key: { set: true, ends_with: '1234' } })
+    render(<Settings />)
+    const field = await screen.findByLabelText('Add a key') as HTMLInputElement
+    expect(field.type).toBe('password')
+    fireEvent.change(field, { target: { value: key } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ openrouter_key: key }))
+    expect(await screen.findByText('…1234')).toBeTruthy()
+    expect((screen.getByLabelText('Replace the key') as HTMLInputElement).value).toBe('')
+    expect(document.body.textContent).not.toContain(key)
+  })
+
+  it('lets a model ID be typed when the catalog cannot load', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    render(<Settings />)
+    expect(await screen.findByText(/could not be loaded, so type the exact model ID/)).toBeTruthy()
+  })
+
+  it('keeps the input and says so when a save fails', async () => {
+    vi.mocked(api.saveSettings).mockRejectedValue(new Error('400'))
+    render(<Settings />)
+    const budget = await screen.findByLabelText(/US dollars per day/) as HTMLInputElement
+    fireEvent.change(budget, { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(budget.value).toBe('2')
+  })
+})
+
+describe('private host client', () => {
+  it('sends GET and POST /api/settings, and still refuses every other write', async () => {
+    const transport = vi.fn().mockResolvedValue({ ok: true })
+    const request = createApiClient('connected', () => ({}), transport, 'private')
+    await request('GET', '/api/settings')
+    await request('POST', '/api/settings', { daily_budget_usd: '1.00' })
+    expect(transport).toHaveBeenCalledTimes(2)
+    await expect(request('POST', '/api/settings/other', {})).rejects.toThrow(/read-only/)
+    await expect(request('POST', '/api/config', {})).rejects.toThrow(/read-only/)
+    expect(transport).toHaveBeenCalledTimes(2)
+  })
+})

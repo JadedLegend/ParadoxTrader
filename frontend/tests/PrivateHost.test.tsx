@@ -19,7 +19,7 @@ vi.mock('../src/api', async importOriginal => ({
   getRehearsalRecord: vi.fn(), getRehearsalDecision: vi.fn(),
   getForum: vi.fn(), postToForum: vi.fn(), getThreads: vi.fn(), getSelfDefinition: vi.fn(),
   getInbox: vi.fn(), sendDM: vi.fn(), getQueue: vi.fn(), approveTrade: vi.fn(), rejectTrade: vi.fn(),
-  getConfig: vi.fn(), updateConfig: vi.fn(), setCountdown: vi.fn(),
+  getConfig: vi.fn(), updateConfig: vi.fn(), setCountdown: vi.fn(), getSettings: vi.fn(), saveSettings: vi.fn(),
   getLineageInquiries: vi.fn(), getLineageInquiry: vi.fn(),
   getLibraryDocuments: vi.fn(), searchLibrary: vi.fn(), getLibrarySection: vi.fn(),
 }))
@@ -42,7 +42,6 @@ const PAGES: [string, () => ReactElement, string, RegExp][] = [
   ['Forum', () => <Forum />, 'Community', /do not post to a shared forum/],
   ['Inbox', () => <Inbox />, 'Messages', /do not include direct messages/],
   ['TradeQueue', () => <TradeQueue />, 'Trade Queue', /No orders are placed from this site/],
-  ['Config', () => <Config />, 'Configuration', /changed on the server, not here/],
   ['InquiryHistory', () => <InquiryHistory />, 'Inquiry History', /serves no inquiry lineage records/],
 ]
 
@@ -61,6 +60,15 @@ describe('pages without a data source on the private host', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     await Promise.resolve()
     for (const name of LEGACY) expect(api[name]).not.toHaveBeenCalled()
+  })
+
+  it('Configuration is the owner Settings page and never calls the legacy config endpoint', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ models: {}, daily_budget_usd: null, key: { set: false, ends_with: null }, history: [] })
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    renderPage(<Config />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
+    for (const name of LEGACY) expect(api[name]).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 
   it('Wake Choices points to the decision context recorded under Sessions', () => {

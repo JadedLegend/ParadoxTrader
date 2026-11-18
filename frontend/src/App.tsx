@@ -29,7 +29,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 const NAV = [
   ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
-  ['/rehearsal', 'Sessions'], ['/journals', 'Journals'], ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', 'Configuration'],
+  ['/rehearsal', 'Sessions'], ['/journals', 'Journals'], ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', IS_PRIVATE_HOST ? 'Settings' : 'Configuration'],
 ]
 
 export default function App() {
@@ -44,9 +44,9 @@ export default function App() {
         </nav>
         <main className="main-content" id="main" tabIndex={-1}>
           <div className={`mode-banner ${IS_PREVIEW ? 'preview-mode' : IS_PRIVATE_HOST ? 'private-host-mode' : 'connected-mode'}`} role="note">
-            <strong>{IS_PREVIEW ? 'Fixture preview' : IS_PRIVATE_HOST ? 'Private host · read only' : 'Connected frontend'}</strong>
+            <strong>{IS_PREVIEW ? 'Fixture preview' : IS_PRIVATE_HOST ? 'Private host' : 'Connected frontend'}</strong>
             <span>{IS_PREVIEW ? 'Local agent and portfolio examples; Library reads imported source text. No agents, providers, accounts, or schedules are running through this preview.'
-              : IS_PRIVATE_HOST ? 'Recorded session runs from this server; Library reads the bundled source text. Pages with no data source here say so. Nothing on this site starts, wakes, or changes anything.'
+              : IS_PRIVATE_HOST ? 'Recorded session runs from this server; Library reads the bundled source text. Pages with no data source here say so. The only change this site can make is your Settings; nothing here starts or wakes an agent.'
               : 'Backend requests enabled by build configuration. Backend permissions and scheduler behavior apply.'}</span>
           </div>
           <ScreenBoundary>

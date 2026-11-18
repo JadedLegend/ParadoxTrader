@@ -36,6 +36,18 @@ export const getQueue = () => request<any>('GET', '/api/queue')
 export const approveTrade = (id: number, notes = '') => request<any>('POST', `/api/queue/${id}/approve`, { notes })
 export const rejectTrade = (id: number, notes = '') => request<any>('POST', `/api/queue/${id}/reject`, { notes })
 export const getConfig = () => request<any>('GET', '/api/config')
+
+// Owner Settings on the private host. The key is write-only: reads return only
+// whether it is set and its last four characters.
+export interface OwnerSettings {
+  models: Record<string, string | null>
+  daily_budget_usd: string | null
+  key: { set: boolean; ends_with: string | null }
+  history: { changed_at: string; field: string; value: unknown }[]
+}
+export interface SettingsChanges { models?: Record<string, string>; daily_budget_usd?: string; openrouter_key?: string }
+export const getSettings = () => request<OwnerSettings>('GET', '/api/settings')
+export const saveSettings = (changes: SettingsChanges) => request<OwnerSettings>('POST', '/api/settings', changes)
 export const updateConfig = (key_path: string, value: unknown) => request<any>('POST', '/api/config', { key_path, value })
 export const setPhase = (phase: number) => request<any>('POST', '/api/phase', { phase })
 export const setCountdown = (target_iso: string) => request<any>('POST', '/api/countdown', { target_iso })

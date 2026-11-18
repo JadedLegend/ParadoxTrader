@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IS_PREVIEW, IS_PRIVATE_HOST, getConfig, updateConfig, setCountdown } from '../api'
-import HostUnavailable from '../components/HostUnavailable'
+import Settings from './Settings'
 
 const AGENTS = ['tempest','siren','alchemist','weaver','oracle','shadow','paradox_hunter']
 
@@ -148,14 +148,7 @@ function ConfigField({ label, keyPath, value, type, onSave, saving, saved }: {
   </div></div>
 }
 
-// The private host serves session records only; this page has no data source there,
-// so nothing is requested and no write control is rendered.
-function PrivateConfig() {
-  return <HostUnavailable title="Configuration" sub="System settings" links={[{ to: '/rehearsal', label: 'Open Sessions' }, { to: '/journals', label: 'Open Journals' }]}>
-    <p>Configuration is changed on the server, not here. The frozen limits and models of each run are shown under Sessions.</p>
-  </HostUnavailable>
-}
-
+// On the private host this page is the owner's Settings: models, key, daily budget.
 export default function Config() {
-  return IS_PRIVATE_HOST ? <PrivateConfig /> : <FullConfig />
+  return IS_PRIVATE_HOST ? <Settings /> : <FullConfig />
 }
