@@ -107,6 +107,59 @@ class HeartbeatTests(unittest.TestCase):
         self.assertEqual(self.store.get_run(running)["status"], "stopped")
         self.assertTrue(beat.status()["paused"])
 
+    def test_a_stop_during_preparation_is_never_lost(self):
+        beat = self.heartbeat()
+        self.clock = at(9, 31)
+        beat.tick()
+        original = self.prepare_run
+
+        def prepare_then_stop(budget):
+            run_id = original(budget)
+            self.stopped = beat.stop()  # Arrives while the gathering is being prepared.
+            return run_id
+        self.prepare_run = prepare_then_stop
+        beat = self.heartbeat()
+        beat.resume()
+        self.clock = at(13, 1)
+        result = beat.tick()
+        self.assertEqual(result["outcome"], "stopped")
+        run = self.store.get_run(result["run_id"])
+        self.assertEqual((run["status"], run["started_at"], run["request_count"]), ("stopped", None, 0))
+        self.assertTrue(beat.paused())
+
+    def test_stop_found_before_the_run_existed_is_still_honoured(self):
+        beat = self.heartbeat()
+        original = self.prepare_run
+
+        def stop_then_prepare(budget):
+            self.stopped = beat.stop()  # Lists no runs yet; the pause marker remains.
+            return original(budget)
+        self.prepare_run = stop_then_prepare
+        beat = self.heartbeat()
+        self.clock = at(9, 31)
+        result = beat.tick()
+        self.assertEqual(self.stopped["stop_requested"], [])
+        self.assertEqual(result["outcome"], "stopped")
+        self.assertEqual(self.store.get_run(result["run_id"])["request_count"], 0)
+
+    def test_budget_rounds_down_never_above_either_limit(self):
+        beat = self.heartbeat(daily_budget_usd="0.015", gathering_budget_usd="0.015")
+        self.clock = at(9, 31)
+        self.assertEqual(beat.tick()["budget_usd"], "0.01")
+        beat = self.heartbeat(daily_budget_usd="1.00", gathering_budget_usd="1.00")
+        self.clock = at(13, 1)
+        with patch.object(Heartbeat, "_spent_today", return_value=Decimal("0.995")):
+            self.assertEqual(beat.tick()["outcome"], "over_budget")
+
+    def test_checks_see_every_run_not_only_the_newest_hundred(self):
+        leftover = self.prepare_run("1.00")  # Oldest, and unfinished.
+        for _ in range(100):
+            self.store.request_stop(self.prepare_run("1.00"))
+        self.clock = at(9, 31)
+        result = self.heartbeat().tick()
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertEqual(result["runs"], [leftover])
+
     def test_an_unfinished_run_blocks_until_the_operator_recovers_it(self):
         beat = self.heartbeat()
         leftover = self.prepare_run("1.00")
@@ -156,8 +209,12 @@ class HeartbeatTests(unittest.TestCase):
         config.write_text(json.dumps(CONFIG))
         self.assertEqual(cli.main(["--root", str(self.store.root), "--config", str(config), "status"]), 0)
         config.write_text(json.dumps({**CONFIG, "mode": "real", "models_file": "/nope.json"}))
-        with patch.dict("os.environ", {"REHEARSAL_OPENROUTER_API_KEY": ""}), self.assertRaises(ValueError):
-            cli.main(["--root", str(self.store.root), "--config", str(config), "tick"])
+        with patch.dict("os.environ", {"REHEARSAL_OPENROUTER_API_KEY": ""}):
+            # The controls never need the provider key, so a paid gathering can always be stopped.
+            for command in ("status", "pause", "resume", "stop"):
+                self.assertEqual(cli.main(["--root", str(self.store.root), "--config", str(config), command]), 0)
+            with self.assertRaises(ValueError):
+                cli.main(["--root", str(self.store.root), "--config", str(config), "tick"])
         self.assertFalse((self.store.root / "heartbeat.sqlite3").exists() and self.ledger())
 
     def test_timer_never_catches_up_and_service_is_not_enabled_by_the_installer(self):

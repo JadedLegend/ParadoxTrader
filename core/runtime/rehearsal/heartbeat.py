@@ -15,7 +15,9 @@ Its limits are enforced here, in code, never in a prompt:
   gathering gets the smaller of the per-gathering budget and what is left of
   the day. When too little is left, the slot is recorded as over budget.
 - **Pause.** A pause marker stops every new gathering until it is removed.
-  ``stop`` also asks a running gathering to stop.
+  ``stop`` also stops any prepared or running gathering. A stopped run can
+  never be started afterwards, and a tick re-checks the pause marker after
+  preparing its run, so a stop arriving during preparation is never lost.
 - **Manual recovery.** If the latest run is unfinished or uncertain, the
   heartbeat records the slot as blocked and waits for the operator.
 - **One at a time.** An exclusive lock prevents overlapping ticks.
@@ -26,14 +28,14 @@ runs), one row per slot, which later feeds the witness's daily account.
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 import json
 import os
 from pathlib import Path
 import sqlite3
 from zoneinfo import ZoneInfo
 
-from .home import CARRIED_STATUSES, continue_home
+from .home import CARRIED_STATUSES, continue_home, read_home
 from .store import RehearsalError
 
 LEDGER = "heartbeat.sqlite3"
@@ -170,16 +172,36 @@ class Heartbeat:
         return {"paused": False}
 
     def stop(self):
-        """Pause, and ask any running gathering to stop at its next step."""
+        """Pause, and stop any prepared or running gathering.
+
+        The pause marker is written before runs are listed. A tick re-checks it
+        after creating its run, so whichever happens first, the run is stopped.
+        """
         self.pause()
-        stopped = [run["run_id"] for run in self._runs() if run["status"] == "running"]
+        stopped = [run["run_id"] for run in self._runs() if run["status"] in ("prepared", "running")]
         for run_id in stopped:
             self.store.request_stop(run_id)
         return {"paused": True, "stop_requested": stopped}
 
     # ---- decisions --------------------------------------------------------
     def _runs(self):
-        return self.store.list_runs(limit=100)["runs"]
+        """Every run in this root, newest first (paged, never truncated)."""
+        runs, offset = [], 0
+        while True:
+            page = self.store.list_runs(limit=100, offset=offset)
+            runs.extend(page["runs"])
+            offset += 100
+            if offset >= page["total"]:
+                return runs
+
+    def _previous(self, runs):
+        """The newest finished run that belongs to the home: one that started,
+        or one that was linked (and so carried the home) before it was stopped."""
+        for run in runs:
+            if run["status"] in CARRIED_STATUSES and (
+                    run.get("started_at") or read_home(self.store, run["run_id"]) is not None):
+                return run["run_id"]
+        return None
 
     def _local(self, moment):
         return moment.astimezone(ZoneInfo(self.schedule.timezone))
@@ -243,28 +265,51 @@ class Heartbeat:
                     self._record(conn, key, today, slot, "over_budget",
                                  note=f"{remaining} USD left of today's budget")
                     return {"outcome": "over_budget", "slot": slot}
-                previous = next((run["run_id"] for run in runs if run["status"] in CARRIED_STATUSES), None)
-                budget_text = format(budget.quantize(Decimal("0.01")), "f")
+                previous = self._previous(runs)
+                # Round down: a gathering is never allowed more than either limit.
+                budget = budget.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+                if budget < MIN_GATHERING_USD:
+                    self._record(conn, key, today, slot, "over_budget",
+                                 note=f"{remaining} USD left of today's budget")
+                    return {"outcome": "over_budget", "slot": slot}
+                budget_text = format(budget, "f")
                 run_id = self.prepare_run(budget_text)
                 if previous is not None:
                     try:
                         continue_home(self.store, run_id, previous)
                     except RehearsalError as error:
+                        if self.store.get_run(run_id)["status"] == "stopped":
+                            # A stop arrived before the home was carried; this
+                            # unlinked, never-started run is not part of the home.
+                            self._record(conn, key, today, slot, "stopped", run_id=run_id,
+                                         budget_usd=budget_text, note="stopped before it began")
+                            return {"outcome": "stopped", "slot": slot, "run_id": run_id}
                         # The prepared run stays as it is, so later slots are
                         # blocked until the operator looks: fail closed.
                         self._record(conn, key, today, slot, "failed", run_id=run_id,
                                      budget_usd=budget_text, note=f"home continuation refused: {error}")
                         return {"outcome": "failed", "slot": slot, "run_id": run_id}
                 self._record(conn, key, today, slot, "started", run_id=run_id, budget_usd=budget_text)
+                if self.paused():
+                    # A stop or pause arrived while this run was being prepared.
+                    self.store.request_stop(run_id)
             summary = None
             try:
-                summary = self.run_gathering(run_id)
+                if self.store.get_run(run_id)["status"] == "stopped":
+                    summary = self.store.get_run(run_id)
+                else:
+                    summary = self.run_gathering(run_id)
+            except RehearsalError:
+                if self.store.get_run(run_id)["status"] != "stopped":
+                    raise
+                summary = self.store.get_run(run_id)  # Stopped before it could begin.
             finally:
                 status = summary["status"] if summary else self.store.get_run(run_id)["status"]
                 with self._ledger() as conn:
                     conn.execute("UPDATE slots SET run_status=?,finished_at=? WHERE slot_key=?",
                                  (status, self.now().isoformat(), key))
-            return {"outcome": "started", "slot": slot, "run_id": run_id,
+            return {"outcome": "stopped" if status == "stopped" and not summary.get("started_at") else "started",
+                    "slot": slot, "run_id": run_id,
                     "continued_from": previous, "budget_usd": budget_text, "run_status": status}
 
 

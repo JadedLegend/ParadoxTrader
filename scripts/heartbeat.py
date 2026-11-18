@@ -39,8 +39,6 @@ def build(root, config_path):
     from core.runtime.rehearsal.store import RehearsalStore
     cli = _rehearsal_cli()
     schedule = load_schedule(config_path)
-    if schedule.mode == "real" and not os.environ.get("REHEARSAL_OPENROUTER_API_KEY", "").strip():
-        raise ValueError("dedicated_rehearsal_key_missing")  # Before any decision is recorded.
     store = RehearsalStore(cli.root_path(root))
 
     def prepare_run(budget_usd):
@@ -75,6 +73,11 @@ def main(argv=None):
     parser.add_argument("command", choices=["tick", "status", "pause", "resume", "stop"])
     args = parser.parse_args(argv)
     heartbeat = build(args.root, args.config)
+    if (args.command == "tick" and heartbeat.schedule.mode == "real"
+            and not os.environ.get("REHEARSAL_OPENROUTER_API_KEY", "").strip()):
+        # Only starting real gatherings needs the key, and the check comes
+        # before any decision is recorded. status/pause/resume/stop never do.
+        raise ValueError("dedicated_rehearsal_key_missing")
     result = getattr(heartbeat, args.command)()
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0
