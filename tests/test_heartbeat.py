@@ -43,8 +43,14 @@ class HeartbeatTests(unittest.TestCase):
         self.clock = at(8, 0)
         self.woken = []
 
-    def prepare_day(self, budget_usd, wakes_per_agent):
-        return self.store.prepare(day_manifest(wakes=wakes_per_agent, budget=budget_usd))["run_id"]
+    def prepare_day(self, budget_usd, wakes_per_agent, models=None):
+        raw = day_manifest(wakes=wakes_per_agent, budget=budget_usd)
+        if models:
+            from core.runtime.rehearsal.examples import synthetic_catalog
+            from core.runtime.rehearsal.provider import catalog_snapshot
+            raw["agent_models"] = dict(models)
+            raw["catalog_snapshot"] = catalog_snapshot(models, synthetic_catalog(models))
+        return self.store.prepare(raw)["run_id"]
 
     def run_wake(self, run_id, owner):
         self.woken.append(owner)
@@ -162,9 +168,9 @@ class HeartbeatTests(unittest.TestCase):
         beat = self.heartbeat(daily_budget_usd="0")
         self.clock = at(9, 1)
         result = beat.tick()
-        self.assertEqual(result["wakes"], [])
+        self.assertEqual(result, {"outcome": "over_budget", "slots": 1, "missed": 0})
         self.assertEqual(self.slots(), [("tempest", "09:00", "over_budget")])
-        self.assertEqual(self.store.list_jobs(result["run_id"]), [])
+        self.assertEqual(self.store.list_runs()["total"], 0)  # Nothing opened once the day is spent.
         self.assertEqual(beat.status()["reason"], "today's budget is spent")
 
     def test_an_unfinished_wake_blocks_only_that_agent(self):
@@ -228,6 +234,53 @@ class HeartbeatTests(unittest.TestCase):
             config.write_text(json.dumps({**CONFIG, "mode": "real", "models_file": "/nope.json",
                                           "dispatch": "clock-only"}))
             self.assertEqual(cli.main(root + ["tick"]), 0)  # Keeping time needs no key.
+
+    def settings_beat(self):
+        from core.runtime.owner_settings import OwnerSettings
+        settings = OwnerSettings(Path(self.temp.name) / "settings")
+        beat = Heartbeat(self.store, Schedule.from_config(CONFIG), prepare_day=self.prepare_day,
+                         run_wake=self.run_wake, now=lambda: self.clock, settings=settings)
+        return beat, settings
+
+    def test_settings_choose_the_models_and_a_change_applies_from_the_next_wake(self):
+        beat, settings = self.settings_beat()
+        chosen = {owner: f"example/{owner}-first" for owner in
+                  ("tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter")}
+        settings.update({"models": chosen})
+        self.clock = at(9, 1)
+        first = beat.tick()
+        self.assertEqual(self.store.get_run(first["run_id"])["agent_models"], chosen)
+        settings.update({"models": {"siren": "example/siren-second"}})
+        self.clock = at(9, 3)
+        second = beat.tick()  # Siren's next wake uses her new model.
+        self.assertNotEqual(second["run_id"], first["run_id"])
+        self.assertEqual(second["continued_from"], first["run_id"])  # Same day, new segment, same home.
+        self.assertEqual(self.store.get_run(second["run_id"])["agent_models"]["siren"], "example/siren-second")
+        siren = self.store.list_jobs(second["run_id"])[0]
+        self.assertEqual((siren["agent_id"], siren["requested_model"]), ("siren", "example/siren-second"))
+        self.assertNotIn(self.store.get_run(first["run_id"])["status"], ("open", "prepared"))
+
+    def test_budget_changes_apply_from_the_next_wake(self):
+        beat, settings = self.settings_beat()
+        settings.update({"daily_budget_usd": "2.00"})
+        self.clock = at(9, 1)
+        first = beat.tick()
+        self.assertEqual(self.store.get_run(first["run_id"])["limits"]["budget_usd"], "2")
+        settings.update({"daily_budget_usd": "3.00"})  # Raised: a new segment gets the extra room.
+        self.clock = at(9, 3)
+        raised = beat.tick()
+        self.assertNotEqual(raised["run_id"], first["run_id"])
+        self.assertEqual(beat.status()["today"]["daily_budget_usd"], "3.00")
+        settings.update({"daily_budget_usd": "0.00"})  # Lowered: no more wakes today.
+        self.clock = at(9, 5)
+        self.assertEqual(beat.tick()["outcome"], "over_budget")
+        self.assertEqual(beat.status()["reason"], "today's budget is spent")
+
+    def test_status_says_when_the_key_is_missing(self):
+        beat = Heartbeat(self.store, Schedule.from_config({**CONFIG, "mode": "real", "models_file": "/x.json"}),
+                         prepare_day=self.prepare_day, run_wake=self.run_wake, now=lambda: self.clock,
+                         key_present=lambda: False)
+        self.assertEqual(beat.status()["reason"], "the OpenRouter key is not set")
 
     def test_timer_ticks_every_minute_and_never_catches_up(self):
         timer = (ROOT / "deploy/systemd/paradoxtrader-heartbeat.timer").read_text()

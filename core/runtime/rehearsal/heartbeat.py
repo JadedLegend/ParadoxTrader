@@ -30,6 +30,12 @@ Its limits are enforced here and in the store, never in a prompt:
 
 Every decision goes to ``heartbeat.sqlite3`` (one row per agent slot), and
 ``status`` always says why nothing is happening.
+
+**Owner settings.** When the owner has chosen models or a daily budget on the
+Settings page, those win over the config file. A change applies from the next
+wake: if today's open day run has different models, or the budget was raised,
+the heartbeat closes that run and opens a new segment of the same day that
+continues the home. Spending is always summed across all of today's segments.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -68,12 +74,13 @@ class Schedule:
     dispatch: str             # "clock-only" or "live"
     max_wakes_per_tick: int
     models_file: str = None
+    settings_dir: str = None   # The owner's Settings page (models, budget, key) wins when set.
 
     @classmethod
     def from_config(cls, raw):
         allowed = {"timezone", "active_window", "active_interval_minutes", "quiet_window",
                    "quiet_interval_minutes", "grace_minutes", "daily_budget_usd", "mode",
-                   "dispatch", "max_wakes_per_tick", "models_file"}
+                   "dispatch", "max_wakes_per_tick", "models_file", "settings_dir"}
         if not isinstance(raw, dict) or set(raw) - allowed:
             raise RehearsalError("invalid_heartbeat_config")
         try:
@@ -106,9 +113,11 @@ class Schedule:
         if (not 1 <= grace <= 60 or mode not in ("offline", "real")
                 or dispatch not in ("clock-only", "live") or not 1 <= per_tick <= 7
                 or not Decimal("0") <= budget <= Decimal("100")
-                or (mode == "real") != isinstance(models_file, str)):
+                or (mode == "real" and not isinstance(models_file, str) and not isinstance(raw.get("settings_dir"), str))
+                or (raw.get("settings_dir") is not None and not isinstance(raw.get("settings_dir"), str))):
             raise RehearsalError("invalid_heartbeat_config")
-        schedule = cls(name, tuple(windows), grace, budget, mode, dispatch, per_tick, models_file)
+        schedule = cls(name, tuple(windows), grace, budget, mode, dispatch, per_tick, models_file,
+                       raw.get("settings_dir"))
         if schedule.wakes_per_agent() > MAX_WAKES_PER_AGENT:
             raise RehearsalError("invalid_heartbeat_config")
         return schedule
@@ -157,12 +166,16 @@ def load_schedule(path):
 
 
 class Heartbeat:
-    def __init__(self, store, schedule, *, prepare_day, run_wake, now=None):
-        """``prepare_day(budget_usd, wakes_per_agent) -> run_id`` creates a
-        prepared day run (no profiles yet). ``run_wake(run_id, owner) -> job``
-        adds and runs one wake. ``now()`` returns an aware datetime."""
+    def __init__(self, store, schedule, *, prepare_day, run_wake, now=None, settings=None,
+                 key_present=lambda: True):
+        """``prepare_day(budget_usd, wakes_per_agent, models) -> run_id`` creates
+        a prepared day run (no profiles yet); ``models`` is None to use the
+        config. ``run_wake(run_id, owner) -> job`` adds and runs one wake.
+        ``now()`` returns an aware datetime. ``settings`` is an OwnerSettings."""
         self.store = store
         self.schedule = schedule
+        self.settings = settings
+        self.key_present = key_present
         self.prepare_day = prepare_day
         self.run_wake = run_wake
         self.now = now or (lambda: datetime.now(timezone.utc))
@@ -275,6 +288,20 @@ class Heartbeat:
                 return run["run_id"]
         return None
 
+    def daily_budget(self):
+        chosen = self.settings.daily_budget() if self.settings is not None else None
+        return self.schedule.daily_budget_usd if chosen is None else chosen
+
+    def chosen_models(self):
+        return self.settings.agent_models() if self.settings is not None else None
+
+    def _today_runs(self, conn, today):
+        return [self.store.get_run(row["run_id"]) for row in conn.execute(
+            "SELECT run_id FROM days WHERE local_date=? ORDER BY opened_at", (today,)).fetchall()]
+
+    def _reserved_today(self, conn, today):
+        return sum((Decimal(run["reserved_usd"]) for run in self._today_runs(conn, today)), Decimal(0))
+
     def _close_earlier_days(self, conn, today):
         closed = []
         for row in conn.execute("SELECT run_id FROM days WHERE local_date < ?", (today,)).fetchall():
@@ -288,14 +315,31 @@ class Heartbeat:
         return closed
 
     def _today(self, conn, today):
-        """Today's open day run, opening (and continuing the home) if needed."""
-        for row in conn.execute("SELECT run_id FROM days WHERE local_date=? ORDER BY opened_at DESC", (today,)):
-            if self.store.get_run(row["run_id"])["status"] in ("prepared", "open"):
-                return row["run_id"], None
+        """Today's open day run, opening (and continuing the home) if needed.
+
+        A run whose models differ from the owner's current choice, or whose
+        budget is below what the owner now allows, is closed and a new segment
+        of the day opens, so the change applies from this wake.
+        """
+        models = self.chosen_models()
+        segments = self._today_runs(conn, today)
+        spent_before = Decimal(0)
+        for run in segments:
+            if run["status"] in ("prepared", "open"):
+                allowed = self.daily_budget() - spent_before
+                stale = ((models is not None and run["agent_models"] != models)
+                         or Decimal(run["limits"]["budget_usd"]) < allowed)
+                if not stale:
+                    return run["run_id"], None
+                try:
+                    self.store.close_day(run["run_id"])
+                except RehearsalConflict:
+                    return run["run_id"], None  # A wake is running; switch on a later tick.
+            spent_before += Decimal(run["reserved_usd"])
         runs = self._runs()
         previous = self._previous(runs)
-        run_id = self.prepare_day(format(self.schedule.daily_budget_usd, "f"),
-                                  self.schedule.wakes_per_agent())
+        budget = max(Decimal(0), self.daily_budget() - spent_before)
+        run_id = self.prepare_day(format(budget, "f"), self.schedule.wakes_per_agent(), models)
         if previous is not None:
             continue_home(self.store, run_id, previous)
         conn.execute("INSERT INTO days(local_date,run_id,opened_at,continued_from) VALUES (?,?,?,?)",
@@ -340,6 +384,10 @@ class Heartbeat:
                     for slot in fresh:
                         self._record(conn, slot, "clock_only", note="clock-only mode: recorded, not dispatched")
                     return {"outcome": "clock_only", "slots": len(fresh), "missed": missed}
+                if self.daily_budget() - self._reserved_today(conn, today) < MIN_REMAINING_USD:
+                    for slot in fresh:  # Spent before opening anything: no new day segment.
+                        self._record(conn, slot, "over_budget", note="today's budget is spent")
+                    return {"outcome": "over_budget", "slots": len(fresh), "missed": missed}
                 run_id, previous = self._today(conn, today)
                 started = []
                 for slot in fresh[:self.schedule.max_wakes_per_tick]:
@@ -350,7 +398,7 @@ class Heartbeat:
                     if run["status"] not in ("prepared", "open"):
                         self._record(conn, slot, "day_stopped", run_id=run_id, note=f"day is {run['status']}")
                         continue
-                    remaining = self.schedule.daily_budget_usd - Decimal(run["reserved_usd"])
+                    remaining = self.daily_budget() - self._reserved_today(conn, today)
                     if remaining < MIN_REMAINING_USD:
                         self._record(conn, slot, "over_budget", run_id=run_id,
                                      note=f"{remaining} USD left of today's budget")
@@ -382,6 +430,7 @@ class Heartbeat:
                 "WHERE local_date=? ORDER BY scheduled_at", (today,))]
             day = conn.execute("SELECT run_id FROM days WHERE local_date=? ORDER BY opened_at DESC LIMIT 1",
                                (today,)).fetchone()
+            reserved = self._reserved_today(conn, today)
         run = self.store.get_run(day["run_id"]) if day else None
         upcoming = [slot for slot in self.schedule.slots(local.date()) if slot[0] > local]
         next_wakes = {}
@@ -391,9 +440,11 @@ class Heartbeat:
             reason = "paused"
         elif self.schedule.dispatch == "clock-only":
             reason = "clock-only mode: wake times are recorded, nothing is dispatched"
+        elif self.schedule.mode == "real" and not self.key_present():
+            reason = "the OpenRouter key is not set"
         elif run is not None and run["status"] not in ("prepared", "open"):
             reason = f"today's day is {run['status']}"
-        elif run is not None and self.schedule.daily_budget_usd - Decimal(run["reserved_usd"]) < MIN_REMAINING_USD:
+        elif self.daily_budget() - reserved < MIN_REMAINING_USD:
             reason = "today's budget is spent"
         elif not upcoming:
             reason = "quiet: no more wakes today"
@@ -406,7 +457,7 @@ class Heartbeat:
                 "mode": self.schedule.mode, "local_time": local.isoformat(),
                 "today": {"run_id": run["run_id"] if run else None,
                           "status": run["status"] if run else None,
-                          "reserved_usd": run["reserved_usd"] if run else "0",
-                          "daily_budget_usd": format(self.schedule.daily_budget_usd, "f"),
+                          "reserved_usd": format(reserved, "f"),
+                          "daily_budget_usd": format(self.daily_budget(), "f"),
                           "slot_outcomes": counts},
                 "next_wake_by_agent": next_wakes}

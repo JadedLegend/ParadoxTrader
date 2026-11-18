@@ -4,8 +4,11 @@ Serves the built frontend and the read-only rehearsal inspection API
 (``api.rehearsal.create_app``) behind owner authentication, bound to loopback.
 
 Boundaries (see README "VPS handoff"):
-- Never imports the broad legacy app (``api/app.py``); no scheduler, model call,
-  broker access or mutation route exists here. Only GET/HEAD are accepted.
+- Never imports the broad legacy app (``api/app.py``); no scheduler, model call
+  or broker access exists here. Only GET/HEAD are accepted, with one exception:
+  ``POST /api/settings`` saves the owner's settings (key, models, daily budget).
+  It needs the owner login, a same-origin ``Origin`` header and a JSON body of
+  at most 8 KB, and its responses never contain the key.
 - The operator token stays server-side: the gateway injects it into the
   in-process rehearsal app after owner authentication. Browsers never see it.
 - Missing static assets return 404, not an unhandled 500.
@@ -16,6 +19,7 @@ Configuration (environment, normally from /etc/paradoxtrader/dashboard.env):
   LINEAGE_OPERATOR_TOKEN            server-side token for the rehearsal API
   PARADOX_SESSIONS_ROOT             private Sessions root (default /var/lib/paradoxtrader/sessions)
   PARADOX_FRONTEND_DIST             built frontend (default <repo>/frontend/dist)
+  PARADOX_SETTINGS_DIR              owner settings (default /var/lib/paradoxtrader/settings)
 
 Generate a password hash with:  python3 deploy/private_dashboard.py hash-password
 Run (loopback only):            python3 deploy/private_dashboard.py serve --port 8080
@@ -36,7 +40,7 @@ if str(REPO) not in sys.path:
 
 from starlette.applications import Starlette  # noqa: E402
 from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
-from starlette.responses import FileResponse, PlainTextResponse, Response  # noqa: E402
+from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, Response  # noqa: E402
 from starlette.routing import Route  # noqa: E402
 
 PBKDF2_ITERATIONS = 390_000
@@ -81,8 +85,26 @@ def _check_basic(header, user, password_hash):
     return user_ok and password_ok
 
 
+SETTINGS_PATH = "/api/settings"
+MAX_SETTINGS_BODY = 8192
+
+
+def _same_origin_write(scope, headers):
+    """The single allowed write: POST /api/settings, JSON, from this site only.
+
+    Browsers always send Origin on a POST, so a page on another site (which
+    could otherwise reuse the cached login) is refused before any handler runs.
+    """
+    if scope["method"] != "POST" or scope.get("path") != SETTINGS_PATH:
+        return False
+    origin, host = headers.get("origin"), headers.get("host")
+    if not origin or not host or origin not in (f"http://{host}", f"https://{host}"):
+        return False
+    return headers.get("content-type", "").split(";")[0].strip().lower() == "application/json"
+
+
 class OwnerGate:
-    """ASGI middleware: GET/HEAD only, owner Basic auth, security headers."""
+    """ASGI middleware: GET/HEAD (plus the one settings write), owner Basic auth, security headers."""
 
     def __init__(self, app, *, user, password_hash):
         self.app, self.user, self.password_hash = app, user, password_hash
@@ -91,7 +113,7 @@ class OwnerGate:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
-        if scope["method"] not in ("GET", "HEAD"):
+        if scope["method"] not in ("GET", "HEAD") and not _same_origin_write(scope, headers):
             response = PlainTextResponse("method_not_allowed", status_code=405, headers={**SECURITY_HEADERS, "Allow": "GET, HEAD"})
         elif not (self.user and self.password_hash and _check_basic(headers.get("authorization"), self.user, self.password_hash)):
             response = PlainTextResponse("owner_authentication_required", status_code=401,
@@ -169,7 +191,31 @@ class _Dispatch:
         return await self.site(scope, receive, send)
 
 
-def create_gateway(*, sessions_root, frontend_dist, operator_token, user, password_hash):
+def _settings_app(settings_dir):
+    from core.runtime.owner_settings import OwnerSettings, SettingsError
+    store = OwnerSettings(settings_dir)
+
+    async def handle(request):
+        if request.method == "POST":
+            body = b""
+            async for chunk in request.stream():
+                body += chunk
+                if len(body) > MAX_SETTINGS_BODY:
+                    return JSONResponse({"error": "settings_body_too_large"}, status_code=413, headers=SECURITY_HEADERS)
+            try:
+                import json
+                return JSONResponse(store.update(json.loads(body.decode("utf-8"))), headers=SECURITY_HEADERS)
+            except SettingsError as error:
+                return JSONResponse({"error": str(error)}, status_code=400, headers=SECURITY_HEADERS)
+            except (ValueError, UnicodeError):
+                return JSONResponse({"error": "invalid_settings_body"}, status_code=400, headers=SECURITY_HEADERS)
+        return JSONResponse(store.read(), headers=SECURITY_HEADERS)
+
+    return handle
+
+
+def create_gateway(*, sessions_root, frontend_dist, operator_token, user, password_hash,
+                   settings_dir="/var/lib/paradoxtrader/settings"):
     if not operator_token or not operator_token.strip():
         raise ValueError("operator_token_missing")
     if not user or not password_hash:
@@ -179,6 +225,7 @@ def create_gateway(*, sessions_root, frontend_dist, operator_token, user, passwo
     rehearsal = create_rehearsal_app(Path(sessions_root), operator_token=operator_token)
     site = Starlette(
         routes=[
+            Route(SETTINGS_PATH, _settings_app(settings_dir), methods=["GET", "HEAD", "POST"]),
             Route("/api/{rest:path}", _unknown_api, methods=["GET", "HEAD"]),
             Route("/{path:path}", _static_app(frontend_dist), methods=["GET", "HEAD"]),
         ],
@@ -195,6 +242,7 @@ def _from_environment():
         operator_token=os.environ.get("LINEAGE_OPERATOR_TOKEN", ""),
         user=os.environ.get("PARADOX_DASHBOARD_USER", ""),
         password_hash=os.environ.get("PARADOX_DASHBOARD_PASSWORD_HASH", ""),
+        settings_dir=os.environ.get("PARADOX_SETTINGS_DIR", "/var/lib/paradoxtrader/settings"),
     )
 
 

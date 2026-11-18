@@ -44,11 +44,11 @@ def selected_models(path=None):
     return {row['agent_id']: row['model'] for row in data['agents']}
 
 
-def manifest_for(mode='offline', *, models_file=None, catalog_file=None, fetch_catalog=False, budget_usd=None):
+def manifest_for(mode='offline', *, models_file=None, models=None, catalog_file=None, fetch_catalog=False, budget_usd=None):
     from core.runtime.rehearsal.provider import catalog_snapshot, validate_manifest
-    if mode == 'real' and (not models_file or budget_usd is None):
+    if mode == 'real' and ((not models_file and not models) or budget_usd is None):
         raise ValueError('real_prepare_requires_explicit_models_and_budget')
-    models = selected_models(models_file)
+    models = dict(models) if models else selected_models(models_file)
     if mode == 'real':
         if bool(catalog_file) == bool(fetch_catalog):
             raise ValueError('real_prepare_requires_one_catalog_source')

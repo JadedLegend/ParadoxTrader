@@ -42,12 +42,21 @@ def build(root, config_path):
     schedule = load_schedule(config_path)
     store = RehearsalStore(cli.root_path(root))
 
-    def prepare_day(budget_usd, wakes_per_agent):
+    settings = None
+    if schedule.settings_dir:
+        from core.runtime.owner_settings import OwnerSettings
+        settings = OwnerSettings(schedule.settings_dir)
+
+    def key():
+        chosen = settings.key() if settings is not None else None
+        return chosen or os.environ.get("REHEARSAL_OPENROUTER_API_KEY", "").strip() or None
+
+    def prepare_day(budget_usd, wakes_per_agent, models=None):
         if schedule.mode == "real":
-            manifest = cli.manifest_for("real", models_file=schedule.models_file,
+            manifest = cli.manifest_for("real", models_file=schedule.models_file, models=models,
                                         fetch_catalog=True, budget_usd=budget_usd)
         else:
-            manifest = cli.manifest_for("offline", budget_usd=budget_usd)
+            manifest = cli.manifest_for("offline", models=models, budget_usd=budget_usd)
         manifest["kind"] = "day"
         manifest["limits"]["wakes_per_agent"] = wakes_per_agent
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
@@ -58,7 +67,7 @@ def build(root, config_path):
         from core.runtime.rehearsal.provider import OpenRouterTransport
         snapshot_profiles(store, run_id, REPO)
         if schedule.mode == "real":
-            transport = OpenRouterTransport(os.environ["REHEARSAL_OPENROUTER_API_KEY"])
+            transport = OpenRouterTransport(key())
             return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner)
         from core.runtime.rehearsal.examples import ScriptedHTTP
         transport = OpenRouterTransport("offline-scripted-not-a-credential", http_post=ScriptedHTTP())
@@ -67,7 +76,8 @@ def build(root, config_path):
                 blocked.enter_context(mock.patch.object(target, method, side_effect=AssertionError("Offline wakes forbid networking")))
             return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner)
 
-    return Heartbeat(store, schedule, prepare_day=prepare_day, run_wake=run_wake)
+    return Heartbeat(store, schedule, prepare_day=prepare_day, run_wake=run_wake,
+                     settings=settings, key_present=lambda: key() is not None)
 
 
 def main(argv=None):
@@ -78,7 +88,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     heartbeat = build(args.root, args.config)
     if (args.command == "tick" and heartbeat.schedule.mode == "real" and heartbeat.schedule.dispatch == "live"
-            and not os.environ.get("REHEARSAL_OPENROUTER_API_KEY", "").strip()):
+            and not heartbeat.key_present()):
         # Only starting real gatherings needs the key, and the check comes
         # before any decision is recorded. status/pause/resume/stop never do.
         raise ValueError("dedicated_rehearsal_key_missing")
