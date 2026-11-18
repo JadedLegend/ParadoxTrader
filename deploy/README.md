@@ -66,6 +66,44 @@ The installer does not start any agent, scheduler, model session or broker conne
 
    `scripts/rehearsal.py` also takes its default root from `PARADOX_SESSIONS_ROOT` when that is set.
 
+## The heartbeat (installed, off until you switch it on)
+
+The heartbeat offers the agents a gathering at a few chosen times each day. Each gathering continues the home from the one before. The installer copies its timer but does not enable it.
+
+Every limit is enforced in code (`core/runtime/rehearsal/heartbeat.py`):
+- **Slot times only.** Nothing runs between slots, and nights are quiet.
+- **No catch-up.** A slot that's more than its grace window late is recorded as missed and never run.
+- **Spending.** A daily budget and a per-gathering budget.
+- **Pause.** A pause switch stops new gatherings; `stop` also halts a running one.
+- **Recovery.** If the latest run is unfinished or uncertain, the heartbeat waits for you instead of starting another.
+
+To switch it on:
+
+1. Write `/etc/paradoxtrader/heartbeat.json` (owned `root:paradoxtrader`, mode `0640`):
+
+   ```json
+   {"timezone": "America/New_York", "slots": ["09:45", "12:30", "15:30"],
+    "grace_minutes": 20, "daily_budget_usd": "1.00", "gathering_budget_usd": "0.35",
+    "mode": "real", "models_file": "/etc/paradoxtrader/models.json"}
+   ```
+
+   For real models, also put `REHEARSAL_OPENROUTER_API_KEY=...` in `/etc/paradoxtrader/heartbeat.env` (mode `0640`). Use `"mode": "offline"` to watch it work with scripted examples first; that needs no key or models file.
+
+2. Enable it:
+
+   ```bash
+   systemctl enable --now paradoxtrader-heartbeat.timer
+   ```
+
+3. Check, pause or stop:
+
+   ```bash
+   cd /opt/paradoxtrader/current
+   sudo -u paradoxtrader /opt/paradoxtrader/venv/bin/python scripts/heartbeat.py      --root /var/lib/paradoxtrader/sessions --config /etc/paradoxtrader/heartbeat.json status
+   ```
+
+   Swap `status` for `pause`, `resume` or `stop`.
+
 ## Verified here vs. on the host
 
 **Verified in the repo:**

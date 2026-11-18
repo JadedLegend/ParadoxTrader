@@ -1,0 +1,23 @@
+[Unit]
+Description=ParadoxTrader heartbeat (offers one gathering at configured slot times)
+# Installed but NOT enabled by install_host.sh. Enable only after the owner has
+# chosen models and budget and placed the config and key:
+#   /etc/paradoxtrader/heartbeat.json   (schedule, budgets, mode)
+#   /etc/paradoxtrader/heartbeat.env    (REHEARSAL_OPENROUTER_API_KEY=..., real mode only)
+ConditionPathExists=/etc/paradoxtrader/heartbeat.json
+ConditionPathExists=!/var/lib/paradoxtrader/sessions/heartbeat.paused
+
+[Service]
+Type=oneshot
+User=paradoxtrader
+Group=paradoxtrader
+WorkingDirectory=/opt/paradoxtrader/current
+EnvironmentFile=-/etc/paradoxtrader/heartbeat.env
+ExecStart=/opt/paradoxtrader/venv/bin/python scripts/heartbeat.py --root /var/lib/paradoxtrader/sessions --config /etc/paradoxtrader/heartbeat.json tick
+TimeoutStartSec=1200
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/paradoxtrader/sessions
+UMask=0077
