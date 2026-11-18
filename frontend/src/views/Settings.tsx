@@ -4,7 +4,19 @@ import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 
 const SLOTS = [...REHEARSAL_AGENTS.map(agent => ({ id: agent.id as string, name: agent.name })), { id: 'witness', name: 'Witness' }]
 const CATALOG_URL = 'https://openrouter.ai/api/v1/models'
-const FIELD_LABEL: Record<string, string> = { daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key' }
+// Data and broker keys: stored for later steps; nothing uses them yet.
+const SECRETS = [
+  { id: 'alpaca_key_id', name: 'Alpaca key ID (paper)', placeholder: 'PK...', note: 'Paper-trading keys only. Live keys (AK...) are refused.' },
+  { id: 'alpaca_secret', name: 'Alpaca secret (paper)', placeholder: '', note: '' },
+  { id: 'public_com', name: 'Public.com', placeholder: '', note: 'For market data. Nothing here places orders.' },
+  { id: 'alphavantage', name: 'Alpha Vantage', placeholder: '', note: '' },
+  { id: 'fmp', name: 'Financial Modeling Prep', placeholder: '', note: '' },
+  { id: 'bigdata', name: 'Bigdata.com', placeholder: '', note: '' },
+] as const
+const FIELD_LABEL: Record<string, string> = {
+  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key',
+  ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
+}
 
 interface CatalogModel { id: string; prompt: number; completion: number }
 
@@ -40,6 +52,7 @@ export default function Settings() {
   const [models, setModels] = useState<Record<string, string>>({})
   const [budget, setBudget] = useState('')
   const [key, setKey] = useState('')
+  const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -65,14 +78,27 @@ export default function Settings() {
 
   const save = async (what: string, changes: SettingsChanges, done: string) => {
     if (saving) return
+    const secretSlot = what.startsWith('secret.') ? what.slice(7) : null
+    const submittedDraft = secretSlot ? secretDrafts[secretSlot] : undefined
+    const submittedModels = models
+    const submittedBudget = budget
     setSaving(what)
     setError('')
     setMessage('')
     try {
       const value = await saveSettings(changes)
       if (!alive.current) return
-      apply(value)
+      setModels(current => Object.fromEntries(SLOTS.map(slot => {
+        const baseline = changes.models?.[slot.id] !== undefined
+          ? submittedModels[slot.id] : settings?.models[slot.id] ?? ''
+        return [slot.id, current[slot.id] === baseline ? value.models[slot.id] ?? '' : current[slot.id]]
+      })))
+      setBudget(current => current === (changes.daily_budget_usd !== undefined
+        ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
+      setSettings(value)
       if (what === 'key') setKey('')
+      if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
+        ? { ...current, [secretSlot]: '' } : current)
       setMessage(done)
     } catch {
       if (alive.current) setError('That was not saved. Check the value and try again; your input is still here.')
@@ -160,6 +186,36 @@ export default function Settings() {
           <p className="settings-note">Stored only on your server, readable by the agents' service. This page never receives it back.</p>
         </section>
       </div>
+
+      <section className="card mb-16" aria-labelledby="settings-secrets">
+        <h2 className="card-title" id="settings-secrets">Data and broker keys</h2>
+        <p className="settings-help">Stored on your server for the market-data and paper-trading steps. Nothing uses them yet, and like the OpenRouter key they are never shown again.</p>
+        <div className="settings-secrets">
+          {SECRETS.map(item => {
+            const state = settings.secrets?.[item.id]
+            const draft = secretDrafts[item.id] ?? ''
+            return <form className="input-group settings-secret" key={item.id} onSubmit={event => {
+              event.preventDefault()
+              if (draft.trim()) void save(`secret.${item.id}`, { secrets: { [item.id]: draft.trim() } }, `${item.name} saved.`)
+            }}>
+              <label className="input-label" htmlFor={`secret-${item.id}`}>{item.name}</label>
+              <span className="settings-note">{state?.error === 'secret_unreadable' ? 'Credential unreadable. Replace it or try removing it.' : state?.set ? <>Set, ends in <code>…{state.ends_with}</code></> : 'Not set'}</span>
+              <div className="flex gap-8">
+                <input id={`secret-${item.id}`} className="input" type="password" autoComplete="off" spellCheck={false}
+                  value={draft} placeholder={item.placeholder} onChange={event => setSecretDrafts(current => ({ ...current, [item.id]: event.target.value }))} />
+                <button type="submit" className="btn btn-primary" disabled={saving !== null || !draft.trim()} aria-label={`Save ${item.name}`}>
+                  {saving === `secret.${item.id}` ? 'Saving...' : 'Save'}
+                </button>
+                {(state?.set || state?.error) && <button type="button" className="btn btn-ghost" disabled={saving !== null} aria-label={`Remove ${item.name}`}
+                  onClick={() => { if (window.confirm(`Remove the ${item.name} key?`)) void save(`secret.${item.id}`, { secrets: { [item.id]: '' } }, `${item.name} removed.`) }}>
+                  Remove
+                </button>}
+              </div>
+              {item.note && <span className="settings-note">{item.note}</span>}
+            </form>
+          })}
+        </div>
+      </section>
 
       <section className="card" aria-labelledby="settings-history">
         <h2 className="card-title" id="settings-history">Recent changes</h2>
