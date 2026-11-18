@@ -29,6 +29,8 @@ LIMIT_CEILINGS = {
     "max_input_bytes": 24000, "max_runtime_seconds": 900,
     "request_timeout_seconds": 60, "max_parallelism": 3,
 }
+# A "day" run adds each agent's wakes as they happen (see store.add_wake).
+DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": 48, "max_requests": 2 * 48 * 7}
 # Input tokens are conservatively bounded by UTF-8 bytes, not a chars/4 guess.
 # This explicit protocol allowance is included in both context and reservation.
 PROTOCOL_OVERHEAD_BYTES = 2048
@@ -163,8 +165,12 @@ def synthetic_catalog_snapshot(model_map):
 def validate_manifest(manifest):
     """Pure, strict, nonmutating validation; no substitutions or repaired limits."""
     fields = {"schema_version", "mode", "agent_models", "limits", "catalog_snapshot", "capabilities"}
-    if not isinstance(manifest, dict) or set(manifest) != fields:
+    if not isinstance(manifest, dict) or set(manifest) - {"kind"} != fields:
         raise ManifestError("invalid_manifest_fields")
+    kind = manifest.get("kind", "rehearsal")
+    if kind not in ("rehearsal", "day"):
+        raise ManifestError("invalid_run_kind")
+    ceilings = DAY_LIMIT_CEILINGS if kind == "day" else LIMIT_CEILINGS
     if type(manifest["schema_version"]) is not int or manifest["schema_version"] != 1:
         raise ManifestError("unsupported_manifest_version")
     mode = manifest["mode"]
@@ -175,11 +181,11 @@ def validate_manifest(manifest):
     if not isinstance(limits, dict) or set(limits) != set(LIMIT_CEILINGS) | {"budget_usd"}:
         raise ManifestError("invalid_limits_fields")
     clean_limits = {}
-    for key, ceiling in LIMIT_CEILINGS.items():
+    for key, ceiling in ceilings.items():
         value = limits[key]
         if type(value) is not int or not 1 <= value <= ceiling:
             raise ManifestError("invalid_finite_limit")
-        if key == "wakes_per_agent" and value != 2:
+        if kind == "rehearsal" and key == "wakes_per_agent" and value != 2:
             raise ManifestError("two_rounds_required")
         clean_limits[key] = value
     if not isinstance(limits["budget_usd"], str):
@@ -226,9 +232,12 @@ def validate_manifest(manifest):
         except ValueError:
             raise ManifestError("invalid_catalog_capture_time") from None
         clean_snapshot["captured_at"] = captured
-    return {"schema_version": 1, "mode": mode, "agent_models": model_map,
-            "limits": clean_limits, "catalog_snapshot": clean_snapshot,
-            "capabilities": list(CAPABILITIES)}
+    result = {"schema_version": 1, "mode": mode, "agent_models": model_map,
+              "limits": clean_limits, "catalog_snapshot": clean_snapshot,
+              "capabilities": list(CAPABILITIES)}
+    if kind == "day":
+        result["kind"] = "day"
+    return result
 
 
 def _usage_metadata(data):
