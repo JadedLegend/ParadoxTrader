@@ -42,13 +42,27 @@ KEY_PATTERN = re.compile(r"sk-or-[A-Za-z0-9_-]{20,200}")
 MAX_BUDGET_USD = Decimal("100")
 # Write-only keys for market data and paper trading, stored for later steps.
 _GENERIC = re.compile(r"[\x21-\x7e]{8,512}")  # Printable, no spaces.
+_ALPACA_KEY_ID = re.compile(r"PK[A-Z0-9]{8,40}")  # Paper keys only (live keys start with AK).
+_ALPACA_SECRET = re.compile(r"[A-Za-z0-9/+=]{20,100}")
 SECRET_SLOTS = {
-    "alpaca_key_id": re.compile(r"PK[A-Z0-9]{8,40}"),  # Paper keys only (live keys start with AK).
-    "alpaca_secret": re.compile(r"[A-Za-z0-9/+=]{20,100}"),
+    # One Alpaca paper account per agent.
+    **{f"alpaca_{agent}_{part}": pattern for agent in AGENTS
+       for part, pattern in (("key_id", _ALPACA_KEY_ID), ("secret", _ALPACA_SECRET))},
+    # Market data.
     "public_com": _GENERIC,
     "alphavantage": re.compile(r"[A-Za-z0-9]{8,64}"),
     "fmp": re.compile(r"[A-Za-z0-9]{16,64}"),
     "bigdata": _GENERIC,
+    "massive": _GENERIC,
+    # News and social.
+    "brave_search": _GENERIC,
+    "reddit_client_id": _GENERIC,
+    "reddit_client_secret": _GENERIC,
+    "x_bearer_token": _GENERIC,
+    # Brokers and signal routes: stored only; nothing here places orders.
+    "etoro_api_key": _GENERIC,
+    "etoro_user_key": _GENERIC,
+    "signalstack_webhook": _GENERIC,
 }
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
