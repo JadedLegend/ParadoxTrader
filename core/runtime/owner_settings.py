@@ -12,6 +12,11 @@ Set from the private dashboard's Settings page and read by the heartbeat.
 Storage, under ``directory`` (normally /var/lib/paradoxtrader/settings):
   settings.sqlite3   append-only history; the current value is the latest row
   openrouter.key     the key, mode 0600
+  secrets/<slot>     data and broker keys (see SECRET_SLOTS), each mode 0600
+
+The data and broker keys are only stored here. Nothing uses them until a later
+step connects that source, and none of them grants trading: Alpaca accepts
+paper keys only.
 """
 from contextlib import closing
 from datetime import datetime, timezone
@@ -30,6 +35,16 @@ AGENTS = ("tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "parado
 MODEL_SLOTS = AGENTS + ("witness",)  # The witness's model is used once it writes prose.
 KEY_PATTERN = re.compile(r"sk-or-[A-Za-z0-9_-]{20,200}")
 MAX_BUDGET_USD = Decimal("100")
+# Write-only keys for market data and paper trading, stored for later steps.
+_GENERIC = re.compile(r"[\x21-\x7e]{8,512}")  # Printable, no spaces.
+SECRET_SLOTS = {
+    "alpaca_key_id": re.compile(r"PK[A-Z0-9]{8,40}"),  # Paper keys only (live keys start with AK).
+    "alpaca_secret": re.compile(r"[A-Za-z0-9/+=]{20,100}"),
+    "public_com": _GENERIC,
+    "alphavantage": re.compile(r"[A-Za-z0-9]{8,64}"),
+    "fmp": re.compile(r"[A-Za-z0-9]{16,64}"),
+    "bigdata": _GENERIC,
+}
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
 
@@ -117,6 +132,19 @@ class OwnerSettings:
             return None
         return raw if KEY_PATTERN.fullmatch(raw) else None
 
+    def _secret_path(self, slot):
+        if slot not in SECRET_SLOTS:
+            raise SettingsError("invalid_secret_slot")
+        return self._check(self.directory / "secrets" / slot)
+
+    def secret(self, slot):
+        """One stored data or broker key, for the service that uses it. None when unset."""
+        try:
+            raw = self._secret_path(slot).read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return None
+        return raw if SECRET_SLOTS[slot].fullmatch(raw) else None
+
     def read(self, *, history_limit=20):
         """What the Settings page shows. Never includes the key."""
         latest = self._latest()
@@ -128,15 +156,21 @@ class OwnerSettings:
                             "value": json.loads(row["value"])}
                            for row in conn.execute("SELECT changed_at,field,value FROM history "
                                                    "ORDER BY seq DESC LIMIT ?", (history_limit,))]
+        secrets = {}
+        for slot in SECRET_SLOTS:
+            value = self.secret(slot)
+            secrets[slot] = {"set": value is not None, "ends_with": value[-4:] if value else None}
         return {"models": {slot: latest.get(f"model.{slot}") for slot in MODEL_SLOTS},
                 "daily_budget_usd": latest.get("daily_budget_usd"),
                 "key": {"set": key is not None, "ends_with": key[-4:] if key else None},
+                "secrets": secrets,
                 "history": history}
 
     # ---- writes -------------------------------------------------------------
     @staticmethod
     def _validate(changes):
-        if not isinstance(changes, dict) or not changes or set(changes) - {"models", "daily_budget_usd", "openrouter_key"}:
+        if (not isinstance(changes, dict) or not changes
+                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets"}):
             raise SettingsError("invalid_settings_fields")
         rows = []
         if "models" in changes:
@@ -159,19 +193,53 @@ class OwnerSettings:
                     or budget.as_tuple().exponent < -2):
                 raise SettingsError("invalid_daily_budget")
             rows.append(("daily_budget_usd", format(budget.quantize(Decimal("0.01")), "f")))
+        secrets = {}
+        if "secrets" in changes:
+            given = changes["secrets"]
+            if not isinstance(given, dict) or not given or set(given) - set(SECRET_SLOTS):
+                raise SettingsError("invalid_secret_slot")
+            for slot, value in given.items():
+                if not isinstance(value, str):
+                    raise SettingsError(f"invalid_secret_{slot}")
+                value = value.strip()
+                if value and not SECRET_SLOTS[slot].fullmatch(value):
+                    # alpaca_key_id: only paper keys (PK...) are accepted.
+                    raise SettingsError(f"invalid_secret_{slot}")
+                secrets[slot] = value
         key = None
         if "openrouter_key" in changes:
             key = changes["openrouter_key"]
             if not isinstance(key, str) or (key != "" and not KEY_PATTERN.fullmatch(key.strip())):
                 raise SettingsError("invalid_openrouter_key")
             key = key.strip()
-        return rows, key
+        return rows, key, secrets
+
+    def _write_private(self, path, value):
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        temporary = self._check(path.parent / f".{path.name}.{uuid4().hex}")
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(value + "\n")
+        os.replace(temporary, path)
 
     def update(self, changes):
         """Apply validated changes atomically enough: the key file is replaced in
         one rename, and history rows are written in one transaction."""
-        rows, key = self._validate(changes)
+        rows, key, secrets = self._validate(changes)
         change_id, now = str(uuid4()), _now()
+        if secrets:
+            self._ensure_directory()
+        for slot, value in secrets.items():
+            path = self._secret_path(slot)
+            if value == "":
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+                rows.append((f"secret.{slot}", "cleared"))
+            else:
+                self._write_private(path, value)
+                rows.append((f"secret.{slot}", "set, ends in ..." + value[-4:]))
         if key is not None:
             self._ensure_directory()
             path = self._key_path()
@@ -182,11 +250,7 @@ class OwnerSettings:
                     pass
                 rows.append(("openrouter_key", "cleared"))
             else:
-                temporary = self._check(self.directory / f".openrouter.key.{uuid4().hex}")
-                fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                    handle.write(key + "\n")
-                os.replace(temporary, path)
+                self._write_private(path, key)
                 rows.append(("openrouter_key", "set, ends in ..." + key[-4:]))
         with closing(self._db()) as conn:
             with conn:

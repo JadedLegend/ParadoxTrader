@@ -72,6 +72,19 @@ describe('Settings page', () => {
     expect(document.body.textContent).not.toContain(key)
   })
 
+  it('saves a data key once and shows only its last four characters', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, secrets: { fmp: { set: true, ends_with: 'wxyz' } } })
+    render(<Settings />)
+    const field = await screen.findByLabelText('Financial Modeling Prep') as HTMLInputElement
+    expect(field.type).toBe('password')
+    fireEvent.change(field, { target: { value: 'abcdefghijklmnopqrstuvwxyz' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Financial Modeling Prep' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ secrets: { fmp: 'abcdefghijklmnopqrstuvwxyz' } }))
+    expect(await screen.findByText('…wxyz')).toBeTruthy()
+    expect(field.value).toBe('')
+    expect(screen.getByText(/Live keys .AK.... are refused/)).toBeTruthy()
+  })
+
   it('lets a model ID be typed when the catalog cannot load', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     render(<Settings />)

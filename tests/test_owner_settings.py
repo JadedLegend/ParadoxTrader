@@ -85,6 +85,37 @@ class OwnerSettingsTests(unittest.TestCase):
         self.assertEqual(self.settings.read()["history"], [])
 
 
+class SecretSlotTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.settings = OwnerSettings(Path(self.temp.name) / "settings")
+
+    def test_data_and_broker_keys_are_write_only(self):
+        values = {"alpaca_key_id": "PKABCDEFGH12345678", "alpaca_secret": "s" * 40,
+                  "public_com": "pub-key-123456789", "alphavantage": "ABCDEF123456",
+                  "fmp": "f" * 32, "bigdata": "bd_key_0123456789"}
+        result = self.settings.update({"secrets": values})
+        dumped = json.dumps(result)
+        for slot, value in values.items():
+            self.assertEqual(result["secrets"][slot], {"set": True, "ends_with": value[-4:]})
+            self.assertNotIn(value, dumped)
+            self.assertEqual(self.settings.secret(slot), value)
+            if os.name == "posix":
+                path = self.settings.directory / "secrets" / slot
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        self.settings.update({"secrets": {"fmp": ""}})
+        self.assertIsNone(self.settings.secret("fmp"))
+        self.assertEqual(self.settings.secret("bigdata"), values["bigdata"])
+
+    def test_live_alpaca_keys_and_unknown_slots_are_refused(self):
+        for bad in ({"secrets": {"alpaca_key_id": "AKLIVEKEY123456789"}}, {"secrets": {"unknown": "x" * 20}},
+                    {"secrets": {"fmp": "has spaces in it 1234"}}, {"secrets": {"public_com": 5}}, {"secrets": {}}):
+            with self.subTest(bad=bad), self.assertRaises(SettingsError):
+                self.settings.update(bad)
+        self.assertFalse((self.settings.directory / "secrets").exists())
+
+
 class SettingsGatewayTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
