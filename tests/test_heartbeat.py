@@ -1,9 +1,9 @@
-"""The heartbeat: scheduled gatherings, hard limits, no catch-up, pause and stop.
+"""The heartbeat: each agent on its own staggered clock, with hard limits.
 
-Actual temporary private stores, scripted offline HTTP, structurally blocked network.
+Actual temporary private stores, scripted offline HTTP, a scripted clock and a
+structurally blocked network.
 """
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import date, datetime, timezone
 import importlib.util
 import json
 from pathlib import Path
@@ -19,15 +19,16 @@ from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule
 from core.runtime.rehearsal.home import read_home
 from core.runtime.rehearsal.provider import OpenRouterTransport
 from core.runtime.rehearsal.store import RehearsalError, RehearsalStore
-from tests.test_rehearsal_provider import manifest
+from tests.test_day_runs import day_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = {"timezone": "UTC", "slots": ["09:30", "13:00"], "grace_minutes": 20,
-          "daily_budget_usd": "3.00", "gathering_budget_usd": "1.00", "mode": "offline"}
+# 14-minute interval: agent i is offset by 2*i minutes (tempest 9:00, siren 9:02, ...).
+CONFIG = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
+          "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live"}
 
 
-def at(hour, minute, day=18):
-    return datetime(2026, 11, day, hour, minute, tzinfo=timezone.utc)
+def at(hour, minute, day=18, month=11):
+    return datetime(2026, month, day, hour, minute, tzinfo=timezone.utc)
 
 
 class HeartbeatTests(unittest.TestCase):
@@ -40,190 +41,200 @@ class HeartbeatTests(unittest.TestCase):
             blocked.start()
             self.addCleanup(blocked.stop)
         self.clock = at(8, 0)
-        self.budgets = []
+        self.woken = []
 
-    def prepare_run(self, budget_usd):
-        self.budgets.append(budget_usd)
-        raw = manifest()
-        raw["limits"]["budget_usd"] = budget_usd
-        return self.store.prepare(raw)["run_id"]
+    def prepare_day(self, budget_usd, wakes_per_agent):
+        return self.store.prepare(day_manifest(wakes=wakes_per_agent, budget=budget_usd))["run_id"]
 
-    def run_gathering(self, run_id):
+    def run_wake(self, run_id, owner):
+        self.woken.append(owner)
         return RehearsalController(self.store, run_id, transport=OpenRouterTransport(
-            "scripted-offline", http_post=ScriptedHTTP())).run()
+            "scripted-offline", http_post=ScriptedHTTP())).run_wake(owner)
 
     def heartbeat(self, **overrides):
-        schedule = Schedule.from_config({**CONFIG, **overrides})
-        return Heartbeat(self.store, schedule, prepare_run=self.prepare_run,
-                         run_gathering=self.run_gathering, now=lambda: self.clock)
+        return Heartbeat(self.store, Schedule.from_config({**CONFIG, **overrides}),
+                         prepare_day=self.prepare_day, run_wake=self.run_wake, now=lambda: self.clock)
 
-    def ledger(self):
+    def slots(self):
         with sqlite3.connect(self.store.root / "heartbeat.sqlite3") as conn:
-            return [tuple(row) for row in conn.execute("SELECT slot,outcome,run_status FROM slots ORDER BY slot_key")]
+            return [tuple(row) for row in conn.execute(
+                "SELECT agent_id,substr(scheduled_at,12,5),outcome FROM wake_slots ORDER BY scheduled_at, agent_id")]
 
-    def test_quiet_before_the_first_slot(self):
-        self.assertEqual(self.heartbeat().tick(), {"outcome": "quiet"})
+    def test_each_agent_has_its_own_staggered_times(self):
+        schedule = Schedule.from_config(CONFIG)
+        first = {}
+        for moment, owner, _ in schedule.slots(date(2026, 11, 18)):
+            first.setdefault(owner, moment.strftime("%H:%M"))
+        self.assertEqual(first, {"tempest": "09:00", "siren": "09:02", "alchemist": "09:04", "weaver": "09:06",
+                                 "oracle": "09:08", "shadow": "09:10", "paradox_hunter": "09:12"})
+        self.assertEqual(len(set(first.values())), 7)  # Never all seven at once.
+        self.assertTrue(all(m.hour == 9 for m, _, _ in schedule.slots(date(2026, 11, 18))))  # Quiet night.
+
+    def test_quiet_outside_the_windows(self):
+        self.assertEqual(self.heartbeat().tick(), {"outcome": "quiet", "missed": 0})
         self.assertEqual(self.store.list_runs()["total"], 0)
 
-    def test_each_slot_starts_one_gathering_that_continues_the_home(self):
+    def test_wakes_arrive_one_agent_at_a_time_in_one_continuing_day(self):
         beat = self.heartbeat()
-        self.clock = at(9, 31)
+        self.clock = at(9, 1)
         first = beat.tick()
-        self.assertEqual(first["outcome"], "started")
+        self.assertEqual([w["agent_id"] for w in first["wakes"]], ["tempest"])
         self.assertIsNone(first["continued_from"])
-        self.assertEqual(first["run_status"], "completed")
-        self.assertEqual(beat.tick(), {"outcome": "quiet"})  # Same slot never runs twice.
-
-        self.clock = at(13, 5)
+        self.clock = at(9, 3)
         second = beat.tick()
-        self.assertEqual(second["continued_from"], first["run_id"])
-        self.assertEqual(read_home(self.store, second["run_id"])["previous_run_id"], first["run_id"])
-        self.assertEqual(self.ledger(), [("09:30", "started", "completed"), ("13:00", "started", "completed")])
+        self.assertEqual([w["agent_id"] for w in second["wakes"]], ["siren"])
+        self.assertEqual(second["run_id"], first["run_id"])  # Same day, same run.
+        self.assertEqual(self.store.get_run(first["run_id"])["status"], "open")
+        self.assertEqual(self.store.get_run(first["run_id"])["kind"], "day")
 
-    def test_missed_slots_are_recorded_and_never_caught_up(self):
+    def test_at_most_three_per_tick_and_late_slots_are_missed_not_caught_up(self):
         beat = self.heartbeat()
-        self.clock = at(15, 0)  # The machine was down through both slots.
-        self.assertEqual(beat.tick(), {"outcome": "quiet"})
-        self.assertEqual(self.ledger(), [("09:30", "missed", None), ("13:00", "missed", None)])
+        self.clock = at(9, 1)
+        beat.tick()  # tempest 09:00
+        self.clock = at(9, 15)  # The machine paused for a while.
+        result = beat.tick()
+        # siren 09:02 and alchemist 09:04 are more than 10 minutes late: missed.
+        self.assertEqual(result["missed"], 2)
+        self.assertEqual([w["agent_id"] for w in result["wakes"]], ["weaver", "oracle", "shadow"])
+        self.clock = at(9, 16)
+        # paradox_hunter 09:12, then tempest 09:14 and siren 09:16 (her second wake).
+        self.assertEqual([w["agent_id"] for w in beat.tick()["wakes"]], ["paradox_hunter", "tempest", "siren"])
+        outcomes = {(agent, time): outcome for agent, time, outcome in self.slots()}
+        self.assertEqual(outcomes[("siren", "09:02")], "missed")
+        self.assertEqual(outcomes[("tempest", "09:14")], "woke")
+        tempest = [job for job in self.store.list_jobs(result["run_id"]) if job["agent_id"] == "tempest"]
+        self.assertEqual([job["wake_id"] for job in tempest], ["tempest-r1", "tempest-r2"])
+
+    def test_clock_only_records_times_and_dispatches_nothing(self):
+        beat = self.heartbeat(dispatch="clock-only")
+        self.clock = at(9, 5)
+        self.assertEqual(beat.tick(), {"outcome": "clock_only", "slots": 3, "missed": 0})
         self.assertEqual(self.store.list_runs()["total"], 0)
-        self.clock = at(9, 35, day=19)  # Next day starts fresh, at its own slot only.
-        self.assertEqual(beat.tick()["outcome"], "started")
-        self.assertEqual(self.store.list_runs()["total"], 1)
+        self.assertEqual(self.woken, [])
+        self.assertEqual([outcome for _, _, outcome in self.slots()], ["clock_only"] * 3)
+        self.assertTrue(beat.status()["reason"].startswith("clock-only"))
+
+    def test_a_new_day_continues_the_home_and_closes_yesterday(self):
+        beat = self.heartbeat()
+        self.clock = at(9, 1)
+        yesterday = beat.tick()["run_id"]
+        self.clock = at(9, 1, day=19)
+        today = beat.tick()
+        self.assertNotEqual(today["run_id"], yesterday)
+        self.assertEqual(today["continued_from"], yesterday)
+        self.assertEqual(read_home(self.store, today["run_id"])["previous_run_id"], yesterday)
+        self.assertEqual(self.store.get_run(yesterday)["status"], "completed")
 
     def test_pause_resume_and_stop(self):
         beat = self.heartbeat()
-        self.clock = at(9, 31)
+        self.clock = at(9, 1)
         beat.pause()
         self.assertEqual(beat.tick(), {"outcome": "paused"})
-        self.assertEqual(self.store.list_runs()["total"], 0)
+        self.assertEqual(beat.status()["reason"], "paused")
         beat.resume()
-        self.assertEqual(beat.tick()["outcome"], "started")
-
-        running = self.prepare_run("1.00")
-        self.store.begin(running)
+        day = beat.tick()["run_id"]
         result = beat.stop()
-        self.assertTrue(result["paused"])
-        self.assertEqual(result["stop_requested"], [running])
-        self.assertEqual(self.store.get_run(running)["status"], "stopped")
-        self.assertTrue(beat.status()["paused"])
-
-    def test_a_stop_during_preparation_is_never_lost(self):
-        beat = self.heartbeat()
-        self.clock = at(9, 31)
-        beat.tick()
-        original = self.prepare_run
-
-        def prepare_then_stop(budget):
-            run_id = original(budget)
-            self.stopped = beat.stop()  # Arrives while the gathering is being prepared.
-            return run_id
-        self.prepare_run = prepare_then_stop
-        beat = self.heartbeat()
+        self.assertEqual(result["stop_requested"], [day])
+        self.assertEqual(self.store.get_run(day)["status"], "stopped")
         beat.resume()
-        self.clock = at(13, 1)
+        self.clock = at(9, 3)
+        after = beat.tick()  # A stopped day accepts no wakes; a new day continues the home.
+        self.assertNotEqual(after["run_id"], day)
+        self.assertEqual(after["continued_from"], day)
+
+    def test_a_stop_between_wakes_in_one_tick_is_never_lost(self):
+        beat = None
+        original = self.run_wake
+
+        def wake_then_stop(run_id, owner):
+            job = original(run_id, owner)
+            beat.stop()
+            return job
+        self.run_wake = wake_then_stop
+        beat = self.heartbeat()
+        self.clock = at(9, 9)  # tempest, siren, alchemist, weaver, oracle all due.
         result = beat.tick()
-        self.assertEqual(result["outcome"], "stopped")
-        run = self.store.get_run(result["run_id"])
-        self.assertEqual((run["status"], run["started_at"], run["request_count"]), ("stopped", None, 0))
+        self.assertEqual([w["agent_id"] for w in result["wakes"]], ["tempest"])
+        self.assertEqual(self.woken, ["tempest"])
         self.assertTrue(beat.paused())
 
-    def test_stop_found_before_the_run_existed_is_still_honoured(self):
-        beat = self.heartbeat()
-        original = self.prepare_run
-
-        def stop_then_prepare(budget):
-            self.stopped = beat.stop()  # Lists no runs yet; the pause marker remains.
-            return original(budget)
-        self.prepare_run = stop_then_prepare
-        beat = self.heartbeat()
-        self.clock = at(9, 31)
+    def test_over_budget_creates_no_wakes(self):
+        beat = self.heartbeat(daily_budget_usd="0")
+        self.clock = at(9, 1)
         result = beat.tick()
-        self.assertEqual(self.stopped["stop_requested"], [])
-        self.assertEqual(result["outcome"], "stopped")
-        self.assertEqual(self.store.get_run(result["run_id"])["request_count"], 0)
+        self.assertEqual(result["wakes"], [])
+        self.assertEqual(self.slots(), [("tempest", "09:00", "over_budget")])
+        self.assertEqual(self.store.list_jobs(result["run_id"]), [])
+        self.assertEqual(beat.status()["reason"], "today's budget is spent")
 
-    def test_budget_rounds_down_never_above_either_limit(self):
-        beat = self.heartbeat(daily_budget_usd="0.015", gathering_budget_usd="0.015")
-        self.clock = at(9, 31)
-        self.assertEqual(beat.tick()["budget_usd"], "0.01")
-        beat = self.heartbeat(daily_budget_usd="1.00", gathering_budget_usd="1.00")
-        self.clock = at(13, 1)
-        with patch.object(Heartbeat, "_spent_today", return_value=Decimal("0.995")):
-            self.assertEqual(beat.tick()["outcome"], "over_budget")
-
-    def test_checks_see_every_run_not_only_the_newest_hundred(self):
-        leftover = self.prepare_run("1.00")  # Oldest, and unfinished.
-        for _ in range(100):
-            self.store.request_stop(self.prepare_run("1.00"))
-        self.clock = at(9, 31)
-        result = self.heartbeat().tick()
-        self.assertEqual(result["outcome"], "blocked")
-        self.assertEqual(result["runs"], [leftover])
-
-    def test_an_unfinished_run_blocks_until_the_operator_recovers_it(self):
+    def test_an_unfinished_wake_blocks_only_that_agent(self):
         beat = self.heartbeat()
-        leftover = self.prepare_run("1.00")
-        self.clock = at(9, 31)
+        self.clock = at(9, 1)
+        day = beat.tick()["run_id"]
+        self.store.add_wake(day, "siren")  # Left unfinished, as after a crash.
+        self.clock = at(9, 5)
         result = beat.tick()
-        self.assertEqual(result["outcome"], "blocked")
-        self.assertEqual(result["runs"], [leftover])
-        self.assertEqual(self.store.list_runs()["total"], 1)
-        self.assertEqual(self.ledger(), [("09:30", "blocked", None)])
+        self.assertEqual([w["agent_id"] for w in result["wakes"]], ["alchemist"])
+        self.assertIn(("siren", "09:02", "blocked"), self.slots())
 
-    def test_daily_budget_is_enforced_in_code(self):
-        beat = self.heartbeat(daily_budget_usd="1.50", gathering_budget_usd="1.00")
-        self.clock = at(9, 31)
-        with patch.object(Heartbeat, "_spent_today", return_value=Decimal("0.75")):
-            self.assertEqual(beat.tick()["budget_usd"], "0.75")  # Never more than the day has left.
-        self.clock = at(13, 1)
-        with patch.object(Heartbeat, "_spent_today", return_value=Decimal("1.495")):
-            self.assertEqual(beat.tick()["outcome"], "over_budget")
-        self.assertEqual(self.budgets, ["0.75"])
-        self.assertEqual(self.ledger()[-1], ("13:00", "over_budget", None))
+    def test_daylight_saving_days_keep_every_wake_distinct_and_in_order(self):
+        schedule = Schedule.from_config({**CONFIG, "timezone": "America/New_York",
+                                         "active_window": ["00:30", "04:00"], "active_interval_minutes": 30})
+        for day in (date(2026, 3, 8), date(2026, 11, 1)):  # Spring forward, fall back.
+            with self.subTest(day=day):
+                slots = schedule.slots(day)
+                instants = [moment.astimezone(timezone.utc) for moment, _, _ in slots]
+                self.assertEqual(instants, sorted(instants))
+                keys = {(moment.isoformat(), owner) for moment, owner, _ in slots}
+                self.assertEqual(len(keys), len(slots))
+                self.assertEqual(len(set(instants)), len(instants))
+        spring = [m.strftime("%H:%M") for m, owner, _ in schedule.slots(date(2026, 3, 8)) if owner == "tempest"]
+        self.assertEqual(spring, ["00:30", "01:00", "01:30", "03:00", "03:30"])  # 02:00 and 02:30 never exist.
 
-    def test_a_refused_continuation_fails_closed(self):
+    def test_overlapping_ticks_report_busy(self):
+        import fcntl
         beat = self.heartbeat()
-        self.clock = at(9, 31)
-        beat.tick()
-        self.clock = at(13, 1)
-        with patch("core.runtime.rehearsal.heartbeat.continue_home", side_effect=RehearsalError("home_mode_mismatch")):
-            self.assertEqual(beat.tick()["outcome"], "failed")
-        self.clock = at(13, 2, day=19)
-        self.assertEqual(beat.tick()["outcome"], "blocked")  # Waits for the operator.
+        self.clock = at(9, 1)
+        beat.status()  # Creates the root.
+        lock = self.store.root / "heartbeat.lock"
+        lock.touch()
+        with open(lock, "r+") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assertEqual(beat.tick(), {"outcome": "busy"})
 
     def test_configuration_is_validated(self):
-        for bad in ({"slots": ["9:30"]}, {"slots": []}, {"slots": ["25:00"]},
-                    {"gathering_budget_usd": "5", "daily_budget_usd": "3"},
-                    {"mode": "real"}, {"timezone": "Not/AZone"}, {"surprise": 1},
-                    {"grace_minutes": 0}):
+        for bad in ({"active_window": ["9:00", "10:00"]}, {"active_window": ["10:00", "09:00"]},
+                    {"active_interval_minutes": 1}, {"mode": "real"}, {"timezone": "Not/AZone"},
+                    {"surprise": 1}, {"dispatch": "fast"}, {"daily_budget_usd": "-1"},
+                    {"active_window": ["00:00", "23:59"], "active_interval_minutes": 5},
+                    {"quiet_window": ["09:30", "11:00"], "quiet_interval_minutes": 60}):
             with self.subTest(bad=bad), self.assertRaises(RehearsalError):
                 Schedule.from_config({**CONFIG, **bad})
-        real = Schedule.from_config({**CONFIG, "mode": "real", "models_file": "/etc/paradoxtrader/models.json"})
-        self.assertEqual(real.mode, "real")
+        schedule = Schedule.from_config({**CONFIG, "quiet_window": ["10:00", "12:00"], "quiet_interval_minutes": 60})
+        self.assertEqual(schedule.wakes_per_agent(), 5 + 2)
 
-    def test_cli_status_and_real_mode_needs_the_key_first(self):
+    def test_cli_controls_never_need_the_key(self):
         spec = importlib.util.spec_from_file_location("heartbeat_cli", ROOT / "scripts" / "heartbeat.py")
         cli = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cli)
         config = Path(self.temp.name) / "heartbeat.json"
-        config.write_text(json.dumps(CONFIG))
-        self.assertEqual(cli.main(["--root", str(self.store.root), "--config", str(config), "status"]), 0)
+        root = ["--root", str(self.store.root), "--config", str(config)]
         config.write_text(json.dumps({**CONFIG, "mode": "real", "models_file": "/nope.json"}))
         with patch.dict("os.environ", {"REHEARSAL_OPENROUTER_API_KEY": ""}):
-            # The controls never need the provider key, so a paid gathering can always be stopped.
-            for command in ("status", "pause", "resume", "stop"):
-                self.assertEqual(cli.main(["--root", str(self.store.root), "--config", str(config), command]), 0)
+            for command in ("status", "pause", "resume", "stop", "resume"):
+                self.assertEqual(cli.main(root + [command]), 0)
             with self.assertRaises(ValueError):
-                cli.main(["--root", str(self.store.root), "--config", str(config), "tick"])
-        self.assertFalse((self.store.root / "heartbeat.sqlite3").exists() and self.ledger())
+                cli.main(root + ["tick"])  # Live real wakes need the key.
+            config.write_text(json.dumps({**CONFIG, "mode": "real", "models_file": "/nope.json",
+                                          "dispatch": "clock-only"}))
+            self.assertEqual(cli.main(root + ["tick"]), 0)  # Keeping time needs no key.
 
-    def test_timer_never_catches_up_and_service_is_not_enabled_by_the_installer(self):
+    def test_timer_ticks_every_minute_and_never_catches_up(self):
         timer = (ROOT / "deploy/systemd/paradoxtrader-heartbeat.timer").read_text()
+        self.assertIn("OnCalendar=*:*:00", timer)
         self.assertIn("Persistent=false", timer)
-        installer = (ROOT / "deploy/install_host.sh").read_text()
-        self.assertNotIn("paradoxtrader-heartbeat", installer)
-        service = (ROOT / "deploy/systemd/paradoxtrader-heartbeat.service").read_text()
-        self.assertIn("User=paradoxtrader", service)
+        self.assertNotIn("paradoxtrader-heartbeat", (ROOT / "deploy/install_host.sh").read_text())
+        self.assertIn("User=paradoxtrader", (ROOT / "deploy/systemd/paradoxtrader-heartbeat.service").read_text())
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 [Unit]
-Description=ParadoxTrader heartbeat (offers one gathering at configured slot times)
+Description=ParadoxTrader heartbeat (wakes each agent on its own staggered clock)
 # Installed but NOT enabled by install_host.sh. Enable only after the owner has
 # chosen models and budget and placed the config and key:
 #   /etc/paradoxtrader/heartbeat.json   (schedule, budgets, mode)
