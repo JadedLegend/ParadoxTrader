@@ -137,12 +137,16 @@ def main(argv=None):
             if previous['mode'] != manifest['mode']:
                 raise ValueError('home_mode_mismatch')
         summary = store.prepare(manifest, run_id=args.run_id)
+        home = None
+        if args.continues_from:
+            # Carry first: preparing profiles creates this run's own inquiry store.
+            from core.runtime.rehearsal.home import continue_home
+            home = continue_home(store, summary['run_id'], args.continues_from)
         from core.runtime.rehearsal.controller import snapshot_profiles
         snapshot_profiles(store, summary['run_id'], REPO)
         result = store.get_run(summary['run_id'])
-        if args.continues_from:
-            from core.runtime.rehearsal.home import continue_home
-            result['home'] = continue_home(store, summary['run_id'], args.continues_from)
+        if home is not None:
+            result['home'] = home
     elif args.command == 'list':
         result = store.list_runs()
     elif args.command == 'status':

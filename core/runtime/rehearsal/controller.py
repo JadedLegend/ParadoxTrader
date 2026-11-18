@@ -536,6 +536,9 @@ class RehearsalController:
 
     def _inquiry(self, job, details=None):
         wake_id, owner = job["wake_id"], job["agent_id"]
+        # A carried inquiry store holds earlier days' receipts for the same wake
+        # IDs, so continued runs scope the inquiry operation to this run.
+        operation_id = f"{self._key_scope}:{wake_id}" if self._key_scope else wake_id
         output = self.store.get_output(self.run_id, wake_id)
         errors = []
         # Rehearsal owns a process-wide controller lease. A previously staged
@@ -545,7 +548,7 @@ class RehearsalController:
             receipt = InquiryReceiptStore(_run_file(self.path, "trade_queue.sqlite3"))
             with receipt._connection() as conn:
                 conn.execute("UPDATE inquiry_operations SET claim_token=NULL,lease_until=0 WHERE agent_id=? AND operation_id=? AND status!='complete'",
-                             (owner, wake_id))
+                             (owner, operation_id))
 
         def model_call(messages):
             nonlocal output
@@ -559,7 +562,7 @@ class RehearsalController:
                     raise
             return output
 
-        result = run_inquiry(owner, wake_id, db_path=_run_file(self.path, "trade_queue.sqlite3"),
+        result = run_inquiry(owner, operation_id, db_path=_run_file(self.path, "trade_queue.sqlite3"),
                              phase=0, model_call=model_call,
                              evidence={"market_data": {"status": "unavailable"},
                                        "own_positions": {"status": "unavailable"},

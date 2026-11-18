@@ -126,9 +126,8 @@ def owner_continuity(store, run_id, job):
                 candidates.append((row["wake_id"], ref, None))
     # A continuing home also offers the owner's notes from earlier days, after
     # anything from earlier rounds today. Their memory was carried into this
-    # run, so the same journal/episode IDs are read from this run's files.
-    # Inquiries are not carried yet, so earlier-day inquiry refs are skipped.
-    from .home import previous_run_ids
+    # run, so the same journal/episode/inquiry IDs are read from this run's files.
+    from .home import CARRIED_REF_KINDS, previous_run_ids
     try:
         earlier = previous_run_ids(store, run_id)
     except RehearsalError:
@@ -143,7 +142,7 @@ def owner_continuity(store, run_id, job):
         for row in sorted((row for row in rows if row["agent_id"] == owner),
                           key=lambda row: (row["round"], row["wake_id"]), reverse=True):
             for ref in row["record_refs"]:
-                if ref["kind"] not in ("journal", "episode"):
+                if ref["kind"] not in CARRIED_REF_KINDS:
                     continue
                 key = (ref["kind"], ref["id"])
                 if key not in seen:

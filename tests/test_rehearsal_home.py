@@ -69,9 +69,15 @@ class HomeTests(unittest.TestCase):
         self.assertEqual(context["excerpts"][0]["earlier_run_id"], first)
         self.assertNotIn("wake_id", context["excerpts"][0])
 
-        # Tempest only rested and inquired: nothing to carry, nothing invented.
-        tempest = next(j for j in self.store.list_jobs(second) if j["agent_id"] == "tempest" and j["round"] == 1)
-        self.assertEqual(owner_continuity(self.store, second, tempest)["status"], "empty")
+        # Alchemist's open questions from yesterday are offered today too.
+        yesterday_questions = [ref["id"] for job in self.store.list_jobs(first) if job["agent_id"] == "alchemist"
+                               for ref in job["record_refs"] if ref["kind"] == "inquiry"]
+        self.assertEqual(len(yesterday_questions), 2)
+        alchemist = next(j for j in self.store.list_jobs(second) if j["agent_id"] == "alchemist" and j["round"] == 1)
+        context = owner_continuity(self.store, second, alchemist)
+        offered = [item for item in context["excerpts"] if item["kind"] == "inquiry"]
+        self.assertEqual({item["id"] for item in offered}, set(yesterday_questions))
+        self.assertTrue(all(item["state"] == "open" and item["earlier_run_id"] == first for item in offered))
 
         # The witness's earlier accounts about each owner are readable today.
         carried = WitnessStore(self.store.safe_run_file(second, "witness.sqlite3")).list_accounts("siren", limit=20)
@@ -82,6 +88,17 @@ class HomeTests(unittest.TestCase):
         self.assertEqual(digest_tree(self.store.run_path(first)), before)
         self.assertGreater(WitnessStore(self.store.safe_run_file(second, "witness.sqlite3"))
                            .list_accounts("siren", limit=20)["total"], carried["total"])
+
+        # Today's questions are new ones, not replays of yesterday's, and
+        # yesterday's stay alongside them in today's store.
+        today_questions = [ref["id"] for job in self.store.list_jobs(second) if job["agent_id"] == "alchemist"
+                           for ref in job["record_refs"] if ref["kind"] == "inquiry"]
+        self.assertEqual(len(today_questions), 2)
+        self.assertFalse(set(today_questions) & set(yesterday_questions))
+        with sqlite3.connect(self.store.safe_run_file(second, "trade_queue.sqlite3")) as conn:
+            stored = {row[0] for row in conn.execute(
+                "SELECT inquiry_id FROM lineage_inquiries WHERE agent_id='alchemist'")}
+        self.assertEqual(stored, set(today_questions) | set(yesterday_questions))
 
     def test_notes_carry_across_several_days(self):
         days = [self.day()]
@@ -123,6 +140,16 @@ class HomeTests(unittest.TestCase):
         self.live(started)
         with self.assertRaises(RehearsalError):
             continue_home(self.store, started, finished)
+
+    def test_must_continue_before_the_run_is_prepared_further(self):
+        from core.runtime.rehearsal.controller import snapshot_profiles
+        first = self.day()
+        self.live(first)
+        second = self.day()
+        snapshot_profiles(self.store, second)
+        with self.assertRaises(RehearsalError):
+            continue_home(self.store, second, first)
+        self.assertIsNone(read_home(self.store, second))
 
     def test_refuses_a_different_mode(self):
         first = self.day()
