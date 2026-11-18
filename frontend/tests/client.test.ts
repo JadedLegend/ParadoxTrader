@@ -166,3 +166,14 @@ describe('private host profile boundary', () => {
     expect(reader).not.toHaveBeenCalled()
   })
 })
+
+describe('private host settings routes', () => {
+  it('allows only the settings save and the connection check as writes', async () => {
+    const { isSettingsWrite, servedByPrivateHost } = await import('../src/data/client')
+    expect(isSettingsWrite('POST', '/api/settings')).toBe(true)
+    expect(isSettingsWrite('POST', '/api/settings/check')).toBe(true)
+    expect(servedByPrivateHost('/api/settings/check')).toBe(true)
+    expect(isSettingsWrite('POST', '/api/settings/other')).toBe(false)
+    expect(isSettingsWrite('GET', '/api/settings/check')).toBe(false)
+  })
+})

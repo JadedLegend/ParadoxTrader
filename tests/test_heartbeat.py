@@ -183,6 +183,19 @@ class HeartbeatTests(unittest.TestCase):
         self.assertEqual([w["agent_id"] for w in result["wakes"]], ["alchemist"])
         self.assertIn(("siren", "09:02", "blocked"), self.slots())
 
+    def test_a_failed_wake_names_the_agent_and_model(self):
+        def failing(run_id, owner):
+            job = self.store.add_wake(run_id, owner)
+            return {**job, "status": "failed", "failure_code": "http_rejected", "requested_model": "flaky/model"}
+        beat = Heartbeat(self.store, Schedule.from_config(CONFIG), prepare_day=self.prepare_day,
+                         run_wake=failing, now=lambda: self.clock)
+        self.clock = at(9, 1)
+        beat.tick()
+        problems = beat.status()["problems"]
+        self.assertEqual(len(problems), 1)
+        self.assertEqual(problems[0]["agent_id"], "tempest")
+        self.assertEqual(problems[0]["note"], "tempest on flaky/model: http_rejected")
+
     def test_daylight_saving_days_keep_every_wake_distinct_and_in_order(self):
         schedule = Schedule.from_config({**CONFIG, "timezone": "America/New_York",
                                          "active_window": ["00:30", "04:00"], "active_interval_minutes": 30})
