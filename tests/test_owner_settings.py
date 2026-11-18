@@ -189,6 +189,37 @@ class SecretSlotTests(unittest.TestCase):
             self.settings.update({"secrets": {"fmp": ""}})
         self.assertTrue(path.is_symlink())
 
+    def test_recovery_keeps_unreadable_intent_and_recovers_other_slots(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32, "bigdata": "b" * 20}})
+        with patch("core.runtime.owner_settings._SettingsConnection.commit", side_effect=sqlite3.OperationalError("locked")):
+            with self.assertRaises(sqlite3.OperationalError):
+                self.settings.update({"secrets": {"fmp": "", "bigdata": ""}})
+        path = self.settings._secret_path("fmp")
+        path.mkdir()
+        result = self.settings.update({"daily_budget_usd": "2"})
+        self.assertEqual(result["daily_budget_usd"], "2.00")
+        self.assertEqual(result["secrets"]["fmp"]["error"], "secret_unreadable")
+        self.assertIn({"field": "secret.bigdata", "value": "cleared"},
+                      [{"field": r["field"], "value": r["value"]} for r in result["history"]])
+        with self.assertRaisesRegex(SettingsError, "credential_recovery_pending"):
+            self.settings.update({"secrets": {"fmp": "g" * 32}})
+        path.rmdir()
+        self.assertEqual(self.settings.read()["history"][0]["value"], "cleared")
+
+    def test_recovery_does_not_record_unattempted_matching_intent(self):
+        self.settings.update({"secrets": {"fmp": "f" * 32, "bigdata": "b" * 20}})
+        original = Path.unlink
+        def interrupted(path, *args, **kwargs):
+            original(path, *args, **kwargs)
+            if path.name == "fmp":
+                raise KeyboardInterrupt()
+        with patch.object(Path, "unlink", interrupted):
+            with self.assertRaises(KeyboardInterrupt):
+                self.settings.update({"secrets": {"fmp": "", "bigdata": "b" * 20}})
+        history = self.settings.read()["history"]
+        self.assertEqual(history[0]["value"], "cleared")
+        self.assertEqual(sum(r["field"] == "secret.bigdata" for r in history), 1)
+
     def test_later_write_failure_records_completed_clear(self):
         self.settings.update({"secrets": {"fmp": "f" * 32}})
         with patch.object(self.settings, "_write_private", side_effect=OSError("failure")):
@@ -228,6 +259,25 @@ class SettingsGatewayTests(unittest.TestCase):
         self.client = TestClient(app, base_url="http://127.0.0.1:8080")
         self.auth = {"Authorization": "Basic " + base64.b64encode(f"owner:{PASSWORD}".encode()).decode()}
         self.write = {**self.auth, "Origin": "http://127.0.0.1:8080", "Content-Type": "application/json"}
+
+    def test_store_calls_run_off_event_loop(self):
+        import asyncio
+        from starlette.requests import Request
+        handle = gateway._settings_app(self.settings_dir)
+        def off_loop(*args):
+            with self.assertRaises(RuntimeError):
+                asyncio.get_running_loop()
+            return {}
+        async def exercise():
+            async def receive():
+                return {"type": "http.request", "body": b'{"daily_budget_usd":"1"}'}
+            for method in ("GET", "POST"):
+                response = await handle(Request({"type": "http", "method": method}, receive))
+                self.assertEqual(response.status_code, 200)
+        with patch.object(OwnerSettings, "read", side_effect=off_loop) as read, patch.object(OwnerSettings, "update", side_effect=off_loop) as update:
+            asyncio.run(exercise())
+            read.assert_called_once()
+            update.assert_called_once_with({"daily_budget_usd": "1"})
 
     def test_owner_reads_and_saves_settings(self):
         self.assertEqual(self.client.get("/api/settings", headers=self.auth).json()["key"], {"set": False, "ends_with": None})

@@ -149,6 +149,36 @@ describe('Settings page', () => {
     confirm.mockRestore()
   })
 
+  it('adopts server changes for untouched inputs while preserving real drafts', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY,
+      models: { oracle: 'example/server', siren: 'example/server' }, daily_budget_usd: '5.00',
+    })
+    render(<Settings />)
+    const oracle = await screen.findByLabelText('Oracle') as HTMLInputElement
+    fireEvent.change(screen.getByLabelText('Siren'), { target: { value: 'example/draft' } })
+    fireEvent.change(screen.getByLabelText('Financial Modeling Prep'), { target: { value: 'a'.repeat(32) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Financial Modeling Prep' }))
+    await screen.findByText('Financial Modeling Prep saved.')
+    expect(oracle.value).toBe('example/server')
+    expect((screen.getByLabelText('Siren') as HTMLInputElement).value).toBe('example/draft')
+    expect((screen.getByLabelText(/US dollars per day/) as HTMLInputElement).value).toBe('5.00')
+  })
+
+  it.each(['models', 'budget'])('preserves edits during a pending %s save', async kind => {
+    let finish!: (value: api.OwnerSettings) => void
+    vi.mocked(api.saveSettings).mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    render(<Settings />)
+    const oracle = await screen.findByLabelText('Oracle') as HTMLInputElement
+    const budget = screen.getByLabelText(/US dollars per day/) as HTMLInputElement
+    const field = kind === 'models' ? oracle : budget
+    fireEvent.change(field, { target: { value: kind === 'models' ? 'example/first' : '2' } })
+    fireEvent.click(screen.getByRole('button', { name: kind === 'models' ? 'Save models' : 'Save' }))
+    fireEvent.change(field, { target: { value: kind === 'models' ? 'example/second' : '3' } })
+    finish({ ...EMPTY, models: { oracle: 'example/first' }, daily_budget_usd: '2.00' })
+    await waitFor(() => expect((screen.getByRole('button', { name: kind === 'models' ? 'Save models' : 'Save' }) as HTMLButtonElement).disabled).toBe(false))
+    expect(field.value).toBe(kind === 'models' ? 'example/second' : '3')
+  })
+
   it('lets a model ID be typed when the catalog cannot load', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     render(<Settings />)

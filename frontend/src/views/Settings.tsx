@@ -80,17 +80,22 @@ export default function Settings() {
     if (saving) return
     const secretSlot = what.startsWith('secret.') ? what.slice(7) : null
     const submittedDraft = secretSlot ? secretDrafts[secretSlot] : undefined
+    const submittedModels = models
+    const submittedBudget = budget
     setSaving(what)
     setError('')
     setMessage('')
     try {
       const value = await saveSettings(changes)
       if (!alive.current) return
+      setModels(current => Object.fromEntries(SLOTS.map(slot => {
+        const baseline = changes.models?.[slot.id] !== undefined
+          ? submittedModels[slot.id] : settings?.models[slot.id] ?? ''
+        return [slot.id, current[slot.id] === baseline ? value.models[slot.id] ?? '' : current[slot.id]]
+      })))
+      setBudget(current => current === (changes.daily_budget_usd !== undefined
+        ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
       setSettings(value)
-      if (changes.models) setModels(current => ({ ...current,
-        ...Object.fromEntries(Object.keys(changes.models!).map(slot => [slot, value.models[slot] ?? ''])),
-      }))
-      if (changes.daily_budget_usd !== undefined) setBudget(value.daily_budget_usd ?? '')
       if (what === 'key') setKey('')
       if (secretSlot) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)

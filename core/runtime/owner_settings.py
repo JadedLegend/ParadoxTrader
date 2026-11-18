@@ -121,6 +121,8 @@ class OwnerSettings:
             conn.execute("""CREATE TABLE IF NOT EXISTS pending_credentials (
                 change_id TEXT NOT NULL, changed_at TEXT NOT NULL,
                 field TEXT PRIMARY KEY, value TEXT NOT NULL, digest TEXT)""")
+            if "attempted" not in {row["name"] for row in conn.execute("PRAGMA table_info(pending_credentials)")}:
+                conn.execute("ALTER TABLE pending_credentials ADD COLUMN attempted INTEGER NOT NULL DEFAULT 0")
             self._recover_credentials(conn)
         except BaseException:
             conn.close()
@@ -139,9 +141,14 @@ class OwnerSettings:
         with conn:
             for operation in conn.execute("SELECT * FROM pending_credentials").fetchall():
                 field = operation["field"]
-                path = (self._key_path() if field == "openrouter_key"
-                        else self._secret_path(field.removeprefix("secret.")))
-                if self._digest(path) == operation["digest"]:
+                try:
+                    path = (self._key_path() if field == "openrouter_key"
+                            else self._secret_path(field.removeprefix("secret.")))
+                    digest = self._digest(path)
+                except (OSError, SettingsError):
+                    # Leave this intent unresolved; other slots can still recover.
+                    continue
+                if operation["attempted"] and digest == operation["digest"]:
                     conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
                                  (operation["change_id"], operation["changed_at"], field, operation["value"]))
                 conn.execute("DELETE FROM pending_credentials WHERE field=?", (field,))
@@ -301,6 +308,9 @@ class OwnerSettings:
                 conn.execute("INSERT INTO history(change_id,changed_at,field,value) VALUES (?,?,?,?)",
                              (change_id, now, field, json.dumps(value)))
 
+            pending = {row["field"] for row in conn.execute("SELECT field FROM pending_credentials")}
+            if pending.intersection(field for _, _, field in mutations):
+                raise SettingsError("credential_recovery_pending")
             # Commit intent before touching files. The connection's lock prevents
             # another process from recovering an operation still being applied.
             with conn:
@@ -308,12 +318,16 @@ class OwnerSettings:
                     recorded = ("cleared" if value == "" else
                                 "set, ends in ..." + value[-4:] if field == "openrouter_key" else "set")
                     digest = hashlib.sha256((value + "\n").encode()).hexdigest() if value else None
-                    conn.execute("INSERT INTO pending_credentials VALUES (?,?,?,?,?)",
+                    conn.execute("INSERT INTO pending_credentials (change_id,changed_at,field,value,digest) VALUES (?,?,?,?,?)",
                                  (change_id, now, field, json.dumps(recorded), digest))
-            conn.execute("BEGIN IMMEDIATE")
             applied = []
             try:
                 for path, value, field in mutations:
+                    # Persist operation-specific evidence before attempting this
+                    # write. Later batch entries must not look completed merely
+                    # because their desired value already exists.
+                    with conn:
+                        conn.execute("UPDATE pending_credentials SET attempted=1 WHERE field=?", (field,))
                     if value == "":
                         try:
                             path.unlink()
