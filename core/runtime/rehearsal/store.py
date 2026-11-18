@@ -693,7 +693,7 @@ class RehearsalStore:
     def _local_context_refs(cls, connection, job, refs, carried=frozenset()):
         """Validate refs against earlier linked jobs, never foreign memory DBs.
 
-        ``carried`` holds this owner's journal/episode refs from earlier runs of a
+        ``carried`` holds this owner's journal/episode/inquiry refs from earlier runs of a
         continuing home; such refs carry no wake_id of this run.
         """
         for ref in refs:
@@ -714,14 +714,14 @@ class RehearsalStore:
                 raise RehearsalConflict("context reference is not owner local")
 
     def _carried_refs(self, run_id, owner):
-        """This owner's journal/episode refs from earlier runs of its home."""
-        from .home import previous_run_ids
+        """This owner's carried refs from earlier runs of its home."""
+        from .home import CARRIED_REF_KINDS, previous_run_ids
         carried = set()
         for previous in previous_run_ids(self, run_id):
             for row in self.list_jobs(previous):
                 if row["agent_id"] == owner:
                     carried.update((ref["kind"], ref["id"]) for ref in row["record_refs"]
-                                   if ref["kind"] in ("journal", "episode"))
+                                   if ref["kind"] in CARRIED_REF_KINDS)
         return frozenset(carried)
 
     @staticmethod

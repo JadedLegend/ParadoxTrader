@@ -11,7 +11,9 @@ retried. Each copy is made with SQLite's online backup into a temporary file
 that is integrity-checked and then renamed into place, so a crash never leaves
 a half-written database. Nothing here makes a model call.
 
-Inquiries (trade_queue.sqlite3) are not carried yet.
+The inquiry store (trade_queue.sqlite3) carries too, so open questions remain
+open the next day and can be revisited. It must be carried before the run's
+profiles and cohort are prepared, which create that file.
 """
 from contextlib import closing
 import json
@@ -25,7 +27,9 @@ from .store import OWNERS, RehearsalConflict, RehearsalError, _uuid
 HOME_FILE = "home.json"
 SCHEMA_VERSION = 1
 CARRIED_STATUSES = ("completed", "partial", "stopped")
-CARRIED_FILES = (*(f"memory/{owner}.sqlite3" for owner in OWNERS), "witness.sqlite3")
+CARRIED_FILES = (*(f"memory/{owner}.sqlite3" for owner in OWNERS), "witness.sqlite3",
+                 "trade_queue.sqlite3")
+CARRIED_REF_KINDS = ("journal", "episode", "inquiry")
 MAX_LOOKBACK = 3
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
@@ -142,6 +146,11 @@ def continue_home(store, run_id, previous_run_id):
         raise RehearsalError("home_mode_mismatch")
     if run_id in previous_run_ids(store, previous_run_id, limit=1000):
         raise RehearsalError("invalid_home_link")
+    if read_home(store, run_id) is None and (
+            store.safe_run_file(run_id, "profiles/snapshot.json").exists()
+            or store.safe_run_file(run_id, "trade_queue.sqlite3").exists()):
+        # The inquiry store would already be this run's own; continue first.
+        raise RehearsalError("home_link_after_profiles")
     _write_link(store, run_id, previous_run_id)
     carried = [relative for relative in CARRIED_FILES if _carry(store, previous_run_id, run_id, relative)]
     present = [relative for relative in CARRIED_FILES if store.safe_run_file(run_id, relative).exists()]
