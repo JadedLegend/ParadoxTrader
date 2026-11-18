@@ -1,0 +1,19 @@
+{
+  "run_id": "1ccd6e18-6523-476c-a9f5-97dd075903f3-51-cee890a9c5a04bf0b24da2dbbdf3c380",
+  "verdicts": [
+    {
+      "action": "patch",
+      "name": "paradox-trader-agent-heartbeat",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "patch",
+      "name": "windows-powershell-via-bash",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    }
+  ]
+}

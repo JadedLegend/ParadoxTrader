@@ -1,0 +1,33 @@
+{
+  "run_id": "1ccd6e18-6523-476c-a9f5-97dd075903f3-66-a913e06d070446999921483077e53344",
+  "verdicts": [
+    {
+      "action": "patch",
+      "name": "shared-repo-branch-isolation",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "patch",
+      "name": "paradox-trader-python-tests",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "patch",
+      "name": "paradox-trader-dashboard-preview",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "create",
+      "name": "paradox-trader-write-only-secrets",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "run_id": "1ccd6e18-6523-476c-a9f5-97dd075903f3-51-4e433629bebf4d4289e4d73bbd0e1d8e",
+  "verdicts": [
+    {
+      "action": "patch",
+      "name": "paradox-trader-dashboard-preview",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "patch",
+      "name": "paradox-trader-dashboard-preview",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "patch",
+      "name": "paradox-trader-agent-heartbeat",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "create",
+      "name": "paradox-trader-settings-endpoints",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    },
+    {
+      "action": "create",
+      "name": "provider-key-model-check",
+      "ok": true,
+      "findings": [],
+      "notes": []
+    }
+  ]
+}
