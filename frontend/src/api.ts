@@ -51,6 +51,16 @@ export interface SettingsChanges {
 }
 export const getSettings = () => request<OwnerSettings>('GET', '/api/settings')
 export const saveSettings = (changes: SettingsChanges) => request<OwnerSettings>('POST', '/api/settings', changes)
+export type CheckStatus = 'ok' | 'warn' | 'fail'
+export interface ConnectionCheck {
+  checked_at: string
+  status: CheckStatus
+  key: { status: CheckStatus; message: string }
+  models: { model: string; used_by: string[]; kind: 'free' | 'paid' | 'unknown'; status: CheckStatus; message: string }[]
+  unset: string[]
+  free_limits_url: string
+}
+export const checkConnection = () => request<ConnectionCheck>('POST', '/api/settings/check', {})
 export const updateConfig = (key_path: string, value: unknown) => request<any>('POST', '/api/config', { key_path, value })
 export const setPhase = (phase: number) => request<any>('POST', '/api/phase', { phase })
 export const setCountdown = (target_iso: string) => request<any>('POST', '/api/countdown', { target_iso })

@@ -411,7 +411,12 @@ class Heartbeat:
                     except RehearsalError as error:
                         self._record(conn, slot, "not_started", run_id=run_id, note=str(error))
                         continue
-                    self._record(conn, slot, "woke", run_id=run_id, wake_id=job["wake_id"])
+                    note = None
+                    if job.get("status") not in (None, "completed"):
+                        # Name the agent and model so a model that stops answering is easy to find.
+                        note = (f"{owner} on {job.get('requested_model') or 'unknown model'}: "
+                                f"{job.get('failure_code') or job.get('status')}")
+                    self._record(conn, slot, "woke", run_id=run_id, wake_id=job["wake_id"], note=note)
                     conn.execute("UPDATE wake_slots SET wake_status=?,finished_at=? WHERE slot_key=?",
                                  (job["status"], self.now().isoformat(), self._key(slot)))
                     conn.commit()
@@ -453,6 +458,8 @@ class Heartbeat:
         counts = {}
         for row in rows:
             counts[row["outcome"]] = counts.get(row["outcome"], 0) + 1
+        problems = [{"agent_id": row["agent_id"], "scheduled_at": row["scheduled_at"], "note": row["note"]}
+                    for row in rows if row["wake_status"] in ("failed", "uncertain")]
         return {"reason": reason, "paused": self.paused(), "dispatch": self.schedule.dispatch,
                 "mode": self.schedule.mode, "local_time": local.isoformat(),
                 "today": {"run_id": run["run_id"] if run else None,
@@ -460,4 +467,4 @@ class Heartbeat:
                           "reserved_usd": format(reserved, "f"),
                           "daily_budget_usd": format(self.daily_budget(), "f"),
                           "slot_outcomes": counts},
-                "next_wake_by_agent": next_wakes}
+                "next_wake_by_agent": next_wakes, "problems": problems}

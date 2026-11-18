@@ -7,7 +7,7 @@ import { createApiClient } from '../src/data/client'
 
 vi.mock('../src/api', async importOriginal => ({
   ...(await importOriginal<typeof import('../src/api')>()),
-  getSettings: vi.fn(), saveSettings: vi.fn(),
+  getSettings: vi.fn(), saveSettings: vi.fn(), checkConnection: vi.fn(),
 }))
 
 const EMPTY: api.OwnerSettings = { models: {}, daily_budget_usd: null, key: { set: false, ends_with: null }, history: [] }
@@ -24,6 +24,26 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Settings page', () => {
+  it('checks the connection and names the agents and model that failed', async () => {
+    vi.mocked(api.checkConnection).mockReset().mockResolvedValue({
+      checked_at: '2026-11-18T14:00:00Z', status: 'fail', free_limits_url: 'https://openrouter.ai/collections/free-models',
+      key: { status: 'ok', message: 'The key works.' },
+      models: [
+        { model: 'xiaomi/mimo-v2.6-flash', used_by: ['Siren', 'Shadow'], kind: 'paid', status: 'ok', message: '3 providers serving it.' },
+        { model: 'baidu/ernie-5.5-flash-preview:free', used_by: ['Alchemist'], kind: 'free', status: 'fail', message: 'rate limited' },
+      ],
+      unset: ['Witness'],
+    })
+    render(<Settings />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Check connection' }))
+    expect(await screen.findByText('Something is not working.')).toBeTruthy()
+    expect(screen.getByText('Siren, Shadow')).toBeTruthy()
+    expect(screen.getByText('baidu/ernie-5.5-flash-preview:free')).toBeTruthy()
+    expect(screen.getByText(/rate limited/)).toBeTruthy()
+    expect(screen.getByText(/That is fine for now/)).toBeTruthy()
+    expect(api.checkConnection).toHaveBeenCalledTimes(1)
+  })
+
   it('shows all seven agents plus the witness, and that no key is set', async () => {
     render(<Settings />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getSettings, saveSettings, type OwnerSettings, type SettingsChanges } from '../api'
+import { checkConnection, getSettings, saveSettings, type ConnectionCheck, type OwnerSettings, type SettingsChanges } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 
 const SLOTS = [...REHEARSAL_AGENTS.map(agent => ({ id: agent.id as string, name: agent.name })), { id: 'witness', name: 'Witness' }]
@@ -29,6 +29,8 @@ const FIELD_LABEL: Record<string, string> = {
   daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key',
   ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
 }
+
+const MARK = { ok: '✓', warn: '!', fail: '✕' } as const
 
 interface CatalogModel { id: string; prompt: number; completion: number }
 
@@ -69,6 +71,23 @@ export default function Settings() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const alive = useRef(true)
+  const [check, setCheck] = useState<ConnectionCheck | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checkError, setCheckError] = useState('')
+
+  const runCheck = async () => {
+    if (checking) return
+    setChecking(true)
+    setCheckError('')
+    try {
+      const value = await checkConnection()
+      if (alive.current) setCheck(value)
+    } catch {
+      if (alive.current) setCheckError('The check could not run. Wait a few seconds and try again.')
+    } finally {
+      if (alive.current) setChecking(false)
+    }
+  }
 
   const apply = (value: OwnerSettings) => {
     setSettings(value)
@@ -198,6 +217,36 @@ export default function Settings() {
           <p className="settings-note">Stored only on your server, readable by the agents' service. This page never receives it back.</p>
         </section>
       </div>
+
+      <section className="card mb-16" aria-labelledby="settings-check">
+        <h2 className="card-title" id="settings-check">Connection</h2>
+        <p className="settings-help">Checks your key and each model you chose. Free models get a tiny reply test with every
+          price cap at zero; paid models get an endpoint check, so no paid reply is sent. Free tests count toward
+          {' '}<a href={check?.free_limits_url ?? 'https://openrouter.ai/collections/free-models'} target="_blank" rel="noreferrer">OpenRouter's free-model limits</a>.
+          It checks the saved settings, so save first.</p>
+        <button className="btn btn-primary" disabled={checking} onClick={() => void runCheck()}>
+          {checking ? 'Checking...' : 'Check connection'}
+        </button>
+        {checkError && <div className="error-msg mt-8" role="alert">{checkError}</div>}
+        {check && <div className="settings-check" aria-live="polite">
+          <p className="settings-check-summary">{check.status === 'ok' ? 'Everything answered.'
+            : check.status === 'warn' ? 'Working, with something to look at.' : 'Something is not working.'}
+            {' '}<span className="settings-note">Checked {new Date(check.checked_at).toLocaleString()}</span></p>
+          <ul className="settings-check-list">
+            <li className={`check-${check.key.status}`}><span className="check-mark">{MARK[check.key.status]}</span>
+              <span><strong>OpenRouter key</strong> {check.key.message}</span></li>
+            {check.models.map(row => <li key={row.model} className={`check-${row.status}`}>
+              <span className="check-mark">{MARK[row.status]}</span>
+              <span><strong>{row.used_by.join(', ')}</strong> <code>{row.model}</code>
+                {' '}<span className="tag">{row.kind}</span> {row.message}</span>
+            </li>)}
+            {check.unset.map(name => <li key={name} className={name === 'Witness' ? 'check-ok' : 'check-warn'}>
+              <span className="check-mark">{name === 'Witness' ? '–' : MARK.warn}</span>
+              <span><strong>{name}</strong> {name === 'Witness' ? 'No model yet. That is fine for now.' : 'No model chosen, so this agent cannot wake.'}</span>
+            </li>)}
+          </ul>
+        </div>}
+      </section>
 
       <section className="card mb-16" aria-labelledby="settings-secrets">
         <h2 className="card-title" id="settings-secrets">Data and broker keys</h2>

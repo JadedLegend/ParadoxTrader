@@ -7,6 +7,7 @@ Boundaries (see README "VPS handoff"):
 - Never imports the broad legacy app (``api/app.py``); no scheduler, model call
   or broker access exists here. Only GET/HEAD are accepted, with one exception:
   ``POST /api/settings`` saves the owner's settings (key, models, daily budget).
+  ``POST /api/settings/check`` checks the OpenRouter key and chosen models (no paid generation).
   It needs the owner login, a same-origin ``Origin`` header and a JSON body of
   at most 8 KB, and its responses never contain the key.
 - The operator token stays server-side: the gateway injects it into the
@@ -86,16 +87,18 @@ def _check_basic(header, user, password_hash):
 
 
 SETTINGS_PATH = "/api/settings"
+CHECK_PATH = "/api/settings/check"
 MAX_SETTINGS_BODY = 8192
+CHECK_COOLDOWN_SECONDS = 15
 
 
 def _same_origin_write(scope, headers):
-    """The single allowed write: POST /api/settings, JSON, from this site only.
+    """The only writes: POST /api/settings and /api/settings/check, JSON, from this site only.
 
     Browsers always send Origin on a POST, so a page on another site (which
     could otherwise reuse the cached login) is refused before any handler runs.
     """
-    if scope["method"] != "POST" or scope.get("path") != SETTINGS_PATH:
+    if scope["method"] != "POST" or scope.get("path") not in (SETTINGS_PATH, CHECK_PATH):
         return False
     origin, host = headers.get("origin"), headers.get("host")
     if not origin or not host or origin not in (f"http://{host}", f"https://{host}"):
@@ -215,8 +218,41 @@ def _settings_app(settings_dir):
     return handle
 
 
+def _check_app(settings_dir, check=None):
+    """Check connection. One at a time, and not more than once every few seconds,
+    so a double click cannot spend the free-model request limit."""
+    import threading
+    import time
+    from core.runtime.owner_settings import OwnerSettings
+    from starlette.concurrency import run_in_threadpool
+    if check is None:
+        from core.runtime.openrouter_check import check_connection as check
+    store = OwnerSettings(settings_dir)
+    lock = threading.Lock()
+    last = [0.0]
+
+    def run():
+        if not lock.acquire(blocking=False):
+            return None
+        try:
+            if time.monotonic() - last[0] < CHECK_COOLDOWN_SECONDS:
+                return None
+            last[0] = time.monotonic()
+            return check(store.key(), store.models())
+        finally:
+            lock.release()
+
+    async def handle(request):
+        result = await run_in_threadpool(run)
+        if result is None:
+            return JSONResponse({"error": "check_already_running"}, status_code=429, headers=SECURITY_HEADERS)
+        return JSONResponse(result, headers=SECURITY_HEADERS)
+
+    return handle
+
+
 def create_gateway(*, sessions_root, frontend_dist, operator_token, user, password_hash,
-                   settings_dir="/var/lib/paradoxtrader/settings"):
+                   settings_dir="/var/lib/paradoxtrader/settings", connection_check=None):
     if not operator_token or not operator_token.strip():
         raise ValueError("operator_token_missing")
     if not user or not password_hash:
@@ -227,6 +263,7 @@ def create_gateway(*, sessions_root, frontend_dist, operator_token, user, passwo
     site = Starlette(
         routes=[
             Route(SETTINGS_PATH, _settings_app(settings_dir), methods=["GET", "HEAD", "POST"]),
+            Route(CHECK_PATH, _check_app(settings_dir, connection_check), methods=["POST"]),
             Route("/api/{rest:path}", _unknown_api, methods=["GET", "HEAD"]),
             Route("/{path:path}", _static_app(frontend_dist), methods=["GET", "HEAD"]),
         ],

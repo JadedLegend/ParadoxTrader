@@ -439,3 +439,12 @@ a.btn { display: inline-block; text-decoration: none; }
 .settings-group-title { font-weight: 600; }
 .settings-group[open] > summary { padding-bottom: 4px; }
 .settings-group > .settings-secrets { margin-top: 12px; }
+.settings-check { margin-top: 16px; }
+.settings-check-summary { font-weight: 600; margin-bottom: 8px; }
+.settings-check-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.settings-check-list li { display: flex; gap: 10px; align-items: baseline; line-height: 1.5; overflow-wrap: anywhere; }
+.check-mark { flex: none; width: 1.2em; text-align: center; font-weight: 700; }
+.check-ok .check-mark { color: var(--success); }
+.check-warn .check-mark { color: #f6c453; }
+.check-fail .check-mark { color: var(--danger); }
+.check-fail strong { color: var(--danger); }
