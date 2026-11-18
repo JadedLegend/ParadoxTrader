@@ -1,0 +1,23 @@
+[Unit]
+Description=ParadoxTrader connection check (tests the OpenRouter key and chosen models; no paid replies)
+# Started by paradoxtrader-check.path when the Settings page leaves a request.
+# The dashboard has no internet; this short job is the only part that goes online for the check.
+
+[Service]
+Type=oneshot
+User=paradoxtrader
+Group=paradoxtrader
+WorkingDirectory=/opt/paradoxtrader/current
+ExecStart=/opt/paradoxtrader/venv/bin/python scripts/check_connection.py --settings /var/lib/paradoxtrader/settings
+TimeoutStartSec=180
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/paradoxtrader/settings
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0077

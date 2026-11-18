@@ -12,7 +12,9 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from core.runtime.openrouter_check import check_connection
+from datetime import datetime, timezone
+
+from core.runtime.openrouter_check import check_connection, check_state, request_check, run_pending
 from core.runtime.owner_settings import OwnerSettings
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "deploy"))
@@ -124,7 +126,9 @@ class CheckConnectionTests(unittest.TestCase):
         self.assertIn("could not reach", result["key"]["message"])
 
 
-class CheckRouteTests(unittest.TestCase):
+class CheckHandoffTests(unittest.TestCase):
+    """The offline dashboard leaves a request; the check service answers it."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -134,33 +138,55 @@ class CheckRouteTests(unittest.TestCase):
         self.settings_dir = root / "settings"
         OwnerSettings(self.settings_dir).update({"openrouter_key": KEY, "models": {"siren": "paid/model"}})
         self.calls = []
-
-        def fake_check(key, chosen):
-            self.calls.append((key, chosen["siren"]))
-            return {"status": "ok", "key": {"status": "ok", "message": "fine"}, "models": [], "unset": []}
-
         app = gateway.create_gateway(sessions_root=root / "sessions", frontend_dist=root / "dist",
                                      operator_token="server-side-token", user="owner",
                                      password_hash=gateway.hash_password("pw", iterations=1000),
-                                     settings_dir=self.settings_dir, connection_check=fake_check)
+                                     settings_dir=self.settings_dir)
         self.client = TestClient(app)
         auth = {"Authorization": "Basic " + base64.b64encode(b"owner:pw").decode()}
+        self.auth = auth
         self.write = {**auth, "Origin": "http://testserver", "Content-Type": "application/json"}
 
-    def test_the_check_needs_login_and_same_origin_and_uses_the_saved_key(self):
+    def fake_check(self, key, chosen):
+        self.calls.append((key, chosen["siren"]))
+        return {"checked_at": datetime.now(timezone.utc).isoformat(), "status": "ok",
+                "key": {"status": "ok", "message": "fine"}, "models": [], "unset": []}
+
+    def test_the_page_asks_and_the_service_answers_without_the_dashboard_going_online(self):
+        self.assertEqual(self.client.get("/api/settings/check", headers=self.auth).json()["state"], "none")
+        asked = self.client.post("/api/settings/check", content="{}", headers=self.write)
+        self.assertEqual((asked.status_code, asked.json()["state"]), (202, "pending"))
+        self.assertEqual(self.calls, [])  # The dashboard never runs the check.
+        run_pending(self.settings_dir, check=self.fake_check)
+        self.assertEqual(self.calls, [(KEY, "paid/model")])  # The saved key and models.
+        answer = self.client.get("/api/settings/check", headers=self.auth).json()
+        self.assertEqual((answer["state"], answer["result"]["status"]), ("done", "ok"))
+        self.assertNotIn(KEY, json.dumps(answer))
+        self.assertIsNone(run_pending(self.settings_dir, check=self.fake_check))  # Request cleared.
+
+    def test_the_request_needs_login_and_same_origin(self):
         self.assertEqual(self.client.post("/api/settings/check", content="{}",
                                           headers={k: v for k, v in self.write.items() if k != "Authorization"}).status_code, 401)
         self.assertEqual(self.client.post("/api/settings/check", content="{}",
                                           headers={**self.write, "Origin": "https://evil.example"}).status_code, 405)
-        response = self.client.post("/api/settings/check", content="{}", headers=self.write)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.calls, [(KEY, "paid/model")])
-        self.assertNotIn(KEY, response.text)
+        self.assertEqual(check_state(self.settings_dir)["state"], "none")
 
-    def test_a_second_click_within_seconds_does_not_spend_another_check(self):
-        self.assertEqual(self.client.post("/api/settings/check", content="{}", headers=self.write).status_code, 200)
-        self.assertEqual(self.client.post("/api/settings/check", content="{}", headers=self.write).status_code, 429)
+    def test_repeat_clicks_do_not_queue_extra_checks(self):
+        request_check(self.settings_dir)
+        request_check(self.settings_dir)
+        run_pending(self.settings_dir, check=self.fake_check)
+        request_check(self.settings_dir)  # Within seconds of the last answer.
+        self.assertIsNone(run_pending(self.settings_dir, check=self.fake_check))
         self.assertEqual(len(self.calls), 1)
+
+    def test_a_crashing_check_still_leaves_an_answer_and_clears_the_request(self):
+        def broken(key, chosen):
+            raise RuntimeError("boom " + key)
+        request_check(self.settings_dir)
+        run_pending(self.settings_dir, check=broken)
+        state = check_state(self.settings_dir)
+        self.assertEqual((state["state"], state["result"]["status"]), ("done", "fail"))
+        self.assertNotIn(KEY, json.dumps(state))
 
 
 if __name__ == "__main__":

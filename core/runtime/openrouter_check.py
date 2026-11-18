@@ -12,14 +12,24 @@ Run from the Settings page. Costs nothing:
 
 Every result names the agents that use the model. The key never appears in
 the result; OpenRouter's own error text is shortened and scrubbed of it.
+
+The dashboard has no internet on purpose, so it never runs the check itself.
+It leaves a request file under ``<settings>/check/``; a small separate service
+that may go online (paradoxtrader-check, started by a systemd path unit) runs
+``run_pending`` and leaves ``result.json`` for the page to read.
 """
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+import json
+import os
+from pathlib import Path
 from urllib.parse import quote
+from uuid import uuid4
 
 API = "https://openrouter.ai/api/v1"
-TIMEOUT_SECONDS = 25
+TIMEOUT_SECONDS = 12
+COOLDOWN_SECONDS = 15
 FREE_LIMITS_URL = "https://openrouter.ai/collections/free-models"
 _STATUS_WORDS = {
     400: "OpenRouter refused the request",
@@ -183,3 +193,89 @@ def check_connection(key, models, *, http_get=None, http_post=None, now=None):
     return {"checked_at": stamp, "status": overall,
             "key": {"status": key_state["status"], "message": key_state["message"]},
             "models": results, "unset": unset, "free_limits_url": FREE_LIMITS_URL}
+
+
+# ---- request and answer files (dashboard <-> check service) -----------------
+def _check_dir(settings_dir):
+    return Path(settings_dir) / "check"
+
+
+def _write_json(path, value):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = path.parent / f".{path.name}.{uuid4().hex}"
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(value, handle)
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _read_json(path):
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _now_iso(now=None):
+    return (now or (lambda: datetime.now(timezone.utc)))().isoformat()
+
+
+def check_state(settings_dir):
+    """What the page shows: a pending request, the last answer, or nothing yet."""
+    folder = _check_dir(settings_dir)
+    request = _read_json(folder / "request.json")
+    result = _read_json(folder / "result.json")
+    return {"state": "pending" if request else "done" if result else "none",
+            "requested_at": (request or {}).get("requested_at"), "result": result}
+
+
+def request_check(settings_dir, *, now=None):
+    """Leave a request for the check service. A repeat click while one is
+    pending, or within a few seconds of the last answer, adds nothing."""
+    folder = _check_dir(settings_dir)
+    state = check_state(settings_dir)
+    if state["state"] == "pending":
+        return state
+    last = (state["result"] or {}).get("checked_at")
+    stamp = _now_iso(now)
+    if last:
+        try:
+            age = (datetime.fromisoformat(stamp) - datetime.fromisoformat(last)).total_seconds()
+        except ValueError:
+            age = COOLDOWN_SECONDS
+        if 0 <= age < COOLDOWN_SECONDS:
+            return state
+    _write_json(folder / "request.json", {"requested_at": stamp})
+    return check_state(settings_dir)
+
+
+def run_pending(settings_dir, *, check=None, now=None):
+    """Run by the check service: answer a pending request, then clear it."""
+    from core.runtime.owner_settings import OwnerSettings
+    folder = _check_dir(settings_dir)
+    request = folder / "request.json"
+    if not request.exists():
+        return None
+    try:
+        store = OwnerSettings(settings_dir)
+        try:
+            result = (check or check_connection)(store.key(), store.models())
+        except Exception as error:  # Always leave an answer; never the key.
+            result = {"checked_at": _now_iso(now), "status": "fail", "models": [], "unset": [],
+                      "free_limits_url": FREE_LIMITS_URL,
+                      "key": {"status": "fail", "message": f"The check itself failed ({type(error).__name__})."}}
+        _write_json(folder / "result.json", result)
+        return result
+    finally:
+        try:
+            request.unlink()
+        except FileNotFoundError:
+            pass

@@ -7,7 +7,7 @@ import { createApiClient } from '../src/data/client'
 
 vi.mock('../src/api', async importOriginal => ({
   ...(await importOriginal<typeof import('../src/api')>()),
-  getSettings: vi.fn(), saveSettings: vi.fn(), checkConnection: vi.fn(),
+  getSettings: vi.fn(), saveSettings: vi.fn(), checkConnection: vi.fn(), getConnectionCheck: vi.fn(),
 }))
 
 const EMPTY: api.OwnerSettings = { models: {}, daily_budget_usd: null, key: { set: false, ends_with: null }, history: [] }
@@ -19,13 +19,14 @@ const CATALOG = { data: [
 beforeEach(() => {
   vi.mocked(api.getSettings).mockReset().mockResolvedValue(EMPTY)
   vi.mocked(api.saveSettings).mockReset()
+  vi.mocked(api.getConnectionCheck).mockReset().mockResolvedValue({ state: 'none', requested_at: null, result: null })
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => CATALOG }))
 })
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Settings page', () => {
   it('checks the connection and names the agents and model that failed', async () => {
-    vi.mocked(api.checkConnection).mockReset().mockResolvedValue({
+    const result: api.ConnectionCheck = {
       checked_at: '2026-11-18T14:00:00Z', status: 'fail', free_limits_url: 'https://openrouter.ai/collections/free-models',
       key: { status: 'ok', message: 'The key works.' },
       models: [
@@ -33,15 +34,22 @@ describe('Settings page', () => {
         { model: 'baidu/ernie-5.5-flash-preview:free', used_by: ['Alchemist'], kind: 'free', status: 'fail', message: 'rate limited' },
       ],
       unset: ['Witness'],
-    })
+    }
+    vi.mocked(api.checkConnection).mockReset().mockResolvedValue({ state: 'pending', requested_at: '2026-11-18T14:00:00Z', result: null })
+    vi.mocked(api.getConnectionCheck).mockReset()
+      .mockResolvedValueOnce({ state: 'none', requested_at: null, result: null })
+      .mockResolvedValue({ state: 'done', requested_at: null, result })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     render(<Settings />)
     fireEvent.click(await screen.findByRole('button', { name: 'Check connection' }))
+    await vi.advanceTimersByTimeAsync(2500)
     expect(await screen.findByText('Something is not working.')).toBeTruthy()
     expect(screen.getByText('Siren, Shadow')).toBeTruthy()
     expect(screen.getByText('baidu/ernie-5.5-flash-preview:free')).toBeTruthy()
     expect(screen.getByText(/rate limited/)).toBeTruthy()
     expect(screen.getByText(/That is fine for now/)).toBeTruthy()
     expect(api.checkConnection).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 
   it('shows all seven agents plus the witness, and that no key is set', async () => {

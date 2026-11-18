@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { checkConnection, getSettings, saveSettings, type ConnectionCheck, type OwnerSettings, type SettingsChanges } from '../api'
+import { checkConnection, getConnectionCheck, getSettings, saveSettings, type ConnectionCheck, type OwnerSettings, type SettingsChanges } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 
 const SLOTS = [...REHEARSAL_AGENTS.map(agent => ({ id: agent.id as string, name: agent.name })), { id: 'witness', name: 'Witness' }]
@@ -33,6 +33,8 @@ const FIELD_LABEL: Record<string, string> = {
 }
 
 const MARK = { ok: '✓', warn: '!', fail: '✕' } as const
+const CHECK_POLL_MS = 2000
+const CHECK_WAIT_MS = 120000
 
 interface CatalogModel { id: string; prompt: number; completion: number }
 
@@ -77,13 +79,21 @@ export default function Settings() {
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState('')
 
+  // The dashboard stays offline; a separate service runs the check and leaves the answer here.
   const runCheck = async () => {
     if (checking) return
     setChecking(true)
     setCheckError('')
     try {
-      const value = await checkConnection()
-      if (alive.current) setCheck(value)
+      let state = await checkConnection()
+      const deadline = Date.now() + CHECK_WAIT_MS
+      while (alive.current && state.state === 'pending' && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, CHECK_POLL_MS))
+        state = await getConnectionCheck()
+      }
+      if (!alive.current) return
+      if (state.state === 'done' && state.result) setCheck(state.result)
+      else setCheckError('No answer from the check service yet. Try again in a minute.')
     } catch {
       if (alive.current) setCheckError('The check could not run. Wait a few seconds and try again.')
     } finally {
@@ -104,6 +114,7 @@ export default function Settings() {
       .catch(() => { if (alive.current) setLoadError('Settings could not be loaded. Reload this page to try again; nothing was changed.') })
     loadCatalog(controller.signal).then(rows => { if (alive.current) setCatalog(rows) })
       .catch(() => { if (alive.current) setCatalogFailed(true) })
+    getConnectionCheck().then(value => { if (alive.current && value?.result) setCheck(value.result) }).catch(() => undefined)
     return () => { alive.current = false; controller.abort() }
   }, [])
 
