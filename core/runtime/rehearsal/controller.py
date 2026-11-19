@@ -313,10 +313,12 @@ def _memory_effect(memory, wake_id, action, output, library_refs=None, key_scope
 
 
 class RehearsalController:
-    def __init__(self, store, run_id, *, transport, repo_root=None, market=None):
+    def __init__(self, store, run_id, *, transport, repo_root=None, market=None, feeds=None):
         """``market()`` returns the shared market window record (read-only), or
-        None for no window; see core/market/window.py."""
+        None for no window; see core/market/window.py. ``feeds()`` returns the
+        cached headlines and X posts; see core/market/feeds.py."""
         self.market = market
+        self.feeds = feeds
         self.store = store
         self.run_id = run_id
         self.transport = transport
@@ -386,6 +388,13 @@ class RehearsalController:
                 record = {"status": "unavailable", "reason": "the window could not be read"}
             private["market_line"] = window_line(record)
             private["market"] = inquiry_evidence(record)
+        if self.feeds is not None:
+            from core.market.feeds import feed_lines
+            try:
+                lines = feed_lines(self.feeds())
+            except Exception:
+                lines = ["Headlines and X posts: unavailable (the feeds could not be read)."]
+            private["market_line"] = "\n".join(filter(None, [private.get("market_line")] + lines))
         cap = self.manifest["limits"]["max_input_bytes"]
 
         def candidate(chars):

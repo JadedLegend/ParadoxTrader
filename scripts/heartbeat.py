@@ -93,6 +93,15 @@ def build(root, config_path):
         symbols = settings.watchlist() or list(DEFAULT_WATCHLIST)
         return MarketWindow(Path(schedule.settings_dir) / "market", symbols, credentials).read
 
+    def market_feeds():
+        """Shared cached headlines and X posts (read-only). None without Settings."""
+        if settings is None:
+            return None
+        from core.market.feeds import MarketFeeds
+        from core.market.window import DEFAULT_WATCHLIST
+        symbols = settings.watchlist() or list(DEFAULT_WATCHLIST)
+        return MarketFeeds(Path(schedule.settings_dir) / "market", symbols, settings.secret).read
+
     def run_wake(run_id, owner, step=None):
         from core.runtime.rehearsal.controller import RehearsalController, snapshot_profiles
         from core.runtime.rehearsal.provider import OpenRouterTransport
@@ -100,7 +109,8 @@ def build(root, config_path):
         if schedule.mode == "real":
             transport = OpenRouterTransport(key())
             return RehearsalController(store, run_id, transport=transport, repo_root=REPO,
-                                       market=market_window(owner)).run_wake(owner, step=step)
+                                       market=market_window(owner),
+                                       feeds=market_feeds()).run_wake(owner, step=step)
         from core.runtime.rehearsal.examples import ScriptedHTTP
         transport = OpenRouterTransport("offline-scripted-not-a-credential", http_post=ScriptedHTTP())
         with ExitStack() as blocked:

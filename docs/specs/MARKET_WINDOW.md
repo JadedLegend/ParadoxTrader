@@ -88,8 +88,17 @@ reject it.
 
 ## Later phases (each its own PR, after the one before is merged)
 
-3. **Headlines.** Three to five headlines for the watchlist, from Alpha Vantage
-   or FMP, in the same window and with the same caching.
+3. **Headlines and X posts** (built before phase 2, at the owner's request).
+   - Up to five market headlines from Massive's news endpoint, refreshed at
+     most hourly.
+   - Up to three short X posts mentioning the watchlist's cashtags (recent
+     search, English, no retweets or replies, the most liked first), refreshed
+     at most every two hours. The window never reads more than 60 X posts a
+     day (about 30 cents at pay-per-use rates).
+   - Both are shared, cached and read-only. They are quoted on every choice as
+     untrusted text, below the price line, with each source named. When a feed
+     fails or the X cap is reached, its line says so. No post is ever written,
+     liked or sent: the window reads with the app's Bearer Token only.
 4. **The agent's own paper account.** Each agent sees its own paper positions
    and cash in `own_positions`, read-only, never another agent's.
 5. **Paper trading.** This is a separate spec with its own guardrails, and only

@@ -172,7 +172,7 @@ class DecisionStoreTests(unittest.TestCase):
     def test_private_strict_json_size_and_disallowed_fields(self):
         cyclic = {}
         cyclic["self"] = cyclic
-        for private in (["not a dict"], {"text": "x" * 8000}, {"n": float("nan")},
+        for private in (["not a dict"], {"text": "x" * 16000}, {"n": float("nan")},
                         {"n": float("inf")}, {1: "key"}, {"tuple": (1, 2)},
                         {"bad": "\ud800"}, cyclic, {"headers": {"Authorization": "secret"}},
                         {"reasoning": "hidden"}, {"innermost": "hidden"}):
