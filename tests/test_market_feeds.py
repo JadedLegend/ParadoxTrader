@@ -153,7 +153,7 @@ class CacheTests(Blocked):
         self.assertEqual((first["headlines"]["status"], first["x"]["status"]), ("ok", "ok"))
         clock[0] = start + timedelta(minutes=59)
         feeds.read()
-        self.assertEqual(len(http.calls), 2)  # Nothing new inside either window.
+        self.assertEqual(len(http.calls), 7)  # News, X and five subreddits once; nothing new inside the windows.
         for hours in range(1, 12):
             clock[0] = start + timedelta(hours=2 * hours)
             feeds.read()
