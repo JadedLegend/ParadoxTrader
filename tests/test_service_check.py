@@ -11,8 +11,7 @@ from core.runtime.service_check import check_services
 PK, SECRET = "PK" + "B" * 18, "S" * 40
 SAVED = {"alpaca_tempest_key_id": PK, "alpaca_tempest_secret": SECRET, "alpaca_siren_key_id": PK,
          "alphavantage": "AVKEY12345", "fmp": "F" * 20, "massive": "massivekey1", "unusual_whales": "uwkey12345",
-         "eodhd": "eodkey12345", "brave_search": "bravekey123", "reddit_client_id": "redditid1",
-         "reddit_client_secret": "redditsecret1", "x_bearer_token": "xbearer123456",
+         "eodhd": "eodkey12345", "brave_search": "bravekey123", "x_bearer_token": "xbearer123456",
          "redditapis_token": "redditapistoken1",
          "signalstack_webhook": "https://app.signalstack.com/hook/abc123", "public_com": "publickey1",
          "etoro_api_key": "etorokey12", "bigdata": "bigdatakey1"}
@@ -62,24 +61,17 @@ class ServiceCheckTests(unittest.TestCase):
         http = Scripted()
         rows = self.run_check(http)
         for name in ("Alpaca paper: Tempest", "Alpha Vantage", "FMP", "Massive", "Unusual Whales", "EODHD",
-                     "Brave Search", "Reddit (official app)", "Reddit (redditapis.com)", "X"):
+                     "Brave Search", "Reddit", "X"):
             self.assertEqual(rows[name]["status"], "ok", name)
         self.assertEqual(rows["Alpaca paper: Siren"]["status"], "unset")  # Half a pair is never sent.
         self.assertIn("half", rows["Alpaca paper: Siren"]["message"])
         self.assertEqual(rows["Alpaca paper: Oracle"]["status"], "unset")
-        self.assertEqual([c for c in http.calls if c[0] == "POST"],
-                         [("POST", "https://www.reddit.com/api/v1/access_token")])
+        self.assertEqual([c for c in http.calls if c[0] == "POST"], [])  # Every check is a read.
         for _method, url in http.calls:  # No order, broker or webhook address is ever touched.
             for word in ("order", "signalstack", "etoro", "public.com", "bigdata"):
                 self.assertNotIn(word, url)
         for name in ("SignalStack", "Public.com", "eToro", "Bigdata.com"):
             self.assertEqual(rows[name]["status"], "skipped", name)
-
-    def test_reddits_own_app_is_optional_when_unset(self):
-        saved = {k: v for k, v in SAVED.items() if not k.startswith("reddit_client")}
-        rows = {row["service"]: row for row in check_services(saved.get, http_get=Scripted().get, http_post=Scripted().post)}
-        self.assertNotIn("Reddit (official app)", rows)
-        self.assertEqual(rows["Reddit (redditapis.com)"]["status"], "ok")
 
     def test_a_rejected_key_says_so_without_echoing_any_key(self):
         rows = self.run_check(Scripted(broken={"financialmodelingprep", "api.x.com"}))

@@ -9,7 +9,6 @@ is one small read-only request:
 - EODHD: the user endpoint (no data read).
 - Brave Search: one search with one result; it uses one query of the plan.
 - Reddit through redditapis.com: one post from r/stocks (about $0.0015).
-- Reddit's own app (only when its pair is saved): an app-only sign-in.
 - X: the usage endpoint, which reads no posts.
 
 Never called, by design: Public.com, eToro and SignalStack. They can act on
@@ -147,31 +146,10 @@ def check_services(secret, *, http_get, http_post):
                note="Checked with the usage endpoint, which reads no posts."),
     ]
 
-    jobs.append(simple("Reddit (redditapis.com)", "news", "redditapis_token", "https://api.redditapis.com/api/reddit/posts",
+    jobs.append(simple("Reddit", "news", "redditapis_token", "https://api.redditapis.com/api/reddit/posts",
                        params=lambda v: {"subreddit": "stocks", "sort": "hot", "limit": 1},
                        headers=lambda v: {"Authorization": "Bearer " + v}, ok=has_data,
                        note="Used 1 read (about $0.0015)."))
-    reddit_id, reddit_secret = values["reddit_client_id"], values["reddit_client_secret"]
-    if not reddit_id and not reddit_secret:
-        pass  # Reddit's own app is optional now that reads go through redditapis.com.
-    elif not reddit_id or not reddit_secret:
-        jobs.append(unset("Reddit (official app)", "news", "Only half of this pair is set."))
-    else:
-        def reddit():
-            response, data, problem = svc._call(
-                svc.http_post, "https://www.reddit.com/api/v1/access_token",
-                data={"grant_type": "client_credentials"}, auth=(reddit_id, reddit_secret),
-                headers={"User-Agent": "paradoxtrader-check/1.0"})
-            if problem:
-                return _row("Reddit (official app)", "news", "fail", problem)
-            if response.status_code != 200 or not isinstance(data, dict) or not data.get("access_token"):
-                message = svc._http_problem(response, data)
-                if isinstance(data, dict) and data.get("error") and response.status_code == 200:
-                    message = "Reddit refused the app: " + svc._scrub(data["error"])
-                return _row("Reddit (official app)", "news", "fail", message + " (new apps need Reddit's approval)")
-            return _row("Reddit (official app)", "news", "ok", "The app can sign in. No posts were read.")
-        jobs.append(reddit)
-
     for slot, name in (("bigdata", "Bigdata.com"), ("public_com", "Public.com"), ("etoro_api_key", "eToro"),
                        ("signalstack_webhook", "SignalStack")):
         why = ("It has no free key check, so it is not called." if slot == "bigdata"
