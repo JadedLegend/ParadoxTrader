@@ -76,22 +76,29 @@ def build(root, config_path):
         return store.prepare(manifest)["run_id"]
 
     def market_window(owner):
-        """The shared read-only price window, using this agent's own paper key
-        (or any agent's saved one). None when there are no Settings."""
+        """The shared read-only price window, read with the designated data
+        account's paper key (see OwnerSettings.data_credentials). None without Settings."""
         if settings is None:
             return None
         from core.market.window import DEFAULT_WATCHLIST, MarketWindow
-        from core.runtime.owner_settings import AGENTS
-
-        def credentials():
-            for agent in (owner,) + tuple(a for a in AGENTS if a != owner):
-                key_id, secret = settings.secret(f"alpaca_{agent}_key_id"), settings.secret(f"alpaca_{agent}_secret")
-                if key_id and secret:
-                    return key_id, secret
-            return None
-
         symbols = settings.watchlist() or list(DEFAULT_WATCHLIST)
-        return MarketWindow(Path(schedule.settings_dir) / "market", symbols, credentials).read
+        return MarketWindow(Path(schedule.settings_dir) / "market", symbols, settings.data_credentials).read
+
+    def options_view():
+        """The shared read-only options view for one ticker. None without Settings."""
+        if settings is None:
+            return None
+        from core.market.options import OptionsView
+        from core.market.window import DEFAULT_WATCHLIST, MarketWindow
+        symbol = settings.options_symbol() or "SPY"
+        window = MarketWindow(Path(schedule.settings_dir) / "market",
+                              settings.watchlist() or list(DEFAULT_WATCHLIST), settings.data_credentials)
+
+        def price():
+            record = window.cached() or {}
+            return next((q.get("last") for q in record.get("quotes") or [] if q.get("symbol") == symbol), None)
+
+        return OptionsView(Path(schedule.settings_dir) / "market", symbol, settings.data_credentials, price).read
 
     def market_feeds():
         """Shared cached headlines and X posts (read-only). None without Settings."""
@@ -110,7 +117,7 @@ def build(root, config_path):
         if schedule.mode == "real":
             transport = OpenRouterTransport(key())
             return RehearsalController(store, run_id, transport=transport, repo_root=REPO,
-                                       market=market_window(owner),
+                                       market=market_window(owner), options=options_view(),
                                        feeds=market_feeds()).run_wake(owner, step=step)
         from core.runtime.rehearsal.examples import ScriptedHTTP
         transport = OpenRouterTransport("offline-scripted-not-a-credential", http_post=ScriptedHTTP())

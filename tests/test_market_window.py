@@ -161,6 +161,10 @@ class WakeTests(BlockedNetwork):
         def run_wake(run_id, owner, step=None):
             return RehearsalController(store, run_id, transport=OpenRouterTransport(
                 "scripted-offline", http_post=recording), market=window.read,
+                options=lambda: {"symbol": "SPY", "status": "open", "feed": "indicative", "contracts": [
+                    {"symbol": "SPY261120C00505000", "type": "call", "strike": 505.0, "expiration": "2026-11-20",
+                     "bid": 2.1, "ask": 2.18, "iv": 0.142, "delta": 0.5, "quote_time": "2026-11-18T09:00:00+00:00",
+                     "stale": False}]},
                 feeds=lambda: {"headlines": {"status": "ok", "items": [{"title": "Fed holds rates", "source": "Wire"}]},
                                "x": {"status": "unavailable", "reason": "it answered 403"}}).run_wake(owner, step=step)
 
@@ -178,6 +182,9 @@ class WakeTests(BlockedNetwork):
         self.assertIn("On X: unavailable (it answered 403).", choices[0])
         alchemist = [p for p in prompts if "Stable owner ID: alchemist" in p and "Outside the window" not in p]
         self.assertTrue(any('"symbol":"SPY"' in p.replace(" ", "") for p in alchemist))  # The inquiry's evidence.
+        self.assertIn("SPY options (Alpaca indicative feed, delayed", choices[0])
+        self.assertIn("call 505 2.1/2.18 IV 14.2%", choices[0])
+        self.assertTrue(any('"strike":505.0' in p.replace(" ", "") for p in alchemist))  # Contracts reach the inquiry.
 
 
 if __name__ == "__main__":

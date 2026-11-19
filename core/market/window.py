@@ -91,10 +91,14 @@ def _quote(symbol, row):
     return quote, moment
 
 
-def fetch(symbols, key_id, secret, *, http_get, now):
-    """One snapshot GET. Returns the window record; never raises for data trouble."""
+def fetch(symbols, key_id, secret, *, http_get, now, account=None):
+    """One snapshot GET. Returns the window record; never raises for data trouble.
+
+    Each price keeps its own time (``as_of``), so one fresh ticker cannot make a
+    stale one look current; a price with no time of its own is marked so rather
+    than given the fetch time. ``account`` labels the data account, never a key."""
     stamp = now().astimezone(timezone.utc)
-    base = {"checked_at": stamp.isoformat(), "symbols": list(symbols), "source": "alpaca-iex"}
+    base = {"checked_at": stamp.isoformat(), "symbols": list(symbols), "source": "alpaca-iex", "account": account}
     if not (isinstance(key_id, str) and _PAPER_KEY.fullmatch(key_id) and isinstance(secret, str) and secret):
         return {**base, "status": "unavailable", "reason": "no Alpaca paper key is saved"}
     try:
@@ -119,14 +123,21 @@ def fetch(symbols, key_id, secret, *, http_get, now):
         if parsed is None:
             continue
         quote, moment = parsed
+        if moment is not None and moment <= stamp + timedelta(minutes=5):  # Future-dated times are not trusted.
+            quote["as_of"] = moment.astimezone(timezone.utc).isoformat()
+            if latest is None or moment > latest:
+                latest = moment
         quotes.append(quote)
-        if moment is not None and (latest is None or moment > latest):
-            latest = moment
     if not quotes:
         return {**base, "status": "unavailable", "reason": "no prices for these tickers"}
-    as_of = latest or stamp
-    state = "open" if (stamp - as_of).total_seconds() <= FRESH_TRADE_SECONDS else "closed"
-    return {**base, "status": state, "as_of": as_of.isoformat(), "quotes": quotes}
+    state = "open" if latest is not None and (stamp - latest).total_seconds() <= FRESH_TRADE_SECONDS else "closed"
+    for quote in quotes:
+        moment = _time(quote.get("as_of"))
+        quote["stale"] = moment is None or (state == "open" and (stamp - moment).total_seconds() > FRESH_TRADE_SECONDS)
+    record = {**base, "status": state, "quotes": quotes}
+    if latest is not None:
+        record["as_of"] = latest.astimezone(timezone.utc).isoformat()
+    return record
 
 
 class MarketWindow:
@@ -158,12 +169,12 @@ class MarketWindow:
         record = self.cached()
         if self._fresh(record):
             return record
-        given = self.credentials() or (None, None)
+        given = tuple(self.credentials() or ()) + (None, None, None)  # (key_id, secret[, account label])
         http_get = self.http_get
         if http_get is None:
             import requests
             http_get = requests.get
-        record = fetch(self.symbols, given[0], given[1], http_get=http_get, now=self.now)
+        record = fetch(self.symbols, given[0], given[1], http_get=http_get, now=self.now, account=given[2])
         self._write(record)
         return record
 
@@ -203,6 +214,8 @@ def window_line(record):
         text = f"{quote['symbol']} {quote['last']:g}"
         if "change_percent" in quote:
             text += f" ({quote['change_percent']:+.2f}%)"
+        if quote.get("stale"):
+            text += " (old price)" if quote.get("as_of") else " (time unknown)"
         parts.append(text)
     lead = "Market window" if record["status"] == "open" else "Market window (market closed, last prices)"
     return f"{lead} as of {when}, IEX feed, may be delayed: " + ", ".join(parts) + "."
@@ -214,7 +227,7 @@ def inquiry_evidence(record):
         return {"status": "unavailable"}
     quotes = []
     for quote in record["quotes"][:MAX_SYMBOLS]:
-        item = {key: quote[key] for key in ("symbol", "last", "open", "high", "low", "volume") if key in quote}
+        item = {key: quote[key] for key in ("symbol", "last", "open", "high", "low", "volume", "as_of") if key in quote}
         if "change_percent" in quote:
             item["change_percent"] = quote["change_percent"]
         quotes.append(item)

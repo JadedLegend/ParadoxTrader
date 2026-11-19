@@ -153,6 +153,8 @@ _EVIDENCE_FIELDS = frozenset({
     "avg_entry_price", "average_entry_price", "market_value", "current_price",
     "unrealized_pl", "unrealized_plpc", "cost_basis", "rsi", "macd", "sma", "ema",
     "value", "name", "period", "trend", "signal",
+    # Times kept per observation, and the options view's contract fields.
+    "as_of", "quote_time", "type", "strike", "expiration", "iv", "delta",
 })
 
 
@@ -174,10 +176,10 @@ def _record(value):
 
 
 def _evidence(evidence):
-    """Accepted root keys: market_data, own_positions, indicators, stage_invitation.
+    """Accepted root keys: market_data, own_positions, indicators, options, stage_invitation.
 
-    The three data roots accept a leaf record, a list of up to five leaf records,
-    or a status record with quotes/positions/indicators list. Owner filtering of
+    The four data roots accept a leaf record, a list of up to five leaf records,
+    or a status record with quotes/positions/indicators/contracts list. Owner filtering of
     supplied positions remains the trusted caller's responsibility; no peer-
     keyed mapping or arbitrary nested fields is accepted here.
     """
@@ -186,13 +188,13 @@ def _evidence(evidence):
     if not isinstance(evidence, dict):
         raise LineageError("evidence must be an explicit data object")
     result = {}
-    for key in ("market_data", "own_positions", "indicators"):
+    for key in ("market_data", "own_positions", "indicators", "options"):
         value = evidence.get(key)
         if isinstance(value, list):
             result[key] = [_record(item) for item in value[:5] if isinstance(item, dict)]
         elif isinstance(value, dict):
             result[key] = _record(value)
-            for list_key in ("quotes", "positions", "indicators"):
+            for list_key in ("quotes", "positions", "indicators", "contracts"):
                 if isinstance(value.get(list_key), list):
                     result[key][list_key] = [_record(item) for item in value[list_key][:5] if isinstance(item, dict)]
     invitation = evidence.get("stage_invitation")

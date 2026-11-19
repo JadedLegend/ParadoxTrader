@@ -28,7 +28,7 @@ const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretIte
 ]
 const SECRETS = SECRET_GROUPS.flatMap(group => group.items)
 const FIELD_LABEL: Record<string, string> = {
-  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key', watchlist: 'Market watchlist', subreddits: 'Subreddits',
+  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key', watchlist: 'Market watchlist', subreddits: 'Subreddits', options_symbol: 'Options ticker', data_account: 'Data account',
   ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
 }
 
@@ -84,6 +84,7 @@ export default function Settings() {
   const [budget, setBudget] = useState('')
   const [watchlist, setWatchlist] = useState('')
   const [subreddits, setSubreddits] = useState('')
+  const [optionsSymbol, setOptionsSymbol] = useState('SPY')
   const [key, setKey] = useState('')
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
@@ -122,6 +123,7 @@ export default function Settings() {
     setBudget(value.daily_budget_usd ?? '')
     setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
     setSubreddits((value.subreddits ?? DEFAULT_SUBREDDITS).join(', '))
+    setOptionsSymbol(value.options_symbol ?? 'SPY')
   }
 
   useEffect(() => {
@@ -159,6 +161,7 @@ export default function Settings() {
       setSettings(value)
       if (what === 'watchlist') setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
       if (what === 'subreddits') setSubreddits((value.subreddits ?? DEFAULT_SUBREDDITS).join(', '))
+      if (what === 'options') setOptionsSymbol(value.options_symbol ?? 'SPY')
       if (what === 'key') setKey('')
       if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)
@@ -176,6 +179,7 @@ export default function Settings() {
   const tickers = parseTickers(watchlist)
   const savedTickers = (settings?.watchlist ?? DEFAULT_WATCHLIST).join(',')
   const tickersValid = tickers.length >= 1 && tickers.length <= 5 && tickers.every(item => TICKER.test(item))
+  const optionsValid = /^[A-Z]{1,5}$/.test(optionsSymbol.trim().toUpperCase())
   const subs = parseSubreddits(subreddits)
   const savedSubs = (settings?.subreddits ?? DEFAULT_SUBREDDITS).join(',')
   const subsValid = subs.length >= 1 && subs.length <= 5 && subs.every(item => SUBREDDIT.test(item))
@@ -282,9 +286,33 @@ export default function Settings() {
           </div>
         </div>
         {!subsValid && <p className="settings-error" role="alert">Use 1 to 5 subreddit names, like stocks or r/investing.</p>}
-        <p className="settings-note">Read-only prices from Alpaca's free feed, using the agents' paper keys, refreshed at most every 15 minutes.
-          Each choice sees one line of it, and an agent that asks a question gets the figures. Headlines (hourly), X posts and
-          Reddit's hot posts (every two hours) are shown under it. Nothing here can trade or post.</p>
+        <div className="grid-2 mt-8">
+          <div className="input-group">
+            <label className="input-label" htmlFor="options-symbol">Options ticker (one, also on the watchlist)</label>
+            <div className="flex gap-8">
+              <input id="options-symbol" className="input" type="text" autoCapitalize="characters" spellCheck={false}
+                value={optionsSymbol} onChange={event => setOptionsSymbol(event.target.value)} aria-invalid={!optionsValid} />
+              <button className="btn btn-primary" aria-label="Save options ticker"
+                disabled={saving !== null || !optionsValid || optionsSymbol.trim().toUpperCase() === (settings.options_symbol ?? 'SPY')}
+                onClick={() => save('options', { options_symbol: optionsSymbol.trim().toUpperCase() }, 'Options ticker saved.')}>
+                {saving === 'options' ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label" htmlFor="data-account">Data account (whose paper key reads market data)</label>
+            <select id="data-account" className="input" value={settings.data_account ?? ''} disabled={saving !== null}
+              onChange={event => { if (event.target.value) void save('data_account', { data_account: event.target.value }, 'Data account saved.') }}>
+              <option value="">First agent with a full key pair</option>
+              {SLOTS.filter(slot => slot.id !== 'witness').map(slot => <option key={slot.id} value={slot.id}>{slot.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {!optionsValid && <p className="settings-error" role="alert">Use one ticker, like SPY.</p>}
+        <p className="settings-note">Read-only prices from Alpaca's free feed, read with the data account's paper key, refreshed at most every 15 minutes.
+          Each choice sees one line of it, and an agent that asks a question gets the figures. Options (indicative and delayed, every
+          30 minutes in market hours), headlines (hourly), X posts and Reddit's hot posts (every two hours) are shown under it.
+          Nothing here can trade or post.</p>
       </section>
 
       <section className="card mb-16" aria-labelledby="settings-check">

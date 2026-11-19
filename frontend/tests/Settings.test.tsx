@@ -99,6 +99,19 @@ describe('Settings page', () => {
     expect(await screen.findByText('Market watchlist saved.')).toBeTruthy()
   })
 
+  it('saves the options ticker and the data account', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, options_symbol: 'QQQ', data_account: 'weaver' })
+    render(<Settings />)
+    const field = await screen.findByLabelText(/Options ticker/) as HTMLInputElement
+    expect(field.value).toBe('SPY')
+    fireEvent.change(field, { target: { value: 'qqq' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save options ticker' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ options_symbol: 'QQQ' }))
+    await screen.findByText('Options ticker saved.')
+    fireEvent.change(screen.getByLabelText(/Data account/), { target: { value: 'weaver' } })
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ data_account: 'weaver' }))
+  })
+
   it('saves a cleaned subreddit list', async () => {
     vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, subreddits: ['options', 'Economics'] })
     render(<Settings />)

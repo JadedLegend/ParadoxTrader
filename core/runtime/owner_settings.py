@@ -203,6 +203,29 @@ class OwnerSettings:
         value = self._latest().get("watchlist")
         return list(value) if isinstance(value, list) and value else None
 
+    def options_symbol(self):
+        """The options view's one ticker, or None to use the default (SPY)."""
+        value = self._latest().get("options_symbol")
+        return value if isinstance(value, str) and value else None
+
+    def data_account(self):
+        """The agent whose Alpaca paper key reads shared market data, or None."""
+        value = self._latest().get("data_account")
+        return value if value in AGENTS else None
+
+    def data_credentials(self):
+        """(key_id, secret, label) for shared market data, or None.
+
+        The chosen data account when it has a full pair; otherwise the first
+        agent, in a fixed order, that has one. The label is recorded with every
+        snapshot, so the source of each figure can be traced without a key."""
+        chosen = self.data_account()
+        for agent in ((chosen,) if chosen else ()) + tuple(a for a in AGENTS if a != chosen):
+            key_id, secret = self.secret(f"alpaca_{agent}_key_id"), self.secret(f"alpaca_{agent}_secret")
+            if key_id and secret:
+                return key_id, secret, f"{agent} paper account" + ("" if agent == chosen else " (fallback)")
+        return None
+
     def subreddits(self):
         """The subreddits the window reads, or None to use the default list."""
         value = self._latest().get("subreddits")
@@ -257,6 +280,8 @@ class OwnerSettings:
                 "daily_budget_usd": latest.get("daily_budget_usd"),
                 "watchlist": latest.get("watchlist"),
                 "subreddits": latest.get("subreddits"),
+                "options_symbol": latest.get("options_symbol"),
+                "data_account": latest.get("data_account"),
                 "key": {"set": key is not None, "ends_with": key[-4:] if key else None},
                 "secrets": secrets,
                 "history": history}
@@ -265,7 +290,8 @@ class OwnerSettings:
     @staticmethod
     def _validate(changes):
         if (not isinstance(changes, dict) or not changes
-                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets", "watchlist", "subreddits"}):
+                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets", "watchlist", "subreddits",
+                                   "options_symbol", "data_account"}):
             raise SettingsError("invalid_settings_fields")
         rows = []
         if "models" in changes:
@@ -300,6 +326,16 @@ class OwnerSettings:
                 rows.append(("subreddits", validate_subreddits(changes["subreddits"])))
             except FeedError as error:
                 raise SettingsError(str(error)) from None
+        if "options_symbol" in changes:
+            value = changes["options_symbol"]
+            value = value.strip().upper() if isinstance(value, str) else None
+            if not value or not re.fullmatch(r"[A-Z]{1,5}", value):
+                raise SettingsError("invalid_options_symbol")
+            rows.append(("options_symbol", value))
+        if "data_account" in changes:
+            if changes["data_account"] not in AGENTS:
+                raise SettingsError("invalid_data_account")
+            rows.append(("data_account", changes["data_account"]))
         secrets = {}
         if "secrets" in changes:
             given = changes["secrets"]
