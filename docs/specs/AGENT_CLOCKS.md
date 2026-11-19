@@ -66,7 +66,7 @@ Each phase is a separate PR that works on its own.
 3. **Settings page:** key, eight models, budget, and the gateway's single protected write. *(built)*
 4. **Droplet:** install clock-only and paused, watch it keep time across a restart, then the first real day once the owner has chosen models and budget.
 
-Later, in the order of `AGENTS_HOME.md`: the day-closing witness account, closure notes, market windows, several steps per wake, the dashboard heartbeat view.
+Later, in the order of `AGENTS_HOME.md`: the day-closing witness account, closure notes, market windows, several steps per wake, the dashboard heartbeat view (see `HEARTBEAT_PAGE.md`).
 
 ## Not included
 
