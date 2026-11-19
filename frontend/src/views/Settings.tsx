@@ -28,11 +28,14 @@ const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretIte
 ]
 const SECRETS = SECRET_GROUPS.flatMap(group => group.items)
 const FIELD_LABEL: Record<string, string> = {
-  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key',
+  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key', watchlist: 'Market watchlist',
   ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
 }
 
 const MARK = { ok: '✓', warn: '!', fail: '✕' } as const
+const DEFAULT_WATCHLIST = ['SPY', 'QQQ', 'IWM', 'TLT', 'GLD']
+const TICKER = /^[A-Z]{1,5}(\.[A-Z]{1,2})?$/
+const parseTickers = (text: string) => [...new Set(text.split(/[\s,]+/).map(item => item.trim().toUpperCase()).filter(Boolean))]
 const CHECK_POLL_MS = 2000
 const CHECK_WAIT_MS = 120000
 
@@ -69,6 +72,7 @@ export default function Settings() {
   const [catalogFailed, setCatalogFailed] = useState(false)
   const [models, setModels] = useState<Record<string, string>>({})
   const [budget, setBudget] = useState('')
+  const [watchlist, setWatchlist] = useState('')
   const [key, setKey] = useState('')
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
@@ -105,6 +109,7 @@ export default function Settings() {
     setSettings(value)
     setModels(Object.fromEntries(SLOTS.map(slot => [slot.id, value.models[slot.id] ?? ''])))
     setBudget(value.daily_budget_usd ?? '')
+    setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
   }
 
   useEffect(() => {
@@ -140,6 +145,7 @@ export default function Settings() {
       setBudget(current => current === (changes.daily_budget_usd !== undefined
         ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
       setSettings(value)
+      if (what === 'watchlist') setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
       if (what === 'key') setKey('')
       if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)
@@ -153,6 +159,10 @@ export default function Settings() {
 
   const changedModels = Object.fromEntries(SLOTS.filter(slot => models[slot.id] && models[slot.id] !== (settings?.models[slot.id] ?? ''))
     .map(slot => [slot.id, models[slot.id].trim()]))
+
+  const tickers = parseTickers(watchlist)
+  const savedTickers = (settings?.watchlist ?? DEFAULT_WATCHLIST).join(',')
+  const tickersValid = tickers.length >= 1 && tickers.length <= 5 && tickers.every(item => TICKER.test(item))
 
   if (loadError) return <div><header className="page-header"><h1 className="page-title">Settings</h1></header><div className="error-msg" role="alert">{loadError}</div></div>
   if (!settings) return <div className="loading" role="status">Loading settings...</div>
@@ -230,6 +240,24 @@ export default function Settings() {
           <p className="settings-note">Stored only on your server, readable by the agents' service. This page never receives it back.</p>
         </section>
       </div>
+
+      <section className="card mb-16" aria-labelledby="settings-market">
+        <h2 className="card-title" id="settings-market">Market window</h2>
+        <div className="input-group">
+          <label className="input-label" htmlFor="watchlist">Up to 5 tickers the agents can see, separated by commas</label>
+          <div className="flex gap-8">
+            <input id="watchlist" className="input" type="text" autoCapitalize="characters" spellCheck={false}
+              value={watchlist} onChange={event => setWatchlist(event.target.value)} aria-invalid={!tickersValid} />
+            <button className="btn btn-primary" aria-label="Save watchlist" disabled={saving !== null || !tickersValid || tickers.join(',') === savedTickers}
+              onClick={() => save('watchlist', { watchlist: tickers }, 'Market watchlist saved.')}>
+              {saving === 'watchlist' ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+        {!tickersValid && <p className="settings-error" role="alert">Use 1 to 5 tickers, like SPY or BRK.B.</p>}
+        <p className="settings-note">Read-only prices from Alpaca's free feed, using the agents' paper keys, refreshed at most every 15 minutes.
+          Each choice sees one line of it, and an agent that asks a question gets the figures. Nothing here can trade.</p>
+      </section>
 
       <section className="card mb-16" aria-labelledby="settings-check">
         <h2 className="card-title" id="settings-check">Connection</h2>
