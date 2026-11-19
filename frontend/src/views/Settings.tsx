@@ -208,9 +208,8 @@ export default function Settings() {
               <input id={`model-${slot.id}`} className="input" list="openrouter-models" value={models[slot.id] ?? ''}
                 placeholder="Not chosen yet" spellCheck={false} autoComplete="off"
                 onChange={event => setModels(current => ({ ...current, [slot.id]: event.target.value }))} />
-              <span className="settings-note">{slot.id === 'witness'
-                ? 'Saved for when the witness writes its daily account in prose. It uses no model yet.'
-                : price ? `${perMillion(price.prompt)} / ${perMillion(price.completion)}` : models[slot.id] && catalog ? 'Not in the current catalog' : ''}</span>
+              <span className="settings-note">{price ? `${perMillion(price.prompt)} / ${perMillion(price.completion)}`
+                : models[slot.id] && catalog ? 'Not in the current catalog' : ''}</span>
             </div>
           })}
         </div>

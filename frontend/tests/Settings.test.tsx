@@ -66,7 +66,7 @@ describe('Settings page', () => {
       expect(screen.getByLabelText(name)).toBeTruthy()
     }
     expect(screen.getByText(/Not set: the agents cannot wake with real models/)).toBeTruthy()
-    expect(screen.getByText(/It uses no model yet/)).toBeTruthy()
+    expect(screen.queryByText(/It uses no model yet/)).toBeNull()  // The witness shows its price like the agents.
   })
 
   it('reads the public catalog without credentials and shows prices per million tokens', async () => {
