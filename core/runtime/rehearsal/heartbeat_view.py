@@ -60,9 +60,20 @@ def _feeds(settings_dir):
     from core.market.window import window_line
     folder = Path(settings_dir) / "market"
     records = {key: _read_json(folder / name) for key, _, name in _FEEDS}
-    feeds = []
-    for key, label, _ in _FEEDS:
+    feeds, lines = [], []
+    for index, (key, label, _) in enumerate(_FEEDS):
         record = records[key] or {}
+        def format_line(value):
+            if key == "window":
+                return window_line(value)
+            return feed_lines({"headlines": {}, "x": {}, "reddit": {}, key: value})[index - 1]
+        try:
+            line = format_line(record)
+        except (KeyError, TypeError, ValueError, AttributeError, IndexError):
+            record = {"status": "unavailable", "checked_at": record.get("checked_at"),
+                      "reason": "cached feed could not be read"}
+            line = format_line(record)
+        lines.append(line)
         state = record.get("status")
         ok = state in ("ok", "open", "closed")
         feeds.append({"feed": label, "status": "ok" if ok else ("unchecked" if not record else "unavailable"),
@@ -70,9 +81,6 @@ def _feeds(settings_dir):
                       "detail": ("market closed, last prices" if state == "closed" else
                                  "today's X reading limit reached" if record.get("capped") else
                                  None if ok else record.get("reason"))})
-    lines = [window_line(records["window"])]
-    lines += feed_lines({"headlines": records["headlines"] or {}, "x": records["x"] or {},
-                         "reddit": records["reddit"] or {}})
     return {"lines": lines, "feeds": feeds}
 
 
@@ -90,7 +98,7 @@ def day_view(heartbeat, *, settings_dir=None):
             unknown = True
             continue
         reserved += _money(run.get("reserved_usd"))
-        if run.get("known_cost_usd") is None and run.get("request_count"):
+        if run.get("unknown_cost_requests") or (run.get("known_cost_usd") is None and run.get("request_count")):
             unknown = True
         spent += _money(run.get("known_cost_usd"))
         for job in listed:

@@ -59,6 +59,40 @@ class HeartbeatViewTests(unittest.TestCase):
         self.assertEqual((feeds["Headlines"]["status"], feeds["X posts"]["status"], feeds["Prices"]["status"]),
                          ("ok", "unavailable", "unchecked"))
 
+    def test_malformed_feed_does_not_hide_other_feeds_or_wakes(self):
+        settings_dir = Path(self.temp.name) / "settings"
+        folder = settings_dir / "market"
+        folder.mkdir(parents=True)
+        (folder / "reddit.json").write_text(json.dumps({"status": "ok", "items": [
+            {"title": "Example", "subreddit": "stocks", "upvotes": 2, "comments": 1}]}))
+        beat = self.heartbeat()
+        self.clock = at(9, 3)
+        beat.tick()
+        for malformed in ({"status": "ok", "items": [{"title": "Example"}]},
+                          {"status": "ok", "items": None}):
+            with self.subTest(record=malformed):
+                (folder / "headlines.json").write_text(json.dumps(malformed))
+                view = day_view(beat, settings_dir=settings_dir)
+                self.assertEqual(len(view["wakes"]), 2)
+                self.assertEqual(view["window"]["feeds"][1]["status"], "unavailable")
+                self.assertIn("Headlines: unavailable (cached feed could not be read).", view["window"]["lines"])
+                self.assertIn('On Reddit: "Example" (r/stocks, 2 upvotes, 1 comments)', view["window"]["lines"])
+
+    def test_partial_known_spending_remains_incomplete(self):
+        beat = self.heartbeat()
+        self.clock = at(9, 1)
+        beat.tick()
+        run = beat.store.get_run(day_view(beat)["today"]["run_id"])
+        for cost, missing, count, complete in (("0.25", 1, 2, False), (None, 1, 1, False),
+                                                ("0.25", 0, 1, True), (None, 0, 1, False)):
+            with self.subTest(cost=cost, missing=missing, count=count):
+                with patch.object(beat.store, "get_run", return_value={**run, "known_cost_usd": cost,
+                        "unknown_cost_requests": missing, "request_count": count, "reserved_usd": "0.5"}):
+                    today = day_view(beat)["today"]
+                self.assertEqual(today["spent_complete"], complete)
+                self.assertEqual(today["spent_usd"], cost or "0")
+                self.assertEqual(today["reserved_usd"], "0.5")
+
     def test_clock_only_slots_are_left_out_and_an_empty_day_is_plain(self):
         beat = self.heartbeat(dispatch="clock-only")
         self.clock = at(9, 3)

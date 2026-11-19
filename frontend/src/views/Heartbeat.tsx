@@ -74,7 +74,8 @@ export default function Heartbeat() {
 
   if (!view) return <div>{header}{error ? <div className="error-msg" role="alert">{error}</div>
     : <p className="loading" role="status">Reading the heartbeat…</p>}</div>
-  if (!view.available) return <div>{header}<div className="card"><p className="empty-state">{view.reason}</p></div></div>
+  if (!view.available) return <div>{header}
+    {error && <div className="error-msg mb-16" role="alert">{error} Showing the last reading.</div>}<div className="card"><p className="empty-state">{view.reason}</p></div></div>
 
   const now = nowLine(view)
   const today = view.today
