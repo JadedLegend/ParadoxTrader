@@ -1052,7 +1052,10 @@ class RehearsalStore:
         serialized = _decision_metadata(metadata)
         if type(private_context) is not dict:
             raise RehearsalError("invalid private context")
-        private = _bounded_json(private_context, "private context", 8000)
+        # A local storage bound only; what reaches the model is bounded by
+        # max_input_bytes, which clips continuity to fit. Room for the
+        # market window, headlines and posts beside the full continuity.
+        private = _bounded_json(private_context, "private context", 16000)
         # Work on the validated frozen values, not caller-owned mutable objects.
         metadata, private_context = json.loads(serialized), json.loads(private)
         with self._connection(run_id, write=True) as connection:

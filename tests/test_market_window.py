@@ -160,7 +160,9 @@ class WakeTests(BlockedNetwork):
 
         def run_wake(run_id, owner, step=None):
             return RehearsalController(store, run_id, transport=OpenRouterTransport(
-                "scripted-offline", http_post=recording), market=window.read).run_wake(owner, step=step)
+                "scripted-offline", http_post=recording), market=window.read,
+                feeds=lambda: {"headlines": {"status": "ok", "items": [{"title": "Fed holds rates", "source": "Wire"}]},
+                               "x": {"status": "unavailable", "reason": "it answered 403"}}).run_wake(owner, step=step)
 
         config = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
                   "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live"}
@@ -172,6 +174,8 @@ class WakeTests(BlockedNetwork):
         choices = [p for p in prompts if "Outside the window" in p]
         self.assertEqual(len(choices), 3)
         self.assertIn("SPY 505 (+1.00%)", choices[0])
+        self.assertIn("Headlines (Massive news): Fed holds rates (Wire)", choices[0])
+        self.assertIn("On X: unavailable (it answered 403).", choices[0])
         alchemist = [p for p in prompts if "Stable owner ID: alchemist" in p and "Outside the window" not in p]
         self.assertTrue(any('"symbol":"SPY"' in p.replace(" ", "") for p in alchemist))  # The inquiry's evidence.
 
