@@ -35,6 +35,18 @@ def _rehearsal_cli():
     return module
 
 
+def day_output_tokens(manifest):
+    """Room for models that think first: up to DAY_MAX_OUTPUT_TOKENS, but no
+    more than every chosen model can give, so one small model never stops the
+    day from opening. Never below the limit the day already had."""
+    from core.runtime.rehearsal.provider import DAY_MAX_OUTPUT_TOKENS
+    rows = manifest["catalog_snapshot"]["models"]
+    room = min([DAY_MAX_OUTPUT_TOKENS]
+               + [row["max_completion_tokens"] for row in rows]
+               + [row["context_length"] - manifest["limits"]["max_input_bytes"] for row in rows])
+    return max(manifest["limits"]["max_output_tokens"], room)
+
+
 def build(root, config_path):
     from core.runtime.rehearsal.heartbeat import Heartbeat, load_schedule
     from core.runtime.rehearsal.store import RehearsalStore
@@ -60,6 +72,7 @@ def build(root, config_path):
         manifest["kind"] = "day"
         manifest["limits"]["wakes_per_agent"] = wakes_per_agent
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
+        manifest["limits"]["max_output_tokens"] = day_output_tokens(manifest)
         return store.prepare(manifest)["run_id"]
 
     def market_window(owner):

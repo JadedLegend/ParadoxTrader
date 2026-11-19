@@ -42,8 +42,9 @@ DEFAULT_LIMITS = {
 # A "day" run (one continuing day in the agents' home) adds each agent's wakes
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
 MAX_WAKES_PER_AGENT = 48
+DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
-              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7}
+              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
 RUN_KINDS = ("rehearsal", "day")
 _SAFE = re.compile(r"[a-zA-Z0-9_.:-]{1,128}\Z")
 _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
@@ -287,7 +288,8 @@ def _validate_manifest(raw):
         raise RehearsalError("invalid limits")
     limits = {name: _integer(limits[name], name, 1, cap) for name, cap in LIMIT_CAPS.items()} | {"budget_usd": raw["limits"]["budget_usd"]}
     if kind == "rehearsal" and (limits["wakes_per_agent"] != 2
-                                or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]):
+                                or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]
+                                or limits["max_output_tokens"] > DEFAULT_LIMITS["max_output_tokens"]):
         raise RehearsalError("two rounds required")
     if not isinstance(limits["budget_usd"], str):
         raise RehearsalError("invalid budget_usd")
@@ -962,6 +964,28 @@ class RehearsalStore:
                                (wake_id, owner, round_number, manifest["agent_models"][owner], _now()))
             return self._public_job(self._job(connection, wake_id))
 
+    def give_up_job(self, run_id, wake_id, failure_code):
+        """Day runs: end a pending wake that failed again on its retry.
+
+        Only a pending job with no unresolved request, while no controller holds
+        the run, so nothing in flight is abandoned.
+        """
+        failure_code = _safe(failure_code, "failure_code", nullable=False)
+        with self._connection(run_id, write=True) as connection:
+            row = self._run(connection)
+            if json.loads(row["manifest"]).get("kind") != "day":
+                raise RehearsalError("only day-run wakes are given up")
+            if row["controller_token"] is not None:
+                raise RehearsalConflict("a wake is still running")
+            job = self._job(connection, wake_id)
+            if job["status"] != "pending":
+                raise RehearsalConflict("only a waiting wake is given up")
+            if connection.execute("SELECT 1 FROM requests WHERE wake_id=? AND outcome IN ('in_flight','uncertain') LIMIT 1",
+                                  (wake_id,)).fetchone():
+                raise RehearsalConflict("job has an unresolved request")
+            connection.execute("UPDATE jobs SET status='failed',failure_code=?,updated_at=? WHERE wake_id=?",
+                               (failure_code, _now(), wake_id))
+
     def close_day(self, run_id):
         """Close an open day run so the next day can continue from it."""
         with self._connection(run_id, write=True) as connection:
@@ -1198,7 +1222,7 @@ class RehearsalStore:
             raise RehearsalError("invalid activity")
         model = _model(model)
         _integer(input_bytes, "input_bytes", 0, 24000)
-        _integer(max_output_tokens, "max_output_tokens", 1, 1024)
+        _integer(max_output_tokens, "max_output_tokens", 1, DAY_MAX_OUTPUT_TOKENS)  # And the run's own limit below.
         amount = _money(reserved_usd, "reserved_usd")
         with self._connection(run_id, write=True) as connection:
             row = self._run(connection)

@@ -21,6 +21,7 @@ import tempfile
 from threading import RLock
 
 from core.library.store import LibraryStore, LibraryUnavailable
+from core.memory.compost import CompostError
 from core.memory.engine import ThresholdMemory
 from core.runtime.cohort import prepare_cohort
 from core.runtime.inquiry import InquiryReceiptStore, _validate_command, run_inquiry
@@ -506,8 +507,13 @@ class RehearsalController:
         key = f"rehearsal:{scope}{job['wake_id']}:journal:{mode}"
         with self._memory_lock:
             compost = CompostStore(path, job["agent_id"])
-            sources = (compost.prepare_distillation(key, choice.get("source_ids"))
-                       if mode == "distill" else None)
+            try:
+                sources = (compost.prepare_distillation(key, choice.get("source_ids"))
+                           if mode == "distill" else None)
+            except CompostError:
+                # The agent named notes it cannot condense: a definite, final
+                # refusal, not an uncertain one to retry.
+                raise ProviderError("invalid_journal_sources") from None
         output = self.store.get_output(self.run_id, job["wake_id"])
         if output is None:
             if sources is not None and sources["status"] == "empty":
@@ -657,6 +663,12 @@ class RehearsalController:
         except RehearsalBudgetExceeded:
             if job is not None:
                 self.store.finish_job(self.run_id, wake_id, self._token, status="failed", action=action, failure_code="admission_budget_exceeded")
+        except CompostError:
+            # The owner's journal store refused (sources it cannot condense, a
+            # conflicting entry): a definite outcome, so the wake ends failed
+            # instead of uncertain and reset to retry the same refusal.
+            if job is not None:
+                self.store.finish_job(self.run_id, wake_id, self._token, status="failed", action=action, failure_code="journal_refused")
         except ProviderError as error:
             if job is not None:
                 self.store.finish_job(self.run_id, wake_id, self._token, status="uncertain" if error.uncertain else "failed", action=action, failure_code=error.code)
@@ -684,7 +696,15 @@ class RehearsalController:
             raise RehearsalError("prepare_profiles_before_real_start")
         self.prepare_profiles()
         prepare_cohort(self.run_id, db_path=_run_file(self.path, "trade_queue.sqlite3"))
-        job = self.store.add_wake(self.run_id, owner)
+        # A wake the store reset to pending (safe to replay: no unresolved
+        # request) is never retried by anyone else in a day run, and it would
+        # block every later wake. This wake finishes it first, from its
+        # committed choice, instead of adding a new one.
+        # It gets one more try; if it is left waiting again, it is given up as
+        # failed so the same trouble never blocks the agent slot after slot.
+        waiting = [row for row in self.store.list_jobs(self.run_id)
+                   if row["agent_id"] == owner and row["status"] == "pending"]
+        job = waiting[0] if waiting else self.store.add_wake(self.run_id, owner)
         self._token = self.store.begin(self.run_id)
         try:
             self._execute(job["wake_id"])
@@ -692,7 +712,11 @@ class RehearsalController:
             token, self._token = self._token, None
             if token is not None:
                 self.store.end(self.run_id, token)
-        return next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        result = next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        if waiting and result["status"] == "pending":
+            self.store.give_up_job(self.run_id, job["wake_id"], "retry_failed")
+            result = next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        return result
 
     def run(self, resume=False):
         """Only explicit invocation dispatches; complete rounds are stable store jobs."""
