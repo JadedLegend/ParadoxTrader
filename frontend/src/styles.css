@@ -448,3 +448,5 @@ a.btn { display: inline-block; text-decoration: none; }
 .check-warn .check-mark { color: #f6c453; }
 .check-fail .check-mark { color: var(--danger); }
 .check-fail strong { color: var(--danger); }
+.settings-check-heading { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
+.check-idle { color: var(--text-muted, #9aa0b4); }

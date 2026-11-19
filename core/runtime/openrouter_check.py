@@ -257,8 +257,30 @@ def request_check(settings_dir, *, now=None):
     return check_state(settings_dir)
 
 
-def run_pending(settings_dir, *, check=None, now=None):
-    """Run by the check service: answer a pending request, then clear it."""
+def _with_services(result, store, services):
+    """Add the data, news and paper-account key checks to the answer."""
+    try:
+        if services is None:
+            import requests
+            from core.runtime.service_check import check_services
+            rows = check_services(store.secret, http_get=requests.get, http_post=requests.post)
+        else:
+            rows = services(store.secret)
+    except Exception as error:  # Never lose the OpenRouter answer over this part.
+        rows = [{"service": "Data keys", "group": "data", "status": "fail",
+                 "message": f"The key checks could not run ({type(error).__name__})."}]
+    result = dict(result, services=rows)
+    if any(row["status"] == "fail" for row in rows) and result.get("status") != "fail":
+        result["status"] = "fail"
+    elif any(row["status"] == "warn" for row in rows) and result.get("status") == "ok":
+        result["status"] = "warn"
+    return result
+
+
+def run_pending(settings_dir, *, check=None, now=None, services=None):
+    """Run by the check service: answer a pending request, then clear it.
+
+    ``services(secret)`` replaces the data-key checks in tests."""
     from core.runtime.owner_settings import OwnerSettings
     folder = _check_dir(settings_dir)
     request = folder / "request.json"
@@ -268,6 +290,7 @@ def run_pending(settings_dir, *, check=None, now=None):
         store = OwnerSettings(settings_dir)
         try:
             result = (check or check_connection)(store.key(), store.models())
+            result = _with_services(result, store, services)
         except Exception as error:  # Always leave an answer; never the key.
             result = {"checked_at": _now_iso(now), "status": "fail", "models": [], "unset": [],
                       "free_limits_url": FREE_LIMITS_URL,

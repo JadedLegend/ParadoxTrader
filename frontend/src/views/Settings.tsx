@@ -261,7 +261,9 @@ export default function Settings() {
 
       <section className="card mb-16" aria-labelledby="settings-check">
         <h2 className="card-title" id="settings-check">Connection</h2>
-        <p className="settings-help">Checks your key and each model you chose. Free models get a tiny reply test with every
+        <p className="settings-help">Checks your OpenRouter key and each model you chose, then every saved data, news and paper-account key
+          with one small read (Alpha Vantage's uses 1 of its 25 free daily reads; Brave's uses 1 search). Public.com, eToro and
+          SignalStack are never called. Free models get a tiny reply test with every
           price cap at zero; paid models get an endpoint check, so no paid reply is sent. Free tests count toward
           {' '}<a href={check?.free_limits_url ?? 'https://openrouter.ai/collections/free-models'} target="_blank" rel="noreferrer">OpenRouter's free-model limits</a>.
           It checks the saved settings, so save first.</p>
@@ -286,6 +288,16 @@ export default function Settings() {
               <span><strong>{name}</strong> {name === 'Witness' ? 'No model yet. That is fine for now.' : 'No model chosen, so this agent cannot wake.'}</span>
             </li>)}
           </ul>
+          {check.services && check.services.length > 0 && <>
+            <h3 className="settings-check-heading">Data, news and paper accounts</h3>
+            <ul className="settings-check-list">
+              {check.services.map(row => <li key={row.service}
+                className={row.status === 'unset' || row.status === 'skipped' ? 'check-idle' : `check-${row.status}`}>
+                <span className="check-mark">{row.status === 'unset' || row.status === 'skipped' ? '–' : MARK[row.status]}</span>
+                <span><strong>{row.service}</strong> {row.message}</span>
+              </li>)}
+            </ul>
+          </>}
         </div>}
       </section>
 
