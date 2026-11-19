@@ -89,6 +89,7 @@ def _check_basic(header, user, password_hash):
 
 SETTINGS_PATH = "/api/settings"
 CHECK_PATH = "/api/settings/check"
+HEARTBEAT_PATH = "/api/heartbeat"
 MAX_SETTINGS_BODY = 8192
 
 
@@ -233,8 +234,35 @@ def _check_app(settings_dir):
     return handle
 
 
+def _heartbeat_app(sessions_root, settings_dir, config_path):
+    """The heartbeat page: read-only status, today's wakes, cost and the window."""
+    from starlette.concurrency import run_in_threadpool
+
+    def read():
+        from core.runtime.owner_settings import OwnerSettings
+        from core.runtime.rehearsal.heartbeat import Heartbeat, load_schedule
+        from core.runtime.rehearsal.heartbeat_view import day_view
+        from core.runtime.rehearsal.store import RehearsalStore
+        if not Path(config_path).exists():
+            return {"available": False, "reason": "The heartbeat is not set up on this server yet."}
+        settings = OwnerSettings(settings_dir)
+        heartbeat = Heartbeat(RehearsalStore(Path(sessions_root)), load_schedule(config_path),
+                              prepare_day=None, run_wake=None, settings=settings,
+                              key_present=lambda: settings.key() is not None)
+        return dict(day_view(heartbeat, settings_dir=settings_dir), available=True)
+
+    async def handle(request):
+        try:
+            return JSONResponse(await run_in_threadpool(read), headers=SECURITY_HEADERS)
+        except Exception:  # Never a path or a private detail in the answer.
+            return JSONResponse({"error": "heartbeat_unreadable"}, status_code=503, headers=SECURITY_HEADERS)
+
+    return handle
+
+
 def create_gateway(*, sessions_root, frontend_dist, operator_token, user, password_hash,
-                   settings_dir="/var/lib/paradoxtrader/settings"):
+                   settings_dir="/var/lib/paradoxtrader/settings",
+                   heartbeat_config="/etc/paradoxtrader/heartbeat.json"):
     if not operator_token or not operator_token.strip():
         raise ValueError("operator_token_missing")
     if not user or not password_hash:
@@ -246,6 +274,8 @@ def create_gateway(*, sessions_root, frontend_dist, operator_token, user, passwo
         routes=[
             Route(SETTINGS_PATH, _settings_app(settings_dir), methods=["GET", "HEAD", "POST"]),
             Route(CHECK_PATH, _check_app(settings_dir), methods=["GET", "HEAD", "POST"]),
+            Route(HEARTBEAT_PATH, _heartbeat_app(sessions_root, settings_dir, heartbeat_config),
+                  methods=["GET", "HEAD"]),
             Route("/api/{rest:path}", _unknown_api, methods=["GET", "HEAD"]),
             Route("/{path:path}", _static_app(frontend_dist), methods=["GET", "HEAD"]),
         ],
@@ -263,6 +293,7 @@ def _from_environment():
         user=os.environ.get("PARADOX_DASHBOARD_USER", ""),
         password_hash=os.environ.get("PARADOX_DASHBOARD_PASSWORD_HASH", ""),
         settings_dir=os.environ.get("PARADOX_SETTINGS_DIR", "/var/lib/paradoxtrader/settings"),
+        heartbeat_config=os.environ.get("PARADOX_HEARTBEAT_CONFIG", "/etc/paradoxtrader/heartbeat.json"),
     )
 
 

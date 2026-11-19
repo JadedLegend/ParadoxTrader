@@ -16,6 +16,7 @@ const Costs = lazy(() => import('./views/Costs'))
 const InquiryHistory = lazy(() => import('./views/InquiryHistory'))
 const Rehearsal = lazy(() => import('./views/Rehearsal'))
 const Journals = lazy(() => import('./views/Journals'))
+const Heartbeat = lazy(() => import('./views/Heartbeat'))
 
 class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -28,7 +29,7 @@ class ScreenBoundary extends Component<{ children: ReactNode }, { failed: boolea
 }
 
 const NAV = [
-  ['/', 'Dashboard'], ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
+  ['/', 'Dashboard'], ...(IS_PRIVATE_HOST ? [['/heartbeat', 'Heartbeat']] : []), ['/choices', 'Wake Choices'], ['/agents', 'Agents'],
   ['/rehearsal', 'Sessions'], ['/journals', 'Journals'], ['/inquiries', 'Inquiry History'], ['/library', 'Library'], ['/costs', 'Costs'], ['/forum', 'Community'], ['/inbox', 'Messages'], ['/queue', 'Trade Queue'], ['/config', IS_PRIVATE_HOST ? 'Settings' : 'Configuration'],
 ]
 
@@ -53,6 +54,7 @@ export default function App() {
             <Suspense fallback={<div className="loading" role="status">Loading screen...</div>}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/heartbeat" element={<Heartbeat />} />
               <Route path="/choices" element={<WakeChoices />} />
               <Route path="/library" element={<Library />} />
               <Route path="/costs" element={<Costs />} />

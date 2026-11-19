@@ -28,10 +28,13 @@ const LIBRARY_PREFIX = '/api/library/'
 export const SETTINGS_PATH = '/api/settings'
 // Check connection: tests the saved key and models; sends no paid reply.
 export const CHECK_PATH = '/api/settings/check'
+// The heartbeat page: read-only status, today's wakes, cost and the market window.
+export const HEARTBEAT_PATH = '/api/heartbeat'
 
 export function servedByPrivateHost(path: string): boolean {
   const route = new URL(path, 'https://host.invalid').pathname
-  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`) || route === SETTINGS_PATH || route === CHECK_PATH
+  return route === SESSION_PREFIX || route.startsWith(`${SESSION_PREFIX}/`) || route === SETTINGS_PATH
+    || route === CHECK_PATH || route === HEARTBEAT_PATH
 }
 
 export function isSettingsWrite(method: Method, path: string): boolean {
