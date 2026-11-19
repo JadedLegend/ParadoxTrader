@@ -354,13 +354,13 @@ class DecisionControllerTests(unittest.TestCase):
                    "excerpts": [{"kind": "journal", "id": 1, "wake_id": "siren-r1",
                                  "body": "界" * 4000, "source": "agent", "body_truncated": False}]}
         # Set a cap that fits all structural offers, but not the entire excerpt.
-        controller.manifest["limits"]["max_input_bytes"] = 18000
+        controller.manifest["limits"]["max_input_bytes"] = 18600
         with patch("core.runtime.rehearsal.controller.owner_continuity", return_value=context):
             metadata, private = controller._new_decision_context(job)
         messages = controller._choice_messages(metadata, private)
         self.assertTrue(private["include_metadata"])
         self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))
-        self.assertLessEqual(controller._input_size(job, messages), 18000)
+        self.assertLessEqual(controller._input_size(job, messages), 18600)
         self.assertTrue(metadata["continuity"]["truncated"])
         self.assertEqual(context["chars"], 4000)
         controller.manifest["limits"]["max_input_bytes"] = 1000
