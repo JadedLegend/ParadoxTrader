@@ -62,13 +62,32 @@ def build(root, config_path):
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
         return store.prepare(manifest)["run_id"]
 
+    def market_window(owner):
+        """The shared read-only price window, using this agent's own paper key
+        (or any agent's saved one). None when there are no Settings."""
+        if settings is None:
+            return None
+        from core.market.window import DEFAULT_WATCHLIST, MarketWindow
+        from core.runtime.owner_settings import AGENTS
+
+        def credentials():
+            for agent in (owner,) + tuple(a for a in AGENTS if a != owner):
+                key_id, secret = settings.secret(f"alpaca_{agent}_key_id"), settings.secret(f"alpaca_{agent}_secret")
+                if key_id and secret:
+                    return key_id, secret
+            return None
+
+        symbols = settings.watchlist() or list(DEFAULT_WATCHLIST)
+        return MarketWindow(Path(schedule.settings_dir) / "market", symbols, credentials).read
+
     def run_wake(run_id, owner, step=None):
         from core.runtime.rehearsal.controller import RehearsalController, snapshot_profiles
         from core.runtime.rehearsal.provider import OpenRouterTransport
         snapshot_profiles(store, run_id, REPO)
         if schedule.mode == "real":
             transport = OpenRouterTransport(key())
-            return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner, step=step)
+            return RehearsalController(store, run_id, transport=transport, repo_root=REPO,
+                                       market=market_window(owner)).run_wake(owner, step=step)
         from core.runtime.rehearsal.examples import ScriptedHTTP
         transport = OpenRouterTransport("offline-scripted-not-a-credential", http_post=ScriptedHTTP())
         with ExitStack() as blocked:

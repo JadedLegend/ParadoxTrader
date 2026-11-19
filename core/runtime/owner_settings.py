@@ -199,6 +199,11 @@ class OwnerSettings:
         models = self.models()
         return None if any(models[agent] is None for agent in AGENTS) else {a: models[a] for a in AGENTS}
 
+    def watchlist(self):
+        """The market window's tickers, or None to use the default list."""
+        value = self._latest().get("watchlist")
+        return list(value) if isinstance(value, list) and value else None
+
     def daily_budget(self):
         value = self._latest().get("daily_budget_usd")
         return None if value is None else Decimal(value)
@@ -246,6 +251,7 @@ class OwnerSettings:
             secrets[slot] = {"set": value is not None, "ends_with": value[-4:] if value else None}
         return {"models": {slot: latest.get(f"model.{slot}") for slot in MODEL_SLOTS},
                 "daily_budget_usd": latest.get("daily_budget_usd"),
+                "watchlist": latest.get("watchlist"),
                 "key": {"set": key is not None, "ends_with": key[-4:] if key else None},
                 "secrets": secrets,
                 "history": history}
@@ -254,7 +260,7 @@ class OwnerSettings:
     @staticmethod
     def _validate(changes):
         if (not isinstance(changes, dict) or not changes
-                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets"}):
+                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets", "watchlist"}):
             raise SettingsError("invalid_settings_fields")
         rows = []
         if "models" in changes:
@@ -277,6 +283,12 @@ class OwnerSettings:
                     or budget.as_tuple().exponent < -2):
                 raise SettingsError("invalid_daily_budget")
             rows.append(("daily_budget_usd", format(budget.quantize(Decimal("0.01")), "f")))
+        if "watchlist" in changes:
+            from core.market.window import MarketWindowError, validate_symbols
+            try:
+                rows.append(("watchlist", validate_symbols(changes["watchlist"])))
+            except MarketWindowError as error:
+                raise SettingsError(str(error)) from None
         secrets = {}
         if "secrets" in changes:
             given = changes["secrets"]

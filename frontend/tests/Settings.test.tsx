@@ -79,6 +79,19 @@ describe('Settings page', () => {
     expect(await screen.findByText(/from its next wake/)).toBeTruthy()
   })
 
+  it('saves a cleaned market watchlist and refuses more than five tickers', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, watchlist: ['NVDA', 'SPY'] })
+    render(<Settings />)
+    const field = await screen.findByLabelText(/Up to 5 tickers/) as HTMLInputElement
+    expect(field.value).toBe('SPY, QQQ, IWM, TLT, GLD')
+    fireEvent.change(field, { target: { value: 'a, b, c, d, e, f' } })
+    expect((screen.getByRole('button', { name: 'Save watchlist' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: 'nvda,  spy, nvda' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save watchlist' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ watchlist: ['NVDA', 'SPY'] }))
+    expect(await screen.findByText('Market watchlist saved.')).toBeTruthy()
+  })
+
   it('saves the budget with two decimals', async () => {
     vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, daily_budget_usd: '1.50' })
     render(<Settings />)
