@@ -87,6 +87,14 @@ describe('Heartbeat page', () => {
     }
   })
 
+  it('says plainly when the day could not open', async () => {
+    vi.mocked(api.getHeartbeat).mockResolvedValue({ ...VIEW, reason: "today's day could not open: invalid_catalog_price",
+      problems: [{ agent_id: null, scheduled_at: '2026-11-19T09:00:00-05:00', note: "today's day could not open: invalid_catalog_price" }] })
+    render(<Heartbeat />)
+    expect(await screen.findByText(/No one can wake: today's day could not open \(invalid_catalog_price\)/)).toBeTruthy()
+    expect(screen.getByText('The whole day')).toBeTruthy()
+  })
+
   it('reports a failed read without blanking the page', async () => {
     vi.mocked(api.getHeartbeat).mockRejectedValue(new Error('down'))
     render(<Heartbeat />)

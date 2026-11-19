@@ -79,7 +79,7 @@ export interface HeartbeatView {
   today?: { run_id: string | null; status: string | null; reserved_usd: string; spent_usd: string; spent_complete: boolean
     daily_budget_usd: string; slot_outcomes: Record<string, number> }
   next_wake_by_agent?: Record<string, string>
-  problems?: { agent_id: string; scheduled_at: string; note: string | null }[]
+  problems?: { agent_id: string | null; scheduled_at: string; note: string | null }[]
   wakes?: HeartbeatWake[]
   agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null }[]
   window?: { lines: string[]; feeds: { feed: string; status: 'ok' | 'unavailable' | 'unchecked'; checked_at: string | null; detail: string | null }[] }

@@ -140,26 +140,56 @@ def _model(row, *, api=False):
 # anything else still fails closed below. The frozen snapshot keeps just
 # prompt/completion/request, so a stored manifest stays strict.
 _TEXT_ONLY_UNITS = ("image", "audio", "input_audio_cache", "web_search")  # Wakes send text only, no plugins.
-_NO_DEARER_THAN = {"input_cache_read": "prompt", "input_cache_write": "prompt", "internal_reasoning": "completion"}
+# Text price lines folded into the three the gateway reserves with. Each base
+# line is costed at the dearest of the lines that can bill like it, so a cache
+# write dearer than a fresh prompt, or a reasoning token, raises the reservation
+# instead of slipping past it.
+_COSTED_AS = {"prompt": "prompt", "input_cache_read": "prompt", "input_cache_write": "prompt",
+              "completion": "completion", "internal_reasoning": "completion", "request": "request"}
+# Conditions under which an override tier applies (time of day, long prompts).
+# Whichever tier applies, the dearest one is reserved, so the condition itself
+# never needs judging here.
+_OVERRIDE_CONDITIONS = {"utc_days", "utc_start", "utc_end", "min_prompt_tokens", "max_prompt_tokens"}
 
 
 def _api_pricing(pricing):
-    """Translate a live catalog price row into prompt/completion/request."""
+    """Translate a live catalog price row into prompt/completion/request.
+
+    The result is the highest price each line can reach: across the base row,
+    its dearer cache and reasoning lines, and every override tier (OpenRouter
+    lists time-of-day and long-prompt tiers as ``overrides``). Unknown nonzero
+    units and unknown override shapes still fail closed.
+    """
     if "prompt" not in pricing or "completion" not in pricing:
         raise ManifestError("missing_catalog_price")
-    out = {"prompt": pricing["prompt"], "completion": pricing["completion"],
-           "request": pricing.get("request", "0")}  # No per-request line means no per-request charge.
-    for unit, value in pricing.items():
-        if unit in out:
-            continue
-        if unit in _TEXT_ONLY_UNITS:
-            _rate(value)  # Still must be a well-formed price.
-        elif unit in _NO_DEARER_THAN:
-            # Reservations are priced at the base rate, so these may only ever be cheaper.
-            if Decimal(_rate(value)) > Decimal(_rate(out[_NO_DEARER_THAN[unit]])):
-                raise ManifestError("unsupported_billed_unit")
-        else:
-            out[unit] = value  # Unknown: left for the strict check to reject unless zero.
+    best = {"prompt": Decimal(0), "completion": Decimal(0), "request": Decimal(0)}
+    unknown = {}
+
+    def fold(row, *, tier):
+        for unit, value in row.items():
+            if tier and unit in _OVERRIDE_CONDITIONS:
+                continue
+            if unit == "overrides" and not tier:
+                continue
+            if unit in _TEXT_ONLY_UNITS:
+                _rate(value)  # Still must be a well-formed price.
+            elif unit in _COSTED_AS:
+                line = _COSTED_AS[unit]
+                best[line] = max(best[line], Decimal(_rate(value)))
+            else:
+                unknown[unit] = value  # Left for the strict check to reject unless zero.
+
+    fold(pricing, tier=False)
+    overrides = pricing.get("overrides")
+    if overrides not in (None, []):
+        if not isinstance(overrides, list) or len(overrides) > 50:
+            raise ManifestError("unsupported_pricing_override")
+        for tier in overrides:
+            if not isinstance(tier, dict) or not set(tier) - _OVERRIDE_CONDITIONS:
+                raise ManifestError("unsupported_pricing_override")
+            fold(tier, tier=True)
+    out = {line: decimal_text(amount) for line, amount in best.items()}
+    out.update(unknown)
     return out
 
 
