@@ -58,8 +58,6 @@ SECRET_SLOTS = {
     "eodhd": _GENERIC,
     # News and social.
     "brave_search": _GENERIC,
-    "reddit_client_id": _GENERIC,
-    "reddit_client_secret": _GENERIC,
     "x_bearer_token": _GENERIC,
     "redditapis_token": _GENERIC,  # Reddit reads through redditapis.com.
     # Brokers and signal routes: stored only; nothing here places orders.
