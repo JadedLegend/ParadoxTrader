@@ -60,6 +60,8 @@ def build(root, config_path):
         manifest["kind"] = "day"
         manifest["limits"]["wakes_per_agent"] = wakes_per_agent
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
+        from core.runtime.rehearsal.provider import DAY_MAX_OUTPUT_TOKENS
+        manifest["limits"]["max_output_tokens"] = DAY_MAX_OUTPUT_TOKENS  # Room for models that think first.
         return store.prepare(manifest)["run_id"]
 
     def market_window(owner):

@@ -30,7 +30,11 @@ LIMIT_CEILINGS = {
     "request_timeout_seconds": 60, "max_parallelism": 3,
 }
 # A "day" run adds each agent's wakes as they happen (see store.add_wake).
-DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": 48, "max_requests": 2 * 48 * 7}
+# Models that think before answering count that thinking toward max_tokens,
+# so a day run may give each reply up to DAY_MAX_OUTPUT_TOKENS.
+DAY_MAX_OUTPUT_TOKENS = 4096
+DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": 48, "max_requests": 2 * 48 * 7,
+                      "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
 # Input tokens are conservatively bounded by UTF-8 bytes, not a chars/4 guess.
 # This explicit protocol allowance is included in both context and reservation.
 PROTOCOL_OVERHEAD_BYTES = 2048

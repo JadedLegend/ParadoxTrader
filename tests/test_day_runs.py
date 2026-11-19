@@ -69,6 +69,50 @@ class DayRunTests(unittest.TestCase):
             self.store.add_wake(day, "oracle")
         self.store.add_wake(day, "weaver")  # Others are independent.
 
+    def test_a_wake_left_pending_is_finished_by_that_agents_next_wake(self):
+        day = self.store.prepare(day_manifest())["run_id"]
+        self.store.add_wake(day, "oracle")  # Reset to pending, e.g. after an earlier failure.
+        finished = self.controller(day).run_wake("oracle")
+        self.assertEqual((finished["wake_id"], finished["status"]), ("oracle-r1", "completed"))
+        self.assertEqual([j["wake_id"] for j in self.store.list_jobs(day)], ["oracle-r1"])
+        self.assertEqual(self.controller(day).run_wake("oracle")["wake_id"], "oracle-r2")
+
+    def test_a_journal_naming_notes_it_cannot_condense_fails_cleanly(self):
+        from core.runtime.rehearsal.examples import ScriptedResponse
+
+        def bad_distill(url, *, json=None, **kwargs):
+            text = chr(10).join(str(m.get("content", "")) for m in (json or {}).get("messages", []))
+            if "REHEARSAL CHOICE" in text and "Stable owner ID: alchemist" in text:
+                content = '{"action":"journal","journal_mode":"distill","source_ids":[99]}'
+                return ScriptedResponse({"id": "x", "model": json.get("model"), "provider": "scripted-offline",
+                                         "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+                                         "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2,
+                                                   "cost": "0"}})
+            return self.http(url, json=json, **kwargs)
+
+        day = self.store.prepare(day_manifest())["run_id"]
+        controller = RehearsalController(self.store, day, transport=OpenRouterTransport(
+            "scripted-offline", http_post=bad_distill))
+        job = controller.run_wake("alchemist")
+        self.assertEqual((job["status"], job["failure_code"]), ("failed", "invalid_journal_sources"))
+        self.assertEqual(self.controller(day).run_wake("alchemist")["wake_id"], "alchemist-r2")  # Not stuck.
+
+    def test_day_runs_give_replies_more_room_and_rehearsals_do_not(self):
+        roomy = day_manifest()
+        roomy["limits"]["max_output_tokens"] = 4096
+        for row in roomy["catalog_snapshot"]["models"]:
+            row["max_completion_tokens"] = 8192
+        day = self.store.prepare(roomy)["run_id"]
+        self.assertEqual(self.store.get_run(day)["limits"]["max_output_tokens"], 4096)
+        self.assertEqual(validate_manifest(roomy)["limits"]["max_output_tokens"], 4096)
+        too_roomy = manifest()
+        too_roomy["limits"]["max_output_tokens"] = 4096
+        with self.assertRaises(RehearsalError):
+            self.store.prepare(too_roomy)
+        roomy["limits"]["max_output_tokens"] = 4097
+        with self.assertRaises(RehearsalError):
+            self.store.prepare(roomy)
+
     def test_daily_wake_limit(self):
         day = self.store.prepare(day_manifest(wakes=2))["run_id"]
         for _ in range(2):

@@ -173,15 +173,15 @@ class HeartbeatTests(unittest.TestCase):
         self.assertEqual(self.store.list_runs()["total"], 0)  # Nothing opened once the day is spent.
         self.assertEqual(beat.status()["reason"], "today's budget is spent")
 
-    def test_an_unfinished_wake_blocks_only_that_agent(self):
+    def test_a_wake_left_safe_to_replay_is_finished_by_the_next_slot(self):
         beat = self.heartbeat()
         self.clock = at(9, 1)
         day = beat.tick()["run_id"]
-        self.store.add_wake(day, "siren")  # Left unfinished, as after a crash.
+        left = self.store.add_wake(day, "siren")  # Left pending (safe to replay), as after a crash.
         self.clock = at(9, 5)
         result = beat.tick()
-        self.assertEqual([w["agent_id"] for w in result["wakes"]], ["alchemist"])
-        self.assertIn(("siren", "09:02", "blocked"), self.slots())
+        self.assertEqual([(w["agent_id"], w["wake_id"], w["status"]) for w in result["wakes"]],
+                         [("siren", left["wake_id"], "completed"), ("alchemist", "alchemist-r1", "completed")])
 
     def test_a_failed_wake_names_the_agent_and_model(self):
         def failing(run_id, owner):

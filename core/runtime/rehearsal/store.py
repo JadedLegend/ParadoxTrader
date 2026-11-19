@@ -42,8 +42,9 @@ DEFAULT_LIMITS = {
 # A "day" run (one continuing day in the agents' home) adds each agent's wakes
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
 MAX_WAKES_PER_AGENT = 48
+DAY_MAX_OUTPUT_TOKENS = 4096  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
-              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7}
+              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
 RUN_KINDS = ("rehearsal", "day")
 _SAFE = re.compile(r"[a-zA-Z0-9_.:-]{1,128}\Z")
 _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
@@ -287,7 +288,8 @@ def _validate_manifest(raw):
         raise RehearsalError("invalid limits")
     limits = {name: _integer(limits[name], name, 1, cap) for name, cap in LIMIT_CAPS.items()} | {"budget_usd": raw["limits"]["budget_usd"]}
     if kind == "rehearsal" and (limits["wakes_per_agent"] != 2
-                                or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]):
+                                or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]
+                                or limits["max_output_tokens"] > DEFAULT_LIMITS["max_output_tokens"]):
         raise RehearsalError("two rounds required")
     if not isinstance(limits["budget_usd"], str):
         raise RehearsalError("invalid budget_usd")
@@ -1198,7 +1200,7 @@ class RehearsalStore:
             raise RehearsalError("invalid activity")
         model = _model(model)
         _integer(input_bytes, "input_bytes", 0, 24000)
-        _integer(max_output_tokens, "max_output_tokens", 1, 1024)
+        _integer(max_output_tokens, "max_output_tokens", 1, DAY_MAX_OUTPUT_TOKENS)  # And the run's own limit below.
         amount = _money(reserved_usd, "reserved_usd")
         with self._connection(run_id, write=True) as connection:
             row = self._run(connection)

@@ -504,10 +504,16 @@ class RehearsalController:
         path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
         scope = f"{self._key_scope}:" if self._key_scope else ""
         key = f"rehearsal:{scope}{job['wake_id']}:journal:{mode}"
+        from core.memory.compost import CompostError
         with self._memory_lock:
             compost = CompostStore(path, job["agent_id"])
-            sources = (compost.prepare_distillation(key, choice.get("source_ids"))
-                       if mode == "distill" else None)
+            try:
+                sources = (compost.prepare_distillation(key, choice.get("source_ids"))
+                           if mode == "distill" else None)
+            except CompostError:
+                # The agent named notes it cannot condense: a definite, final
+                # refusal, not an uncertain one to retry.
+                raise ProviderError("invalid_journal_sources") from None
         output = self.store.get_output(self.run_id, job["wake_id"])
         if output is None:
             if sources is not None and sources["status"] == "empty":
@@ -684,7 +690,13 @@ class RehearsalController:
             raise RehearsalError("prepare_profiles_before_real_start")
         self.prepare_profiles()
         prepare_cohort(self.run_id, db_path=_run_file(self.path, "trade_queue.sqlite3"))
-        job = self.store.add_wake(self.run_id, owner)
+        # A wake the store reset to pending (safe to replay: no unresolved
+        # request) is never retried by anyone else in a day run, and it would
+        # block every later wake. This wake finishes it first, from its
+        # committed choice, instead of adding a new one.
+        waiting = [row for row in self.store.list_jobs(self.run_id)
+                   if row["agent_id"] == owner and row["status"] == "pending"]
+        job = waiting[0] if waiting else self.store.add_wake(self.run_id, owner)
         self._token = self.store.begin(self.run_id)
         try:
             self._execute(job["wake_id"])
