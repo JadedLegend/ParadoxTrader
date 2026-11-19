@@ -176,4 +176,10 @@ describe('private host settings routes', () => {
     expect(isSettingsWrite('POST', '/api/settings/other')).toBe(false)
     expect(isSettingsWrite('GET', '/api/settings/check')).toBe(false)
   })
+
+  it('serves the heartbeat page read-only', async () => {
+    const { isSettingsWrite, servedByPrivateHost } = await import('../src/data/client')
+    expect(servedByPrivateHost('/api/heartbeat')).toBe(true)
+    expect(isSettingsWrite('POST', '/api/heartbeat')).toBe(false)
+  })
 })

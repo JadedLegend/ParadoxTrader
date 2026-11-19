@@ -450,3 +450,16 @@ a.btn { display: inline-block; text-decoration: none; }
 .check-fail strong { color: var(--danger); }
 .settings-check-heading { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
 .check-idle { color: var(--text-muted, #9aa0b4); }
+.heartbeat-now { border-left: 3px solid var(--border); }
+.heartbeat-now.heartbeat-ok { border-left-color: var(--success); }
+.heartbeat-now.heartbeat-warn { border-left-color: var(--accent3); }
+.heartbeat-now.heartbeat-fail { border-left-color: var(--danger); }
+.heartbeat-now-text { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.heartbeat-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--bg3); margin-left: 4px; }
+.heartbeat-badge.heartbeat-ok { color: var(--success); }
+.heartbeat-badge.heartbeat-warn { color: var(--accent3); }
+.heartbeat-badge.heartbeat-fail { color: var(--danger); }
+.heartbeat-table { min-width: 0; }
+.usage-table-wrap .heartbeat-table { min-width: 560px; }
+.heartbeat-lines { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.heartbeat-lines li { font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--text2); background: var(--bg3); border-radius: var(--radius); padding: 10px 12px; overflow-wrap: anywhere; }

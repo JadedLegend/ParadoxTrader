@@ -68,6 +68,23 @@ export interface ConnectionCheck {
 export interface CheckState { state: 'none' | 'pending' | 'done'; requested_at: string | null; result: ConnectionCheck | null }
 export const checkConnection = () => request<CheckState>('POST', '/api/settings/check', {})
 export const getConnectionCheck = () => request<CheckState>('GET', '/api/settings/check')
+// The heartbeat page (private host only): read-only status, today's wakes, cost and the window.
+export interface HeartbeatWake {
+  agent_id: string; scheduled_at: string; outcome: string; wake_status: string | null
+  choices: string[]; model: string | null; note: string | null
+}
+export interface HeartbeatView {
+  available: boolean; reason: string; paused?: boolean; dispatch?: string; local_time?: string
+  choices_per_wake?: number
+  today?: { run_id: string | null; status: string | null; reserved_usd: string; spent_usd: string; spent_complete: boolean
+    daily_budget_usd: string; slot_outcomes: Record<string, number> }
+  next_wake_by_agent?: Record<string, string>
+  problems?: { agent_id: string; scheduled_at: string; note: string | null }[]
+  wakes?: HeartbeatWake[]
+  agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null }[]
+  window?: { lines: string[]; feeds: { feed: string; status: 'ok' | 'unavailable' | 'unchecked'; checked_at: string | null; detail: string | null }[] }
+}
+export const getHeartbeat = () => request<HeartbeatView>('GET', '/api/heartbeat')
 export const updateConfig = (key_path: string, value: unknown) => request<any>('POST', '/api/config', { key_path, value })
 export const setPhase = (phase: number) => request<any>('POST', '/api/phase', { phase })
 export const setCountdown = (target_iso: string) => request<any>('POST', '/api/countdown', { target_iso })
