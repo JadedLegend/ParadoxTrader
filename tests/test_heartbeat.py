@@ -183,6 +183,30 @@ class HeartbeatTests(unittest.TestCase):
         self.assertEqual([(w["agent_id"], w["wake_id"], w["status"]) for w in result["wakes"]],
                          [("siren", left["wake_id"], "completed"), ("alchemist", "alchemist-r1", "completed")])
 
+    def test_a_day_that_cannot_open_is_named_and_retried(self):
+        from core.runtime.rehearsal.provider import ManifestError
+        failing = {"on": True}
+
+        def prepare_day(budget_usd, wakes_per_agent, models=None):
+            if failing["on"]:
+                raise ManifestError("invalid_catalog_price")
+            return self.prepare_day(budget_usd, wakes_per_agent, models)
+
+        beat = Heartbeat(self.store, Schedule.from_config(CONFIG), prepare_day=prepare_day,
+                         run_wake=self.run_wake, now=lambda: self.clock)
+        self.clock = at(9, 1)
+        with self.assertRaises(ManifestError):
+            beat.tick()
+        status = beat.status()
+        self.assertEqual(status["reason"], "today's day could not open: invalid_catalog_price")
+        self.assertEqual(status["problems"][0]["note"], "today's day could not open: invalid_catalog_price")
+        self.assertEqual(self.slots(), [])  # The slot stays due and is retried.
+        failing["on"] = False
+        self.clock = at(9, 2)
+        beat.tick()
+        self.assertIn(("tempest", "09:00", "woke"), self.slots())
+        self.assertTrue(beat.status()["reason"].startswith("running"))
+
     def test_a_failed_wake_names_the_agent_and_model(self):
         def failing(run_id, owner):
             job = self.store.add_wake(run_id, owner)

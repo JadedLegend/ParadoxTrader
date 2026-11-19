@@ -147,5 +147,9 @@ if __name__ == "__main__":
         # Bounded codes only: never keys, provider bodies or raw exceptions.
         code = str(exc) if str(exc) in {"dedicated_rehearsal_key_missing", "heartbeat_already_running",
                                         "invalid_heartbeat_config"} else "heartbeat_operation_failed"
-        print(json.dumps({"error": code, "type": type(exc).__name__}), file=sys.stderr)
+        report = {"error": code, "type": type(exc).__name__}
+        from core.runtime.rehearsal.provider import ManifestError
+        if isinstance(exc, ManifestError):
+            report["detail"] = str(exc)  # Manifest codes are fixed strings, such as invalid_catalog_price.
+        print(json.dumps(report), file=sys.stderr)
         raise SystemExit(1)

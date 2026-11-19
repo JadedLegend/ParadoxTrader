@@ -32,6 +32,9 @@ function nowLine(view: HeartbeatView) {
   if (reason.includes('key is not set')) return { tone: 'fail', text: 'No one can wake: the OpenRouter key is not set.' }
   if (reason.includes('budget is spent')) return { tone: 'warn', text: "Today's budget is spent. Wakes resume tomorrow." }
   if (reason.startsWith('quiet')) return { tone: 'ok', text: 'Quiet. No more wakes today.' }
+  if (reason.startsWith("today's day could not open")) {
+    return { tone: 'fail', text: `No one can wake: today's day could not open (${reason.slice(28)}). It is retried every minute.` }
+  }
   if (reason.startsWith("today's day is")) return { tone: 'warn', text: `Today's run is ${reason.slice(15)}. No more wakes today.` }
   return { tone: 'warn', text: reason }
 }
@@ -120,7 +123,7 @@ export default function Heartbeat() {
         {problems.length === 0 ? <p className="settings-note">Nothing failed today.</p> :
           <ul className="settings-check-list">{problems.map(problem => <li key={`${problem.agent_id}-${problem.scheduled_at}`} className="check-fail">
             <span className="check-mark" aria-hidden="true">✕</span>
-            <span><strong>{agentName(problem.agent_id)}</strong> at {clock(problem.scheduled_at)}: {problem.note ?? 'failed without a reason recorded'}</span>
+            <span><strong>{problem.agent_id ? agentName(problem.agent_id) : 'The whole day'}</strong> at {clock(problem.scheduled_at)}: {problem.note ?? 'failed without a reason recorded'}</span>
           </li>)}</ul>}
       </section>
 

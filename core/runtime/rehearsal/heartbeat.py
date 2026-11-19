@@ -44,6 +44,7 @@ from decimal import Decimal
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 from zoneinfo import ZoneInfo
 
@@ -208,6 +209,10 @@ class Heartbeat:
                 scheduled_at TEXT NOT NULL, window TEXT NOT NULL, outcome TEXT NOT NULL,
                 run_id TEXT, wake_id TEXT, wake_status TEXT, note TEXT,
                 recorded_at TEXT NOT NULL, finished_at TEXT)""")
+            # Why today's day run could not open (for status and the heartbeat page).
+            # Slots stay due, so a passing problem is retried until each grace ends.
+            conn.execute("""CREATE TABLE IF NOT EXISTS day_errors (
+                local_date TEXT NOT NULL, recorded_at TEXT NOT NULL, code TEXT NOT NULL)""")
             conn.execute("""CREATE TABLE IF NOT EXISTS days (
                 local_date TEXT NOT NULL, run_id TEXT PRIMARY KEY, opened_at TEXT NOT NULL,
                 continued_from TEXT)""")
@@ -398,7 +403,18 @@ class Heartbeat:
                     for slot in fresh:  # Spent before opening anything: no new day segment.
                         self._record(conn, slot, "over_budget", note="today's budget is spent")
                     return {"outcome": "over_budget", "slots": len(fresh), "missed": missed}
-                run_id, previous = self._today(conn, today)
+                try:
+                    run_id, previous = self._today(conn, today)
+                except Exception as error:
+                    # Bounded codes only (manifest codes are fixed strings), never a body or a path.
+                    text = str(error)
+                    code = text if re.fullmatch(r"[a-z_]{3,60}", text) else type(error).__name__
+                    conn.execute("INSERT INTO day_errors(local_date,recorded_at,code) VALUES (?,?,?)",
+                                 (today, self.now().isoformat(), code))
+                    conn.commit()
+                    raise
+                conn.execute("DELETE FROM day_errors WHERE local_date=?", (today,))
+                conn.commit()
                 started = []
                 for slot in fresh[:self.schedule.max_wakes_per_tick]:
                     _, owner, _ = slot
@@ -483,6 +499,8 @@ class Heartbeat:
             day = conn.execute("SELECT run_id FROM days WHERE local_date=? ORDER BY opened_at DESC LIMIT 1",
                                (today,)).fetchone()
             reserved = self._reserved_today(conn, today)
+            day_error = conn.execute("SELECT recorded_at,code FROM day_errors WHERE local_date=? "
+                                     "ORDER BY recorded_at DESC LIMIT 1", (today,)).fetchone()
         run = self.store.get_run(day["run_id"]) if day else None
         upcoming = [slot for slot in self.schedule.slots(local.date()) if slot[0] > local]
         next_wakes = {}
@@ -498,6 +516,8 @@ class Heartbeat:
             reason = f"today's day is {run['status']}"
         elif self.daily_budget() - reserved < MIN_REMAINING_USD:
             reason = "today's budget is spent"
+        elif day_error is not None:
+            reason = "today's day could not open: " + day_error["code"]
         elif not upcoming:
             reason = "quiet: no more wakes today"
         else:
@@ -507,6 +527,9 @@ class Heartbeat:
             counts[row["outcome"]] = counts.get(row["outcome"], 0) + 1
         problems = [{"agent_id": row["agent_id"], "scheduled_at": row["scheduled_at"], "note": row["note"]}
                     for row in rows if row["wake_status"] in ("failed", "uncertain")]
+        if day_error is not None:
+            problems.insert(0, {"agent_id": None, "scheduled_at": day_error["recorded_at"],
+                                "note": "today's day could not open: " + day_error["code"]})
         return {"reason": reason, "paused": self.paused(), "dispatch": self.schedule.dispatch,
                 "mode": self.schedule.mode, "local_time": local.isoformat(),
                 "today": {"run_id": run["run_id"] if run else None,

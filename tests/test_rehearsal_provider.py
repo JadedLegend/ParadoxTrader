@@ -216,14 +216,34 @@ class ManifestTests(unittest.TestCase):
                               "input_cache_read": "0.0000001", "input_cache_write": "0.0000001875"}
         rows = catalog_snapshot(raw["agent_models"], catalog)["models"]
         self.assertEqual(rows[0]["pricing"], {"prompt": "0.000002", "completion": "0.00001", "request": "0"})
-        for unit, value in (("input_cache_write", "0.0000025"), ("internal_reasoning", "0.00002"),
-                            ("video", "0.01"), ("image", "NaN")):
+        dearer = deepcopy(catalog)  # Dearer cache writes and reasoning raise the reservation, never slip past it.
+        dearer["data"][0]["pricing"].update(input_cache_write="0.0000025", internal_reasoning="0.00002")
+        self.assertEqual(catalog_snapshot(raw["agent_models"], dearer)["models"][0]["pricing"],
+                         {"prompt": "0.0000025", "completion": "0.00002", "request": "0"})
+        for unit, value in (("video", "0.01"), ("image", "NaN")):
             bad = deepcopy(catalog); bad["data"][0]["pricing"][unit] = value
             with self.subTest(unit=unit), self.assertRaises(ManifestError):
                 catalog_snapshot(raw["agent_models"], bad)
         bad = deepcopy(catalog); del bad["data"][0]["pricing"]["completion"]
         with self.assertRaisesRegex(ManifestError, "missing_catalog_price"):
             catalog_snapshot(raw["agent_models"], bad)
+
+    def test_time_of_day_and_long_prompt_tiers_reserve_the_dearest_tier(self):
+        raw = manifest("real")
+        catalog = {"data": deepcopy(raw["catalog_snapshot"]["models"])}
+        for row in catalog["data"]:  # The shapes OpenRouter lists on 2026-11-19.
+            row["pricing"] = {"prompt": "0.00000015", "completion": "0.0000006", "input_cache_read": "0.000000003",
+                              "overrides": [{"utc_days": ["monday"], "utc_start": 100, "utc_end": 400,
+                                             "prompt": "0.0000003", "completion": "0.0000012"},
+                                            {"min_prompt_tokens": 272000, "prompt": "0.0000004",
+                                             "input_cache_write": "0.0000005"}]}
+        pricing = catalog_snapshot(raw["agent_models"], catalog)["models"][0]["pricing"]
+        self.assertEqual({line: Decimal(value) for line, value in pricing.items()},
+                         {"prompt": Decimal("0.0000005"), "completion": Decimal("0.0000012"), "request": Decimal(0)})
+        for tiers in ([{"utc_days": ["monday"]}], [{"prompt": "0.1", "video": "0.01"}], "cheap", [{"weird": "x"}]):
+            bad = deepcopy(catalog); bad["data"][0]["pricing"]["overrides"] = tiers
+            with self.subTest(tiers=tiers), self.assertRaises(ManifestError):
+                catalog_snapshot(raw["agent_models"], bad)
 
     def test_overrides_rejected_during_catalog_normalization(self):
         raw = manifest("real")
