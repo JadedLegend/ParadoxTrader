@@ -9,11 +9,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from core.market.feeds import (NEWS_URL, X_DAILY_POST_CAP, X_SEARCH_URL, MarketFeeds, feed_lines,
-                               fetch_headlines, fetch_x_posts)
+from core.market.feeds import (NEWS_URL, REDDIT_URL, X_DAILY_POST_CAP, X_SEARCH_URL, FeedError, MarketFeeds,
+                               feed_lines, fetch_headlines, fetch_reddit, fetch_x_posts, validate_subreddits)
+from core.runtime.owner_settings import OwnerSettings, SettingsError
 
 NOW = datetime(2026, 11, 19, 15, 0, tzinfo=timezone.utc)
-KEYS = {"massive": "massivekey1", "x_bearer_token": "xbearer123456"}
+KEYS = {"massive": "massivekey1", "x_bearer_token": "xbearer123456", "redditapis_token": "redditapistoken1"}
 
 
 class Response:
@@ -29,6 +30,13 @@ def news(n=6):
                          "published_utc": "2026-11-19T14:00:00Z"} for i in range(n)]}
 
 
+def reddit(subreddit):
+    return {"posts": [{"title": f"{subreddit} pinned", "subreddit": subreddit, "upvotes": 9999, "comments": 1,
+                       "stickied": True},
+                      {"title": f"{subreddit} thread", "subreddit": subreddit, "upvotes": len(subreddit) * 100,
+                       "comments": 40, "stickied": False, "over_18": False}]}
+
+
 def posts(n=10):
     return {"data": [{"text": f"$SPY post {i}", "public_metrics": {"like_count": i},
                       "created_at": "2026-11-19T14:30:00Z"} for i in range(n)]}
@@ -40,10 +48,12 @@ class Scripted:
 
     def __call__(self, url, **kwargs):
         self.calls.append((url, kwargs))
-        if url not in (NEWS_URL, X_SEARCH_URL):
-            raise AssertionError("only the news and recent-search addresses may be read: " + url)
+        if url not in (NEWS_URL, X_SEARCH_URL, REDDIT_URL):
+            raise AssertionError("only the news, recent-search and Reddit listing addresses may be read: " + url)
         if self.status != 200:
             return Response(self.status, {"detail": "nope " + KEYS["x_bearer_token"]})
+        if url == REDDIT_URL:
+            return Response(200, reddit(kwargs["params"]["subreddit"]))
         return Response(200, news() if url == NEWS_URL else posts())
 
 
@@ -64,6 +74,51 @@ class FetchTests(Blocked):
         self.assertEqual(record["status"], "ok")
         self.assertEqual(len(record["items"]), 5)
         self.assertEqual(record["items"][0]["title"], "Story 0")  # Links removed.
+
+    def test_law_firm_ads_and_self_promotion_are_filtered_out(self):
+        class Noisy(Scripted):
+            def __call__(self, url, **kwargs):
+                self.calls.append((url, kwargs))
+                if url == NEWS_URL:
+                    return Response(200, {"results": [
+                        {"title": "ROSEN, SKILLED INVESTOR COUNSEL, Encourages Triller Investors to Secure Counsel",
+                         "publisher": {"name": "GlobeNewswire"}},
+                        {"title": "Shareholder Alert: ClaimsFiler Reminds Investors With Losses", "publisher": {}},
+                        {"title": "Fed holds rates steady", "publisher": {"name": "Wire"}}]})
+                return Response(200, {"data": [
+                    {"text": "$SPY read my substack post, subscribe", "public_metrics": {"like_count": 50}},
+                    {"text": "$SPY breadth is thin today", "public_metrics": {"like_count": 12}},
+                    {"text": "$QQQ moon", "public_metrics": {"like_count": 1}}]})
+        heads = fetch_headlines("k" * 10, http_get=Noisy(), now=lambda: NOW)
+        self.assertEqual([item["title"] for item in heads["items"]], ["Fed holds rates steady"])
+        x = fetch_x_posts("t" * 10, ["SPY"], http_get=Noisy(), now=lambda: NOW)
+        self.assertEqual([item["text"] for item in x["items"]], ["$SPY breadth is thin today"])
+        self.assertEqual(x["read"], 3)  # Filtered posts still count toward the daily cap.
+
+    def test_reddit_shows_the_most_upvoted_unpinned_posts(self):
+        http = Scripted()
+        record = fetch_reddit(KEYS["redditapis_token"], ["stocks", "wallstreetbets"], http_get=http, now=lambda: NOW)
+        self.assertEqual([item["subreddit"] for item in record["items"]], ["wallstreetbets", "stocks"])
+        self.assertNotIn("pinned", json.dumps(record))
+        for _url, kwargs in http.calls:
+            self.assertEqual(kwargs["headers"], {"Authorization": "Bearer " + KEYS["redditapis_token"]})
+            self.assertEqual(kwargs["params"]["sort"], "hot")
+        self.assertIn("On Reddit: \"wallstreetbets thread\" (r/wallstreetbets, 1400 upvotes, 40 comments)",
+                      feed_lines({"headlines": {}, "x": {}, "reddit": record})[2])
+        self.assertEqual(fetch_reddit(None, ["stocks"], http_get=http, now=lambda: NOW)["status"], "unavailable")
+
+    def test_subreddit_lists_are_small_and_clean_and_the_owner_sets_them(self):
+        self.assertEqual(validate_subreddits(["r/stocks", " investing", "Stocks"]), ["stocks", "investing"])
+        for bad in ([], ["a"] * 6, ["bad name"], ["x"], [3], "stocks"):
+            with self.subTest(bad=bad), self.assertRaises(FeedError):
+                validate_subreddits(bad)
+        settings = OwnerSettings(self.root / "settings")
+        self.assertIsNone(settings.subreddits())
+        settings.update({"subreddits": ["r/options", "Economics"]})
+        self.assertEqual(settings.subreddits(), ["options", "Economics"])
+        self.assertEqual(settings.read()["subreddits"], ["options", "Economics"])
+        with self.assertRaises(SettingsError):
+            settings.update({"subreddits": ["a b"]})
 
     def test_x_search_is_read_only_small_and_most_liked_first(self):
         http = Scripted()
@@ -104,6 +159,8 @@ class CacheTests(Blocked):
             feeds.read()
         x_calls = [c for c in http.calls if c[0] == X_SEARCH_URL]
         self.assertEqual(len(x_calls) * 10, X_DAILY_POST_CAP)  # Six searches, then it stops for the day.
+        reddit_calls = [c for c in http.calls if c[0] == REDDIT_URL]
+        self.assertEqual(len(reddit_calls), 5 * 12)  # Five subreddits, at most once every two hours.
         self.assertTrue(feeds.read()["x"]["capped"])
         self.assertIn("reading limit reached", feed_lines(feeds.read())[1])
         clock[0] = start + timedelta(days=1)
