@@ -61,6 +61,7 @@ export interface ConnectionCheck {
   models: { model: string; used_by: string[]; kind: 'free' | 'paid' | 'unknown'; status: CheckStatus; message: string }[]
   unset: string[]
   free_limits_url: string
+  services?: { service: string; group: 'paper' | 'data' | 'news' | 'broker'; status: CheckStatus | 'unset' | 'skipped'; message: string }[]
 }
 export interface CheckState { state: 'none' | 'pending' | 'done'; requested_at: string | null; result: ConnectionCheck | null }
 export const checkConnection = () => request<CheckState>('POST', '/api/settings/check', {})

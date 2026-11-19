@@ -34,6 +34,10 @@ describe('Settings page', () => {
         { model: 'baidu/ernie-5.5-flash-preview:free', used_by: ['Alchemist'], kind: 'free', status: 'fail', message: 'rate limited' },
       ],
       unset: ['Witness'],
+      services: [
+        { service: 'FMP', group: 'data', status: 'fail', message: 'the key was rejected' },
+        { service: 'SignalStack', group: 'broker', status: 'skipped', message: 'Stored only. Never called.' },
+      ],
     }
     vi.mocked(api.checkConnection).mockReset().mockResolvedValue({ state: 'pending', requested_at: '2026-11-18T14:00:00Z', result: null })
     vi.mocked(api.getConnectionCheck).mockReset()
@@ -48,6 +52,9 @@ describe('Settings page', () => {
     expect(screen.getByText('baidu/ernie-5.5-flash-preview:free')).toBeTruthy()
     expect(screen.getByText(/rate limited/)).toBeTruthy()
     expect(screen.getByText(/That is fine for now/)).toBeTruthy()
+    expect(screen.getByText('FMP')).toBeTruthy()
+    expect(screen.getByText(/the key was rejected/)).toBeTruthy()
+    expect(screen.getByText(/Never called/)).toBeTruthy()
     expect(api.checkConnection).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
   })

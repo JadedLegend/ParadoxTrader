@@ -164,6 +164,14 @@ class CheckHandoffTests(unittest.TestCase):
         self.assertNotIn(KEY, json.dumps(answer))
         self.assertIsNone(run_pending(self.settings_dir, check=self.fake_check))  # Request cleared.
 
+    def test_the_answer_includes_the_data_keys_and_a_failing_key_marks_it(self):
+        request_check(self.settings_dir)
+        run_pending(self.settings_dir, check=self.fake_check,
+                    services=lambda secret: [{"service": "FMP", "group": "data", "status": "fail", "message": "rejected"}])
+        result = check_state(self.settings_dir)["result"]
+        self.assertEqual(result["services"][0]["service"], "FMP")
+        self.assertEqual(result["status"], "fail")
+
     def test_the_request_needs_login_and_same_origin(self):
         self.assertEqual(self.client.post("/api/settings/check", content="{}",
                                           headers={k: v for k, v in self.write.items() if k != "Authorization"}).status_code, 401)
