@@ -61,6 +61,7 @@ SECRET_SLOTS = {
     "reddit_client_id": _GENERIC,
     "reddit_client_secret": _GENERIC,
     "x_bearer_token": _GENERIC,
+    "redditapis_token": _GENERIC,  # Reddit reads through redditapis.com.
     # Brokers and signal routes: stored only; nothing here places orders.
     "etoro_api_key": _GENERIC,
     "etoro_user_key": _GENERIC,
@@ -204,6 +205,11 @@ class OwnerSettings:
         value = self._latest().get("watchlist")
         return list(value) if isinstance(value, list) and value else None
 
+    def subreddits(self):
+        """The subreddits the window reads, or None to use the default list."""
+        value = self._latest().get("subreddits")
+        return list(value) if isinstance(value, list) and value else None
+
     def daily_budget(self):
         value = self._latest().get("daily_budget_usd")
         return None if value is None else Decimal(value)
@@ -252,6 +258,7 @@ class OwnerSettings:
         return {"models": {slot: latest.get(f"model.{slot}") for slot in MODEL_SLOTS},
                 "daily_budget_usd": latest.get("daily_budget_usd"),
                 "watchlist": latest.get("watchlist"),
+                "subreddits": latest.get("subreddits"),
                 "key": {"set": key is not None, "ends_with": key[-4:] if key else None},
                 "secrets": secrets,
                 "history": history}
@@ -260,7 +267,7 @@ class OwnerSettings:
     @staticmethod
     def _validate(changes):
         if (not isinstance(changes, dict) or not changes
-                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets", "watchlist"}):
+                or set(changes) - {"models", "daily_budget_usd", "openrouter_key", "secrets", "watchlist", "subreddits"}):
             raise SettingsError("invalid_settings_fields")
         rows = []
         if "models" in changes:
@@ -288,6 +295,12 @@ class OwnerSettings:
             try:
                 rows.append(("watchlist", validate_symbols(changes["watchlist"])))
             except MarketWindowError as error:
+                raise SettingsError(str(error)) from None
+        if "subreddits" in changes:
+            from core.market.feeds import FeedError, validate_subreddits
+            try:
+                rows.append(("subreddits", validate_subreddits(changes["subreddits"])))
+            except FeedError as error:
                 raise SettingsError(str(error)) from None
         secrets = {}
         if "secrets" in changes:

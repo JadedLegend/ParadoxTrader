@@ -97,10 +97,11 @@ def build(root, config_path):
         """Shared cached headlines and X posts (read-only). None without Settings."""
         if settings is None:
             return None
-        from core.market.feeds import MarketFeeds
+        from core.market.feeds import DEFAULT_SUBREDDITS, MarketFeeds
         from core.market.window import DEFAULT_WATCHLIST
         symbols = settings.watchlist() or list(DEFAULT_WATCHLIST)
-        return MarketFeeds(Path(schedule.settings_dir) / "market", symbols, settings.secret).read
+        return MarketFeeds(Path(schedule.settings_dir) / "market", symbols, settings.secret,
+                           subreddits=settings.subreddits() or list(DEFAULT_SUBREDDITS)).read
 
     def run_wake(run_id, owner, step=None):
         from core.runtime.rehearsal.controller import RehearsalController, snapshot_profiles

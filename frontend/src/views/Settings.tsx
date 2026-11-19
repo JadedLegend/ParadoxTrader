@@ -19,8 +19,10 @@ const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretIte
       entry('fmp', 'Financial Modeling Prep'), entry('bigdata', 'Bigdata.com'), entry('massive', 'Massive.com'),
       entry('unusual_whales', 'Unusual Whales API token'), entry('eodhd', 'EODHD API token')] },
   { id: 'social', title: 'News, search and social', help: 'For reading the wider conversation.',
-    items: [entry('brave_search', 'Brave Search API'), entry('reddit_client_id', 'Reddit client ID'),
-      entry('reddit_client_secret', 'Reddit client secret', '', 'From an approved Reddit Data API app (script type).'),
+    items: [entry('brave_search', 'Brave Search API'),
+      entry('redditapis_token', 'Reddit token (redditapis.com)', '', 'From redditapis.com. About $0.0015 per read; the window reads your subreddits at most every two hours.'),
+      entry('reddit_client_id', 'Reddit client ID (optional)'),
+      entry('reddit_client_secret', 'Reddit client secret (optional)', '', "Only for Reddit's own Data API, which needs Reddit's approval. Not needed with redditapis.com."),
       entry('x_bearer_token', 'X bearer token', '', 'From your app in the X Developer Console. X charges per post read from prepaid credits.')] },
   { id: 'brokers', title: 'Brokers and signal routes', help: 'Stored only. Nothing here places orders, and these stay unused until you decide otherwise.',
     items: [entry('etoro_api_key', 'eToro API key'), entry('etoro_user_key', 'eToro user key'),
@@ -28,12 +30,22 @@ const SECRET_GROUPS: { id: string; title: string; help: string; items: SecretIte
 ]
 const SECRETS = SECRET_GROUPS.flatMap(group => group.items)
 const FIELD_LABEL: Record<string, string> = {
-  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key', watchlist: 'Market watchlist',
+  daily_budget_usd: 'Daily budget', openrouter_key: 'OpenRouter key', watchlist: 'Market watchlist', subreddits: 'Subreddits',
   ...Object.fromEntries(SECRETS.map(item => [`secret.${item.id}`, item.name])),
 }
 
 const MARK = { ok: '✓', warn: '!', fail: '✕' } as const
 const DEFAULT_WATCHLIST = ['SPY', 'QQQ', 'IWM', 'TLT', 'GLD']
+const DEFAULT_SUBREDDITS = ['stocks', 'investing', 'options', 'wallstreetbets', 'Economics']
+const SUBREDDIT = /^[A-Za-z0-9_]{2,21}$/
+const parseSubreddits = (text: string) => {
+  const seen = new Set<string>()
+  return text.split(/[\s,]+/).map(item => item.trim().replace(/^r\//i, '')).filter(item => {
+    if (!item || seen.has(item.toLowerCase())) return false
+    seen.add(item.toLowerCase())
+    return true
+  })
+}
 const TICKER = /^[A-Z]{1,5}(\.[A-Z]{1,2})?$/
 const parseTickers = (text: string) => [...new Set(text.split(/[\s,]+/).map(item => item.trim().toUpperCase()).filter(Boolean))]
 const CHECK_POLL_MS = 2000
@@ -73,6 +85,7 @@ export default function Settings() {
   const [models, setModels] = useState<Record<string, string>>({})
   const [budget, setBudget] = useState('')
   const [watchlist, setWatchlist] = useState('')
+  const [subreddits, setSubreddits] = useState('')
   const [key, setKey] = useState('')
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
@@ -110,6 +123,7 @@ export default function Settings() {
     setModels(Object.fromEntries(SLOTS.map(slot => [slot.id, value.models[slot.id] ?? ''])))
     setBudget(value.daily_budget_usd ?? '')
     setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
+    setSubreddits((value.subreddits ?? DEFAULT_SUBREDDITS).join(', '))
   }
 
   useEffect(() => {
@@ -146,6 +160,7 @@ export default function Settings() {
         ? submittedBudget : settings?.daily_budget_usd ?? '') ? value.daily_budget_usd ?? '' : current)
       setSettings(value)
       if (what === 'watchlist') setWatchlist((value.watchlist ?? DEFAULT_WATCHLIST).join(', '))
+      if (what === 'subreddits') setSubreddits((value.subreddits ?? DEFAULT_SUBREDDITS).join(', '))
       if (what === 'key') setKey('')
       if (secretSlot && changes.secrets?.[secretSlot]) setSecretDrafts(current => current[secretSlot] === submittedDraft
         ? { ...current, [secretSlot]: '' } : current)
@@ -163,6 +178,9 @@ export default function Settings() {
   const tickers = parseTickers(watchlist)
   const savedTickers = (settings?.watchlist ?? DEFAULT_WATCHLIST).join(',')
   const tickersValid = tickers.length >= 1 && tickers.length <= 5 && tickers.every(item => TICKER.test(item))
+  const subs = parseSubreddits(subreddits)
+  const savedSubs = (settings?.subreddits ?? DEFAULT_SUBREDDITS).join(',')
+  const subsValid = subs.length >= 1 && subs.length <= 5 && subs.every(item => SUBREDDIT.test(item))
 
   if (loadError) return <div><header className="page-header"><h1 className="page-title">Settings</h1></header><div className="error-msg" role="alert">{loadError}</div></div>
   if (!settings) return <div className="loading" role="status">Loading settings...</div>
@@ -255,8 +273,21 @@ export default function Settings() {
           </div>
         </div>
         {!tickersValid && <p className="settings-error" role="alert">Use 1 to 5 tickers, like SPY or BRK.B.</p>}
+        <div className="input-group mt-8">
+          <label className="input-label" htmlFor="subreddits">Up to 5 subreddits the agents can see, separated by commas</label>
+          <div className="flex gap-8">
+            <input id="subreddits" className="input" type="text" spellCheck={false}
+              value={subreddits} onChange={event => setSubreddits(event.target.value)} aria-invalid={!subsValid} />
+            <button className="btn btn-primary" aria-label="Save subreddits" disabled={saving !== null || !subsValid || subs.join(',') === savedSubs}
+              onClick={() => save('subreddits', { subreddits: subs }, 'Subreddits saved.')}>
+              {saving === 'subreddits' ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+        {!subsValid && <p className="settings-error" role="alert">Use 1 to 5 subreddit names, like stocks or r/investing.</p>}
         <p className="settings-note">Read-only prices from Alpaca's free feed, using the agents' paper keys, refreshed at most every 15 minutes.
-          Each choice sees one line of it, and an agent that asks a question gets the figures. Nothing here can trade.</p>
+          Each choice sees one line of it, and an agent that asks a question gets the figures. Headlines (hourly), X posts and
+          Reddit's hot posts (every two hours) are shown under it. Nothing here can trade or post.</p>
       </section>
 
       <section className="card mb-16" aria-labelledby="settings-check">

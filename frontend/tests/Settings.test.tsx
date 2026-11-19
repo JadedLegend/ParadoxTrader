@@ -99,6 +99,17 @@ describe('Settings page', () => {
     expect(await screen.findByText('Market watchlist saved.')).toBeTruthy()
   })
 
+  it('saves a cleaned subreddit list', async () => {
+    vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, subreddits: ['options', 'Economics'] })
+    render(<Settings />)
+    const field = await screen.findByLabelText(/Up to 5 subreddits/) as HTMLInputElement
+    expect(field.value).toBe('stocks, investing, options, wallstreetbets, Economics')
+    fireEvent.change(field, { target: { value: 'r/options, Economics, options' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save subreddits' }))
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ subreddits: ['options', 'Economics'] }))
+    expect(await screen.findByText('Subreddits saved.')).toBeTruthy()
+  })
+
   it('saves the budget with two decimals', async () => {
     vi.mocked(api.saveSettings).mockResolvedValue({ ...EMPTY, daily_budget_usd: '1.50' })
     render(<Settings />)
