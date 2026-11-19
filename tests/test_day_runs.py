@@ -99,17 +99,17 @@ class DayRunTests(unittest.TestCase):
 
     def test_day_runs_give_replies_more_room_and_rehearsals_do_not(self):
         roomy = day_manifest()
-        roomy["limits"]["max_output_tokens"] = 4096
+        roomy["limits"]["max_output_tokens"] = 3000
         for row in roomy["catalog_snapshot"]["models"]:
             row["max_completion_tokens"] = 8192
         day = self.store.prepare(roomy)["run_id"]
-        self.assertEqual(self.store.get_run(day)["limits"]["max_output_tokens"], 4096)
-        self.assertEqual(validate_manifest(roomy)["limits"]["max_output_tokens"], 4096)
+        self.assertEqual(self.store.get_run(day)["limits"]["max_output_tokens"], 3000)
+        self.assertEqual(validate_manifest(roomy)["limits"]["max_output_tokens"], 3000)
         too_roomy = manifest()
-        too_roomy["limits"]["max_output_tokens"] = 4096
+        too_roomy["limits"]["max_output_tokens"] = 3000
         with self.assertRaises(RehearsalError):
             self.store.prepare(too_roomy)
-        roomy["limits"]["max_output_tokens"] = 4097
+        roomy["limits"]["max_output_tokens"] = 3001
         with self.assertRaises(RehearsalError):
             self.store.prepare(roomy)
 

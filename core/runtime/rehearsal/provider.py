@@ -32,7 +32,7 @@ LIMIT_CEILINGS = {
 # A "day" run adds each agent's wakes as they happen (see store.add_wake).
 # Models that think before answering count that thinking toward max_tokens,
 # so a day run may give each reply up to DAY_MAX_OUTPUT_TOKENS.
-DAY_MAX_OUTPUT_TOKENS = 4096
+DAY_MAX_OUTPUT_TOKENS = 3000
 DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": 48, "max_requests": 2 * 48 * 7,
                       "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
 # Input tokens are conservatively bounded by UTF-8 bytes, not a chars/4 guess.

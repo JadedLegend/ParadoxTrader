@@ -42,7 +42,7 @@ DEFAULT_LIMITS = {
 # A "day" run (one continuing day in the agents' home) adds each agent's wakes
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
 MAX_WAKES_PER_AGENT = 48
-DAY_MAX_OUTPUT_TOKENS = 4096  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
+DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
               "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
 RUN_KINDS = ("rehearsal", "day")
@@ -963,6 +963,28 @@ class RehearsalStore:
             connection.execute("INSERT INTO jobs(wake_id,agent_id,round,requested_model,updated_at) VALUES(?,?,?,?,?)",
                                (wake_id, owner, round_number, manifest["agent_models"][owner], _now()))
             return self._public_job(self._job(connection, wake_id))
+
+    def give_up_job(self, run_id, wake_id, failure_code):
+        """Day runs: end a pending wake that failed again on its retry.
+
+        Only a pending job with no unresolved request, while no controller holds
+        the run, so nothing in flight is abandoned.
+        """
+        failure_code = _safe(failure_code, "failure_code", nullable=False)
+        with self._connection(run_id, write=True) as connection:
+            row = self._run(connection)
+            if json.loads(row["manifest"]).get("kind") != "day":
+                raise RehearsalError("only day-run wakes are given up")
+            if row["controller_token"] is not None:
+                raise RehearsalConflict("a wake is still running")
+            job = self._job(connection, wake_id)
+            if job["status"] != "pending":
+                raise RehearsalConflict("only a waiting wake is given up")
+            if connection.execute("SELECT 1 FROM requests WHERE wake_id=? AND outcome IN ('in_flight','uncertain') LIMIT 1",
+                                  (wake_id,)).fetchone():
+                raise RehearsalConflict("job has an unresolved request")
+            connection.execute("UPDATE jobs SET status='failed',failure_code=?,updated_at=? WHERE wake_id=?",
+                               (failure_code, _now(), wake_id))
 
     def close_day(self, run_id):
         """Close an open day run so the next day can continue from it."""

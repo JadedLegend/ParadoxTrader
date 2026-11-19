@@ -21,6 +21,7 @@ import tempfile
 from threading import RLock
 
 from core.library.store import LibraryStore, LibraryUnavailable
+from core.memory.compost import CompostError
 from core.memory.engine import ThresholdMemory
 from core.runtime.cohort import prepare_cohort
 from core.runtime.inquiry import InquiryReceiptStore, _validate_command, run_inquiry
@@ -504,7 +505,6 @@ class RehearsalController:
         path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
         scope = f"{self._key_scope}:" if self._key_scope else ""
         key = f"rehearsal:{scope}{job['wake_id']}:journal:{mode}"
-        from core.memory.compost import CompostError
         with self._memory_lock:
             compost = CompostStore(path, job["agent_id"])
             try:
@@ -663,6 +663,12 @@ class RehearsalController:
         except RehearsalBudgetExceeded:
             if job is not None:
                 self.store.finish_job(self.run_id, wake_id, self._token, status="failed", action=action, failure_code="admission_budget_exceeded")
+        except CompostError:
+            # The owner's journal store refused (sources it cannot condense, a
+            # conflicting entry): a definite outcome, so the wake ends failed
+            # instead of uncertain and reset to retry the same refusal.
+            if job is not None:
+                self.store.finish_job(self.run_id, wake_id, self._token, status="failed", action=action, failure_code="journal_refused")
         except ProviderError as error:
             if job is not None:
                 self.store.finish_job(self.run_id, wake_id, self._token, status="uncertain" if error.uncertain else "failed", action=action, failure_code=error.code)
@@ -694,6 +700,8 @@ class RehearsalController:
         # request) is never retried by anyone else in a day run, and it would
         # block every later wake. This wake finishes it first, from its
         # committed choice, instead of adding a new one.
+        # It gets one more try; if it is left waiting again, it is given up as
+        # failed so the same trouble never blocks the agent slot after slot.
         waiting = [row for row in self.store.list_jobs(self.run_id)
                    if row["agent_id"] == owner and row["status"] == "pending"]
         job = waiting[0] if waiting else self.store.add_wake(self.run_id, owner)
@@ -704,7 +712,11 @@ class RehearsalController:
             token, self._token = self._token, None
             if token is not None:
                 self.store.end(self.run_id, token)
-        return next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        result = next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        if waiting and result["status"] == "pending":
+            self.store.give_up_job(self.run_id, job["wake_id"], "retry_failed")
+            result = next(row for row in self.store.list_jobs(self.run_id) if row["wake_id"] == job["wake_id"])
+        return result
 
     def run(self, resume=False):
         """Only explicit invocation dispatches; complete rounds are stable store jobs."""
