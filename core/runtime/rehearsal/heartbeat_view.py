@@ -13,8 +13,10 @@ import sqlite3
 from .heartbeat import LEDGER
 from .store import OWNERS
 
-_FEEDS = (("window", "Prices", "window.json"), ("headlines", "Headlines", "headlines.json"),
+_FEEDS = (("window", "Prices", "window.json"), ("options", "Options", "options.json"),
+          ("headlines", "Headlines", "headlines.json"),
           ("x", "X posts", "x_posts.json"), ("reddit", "Reddit", "reddit.json"))
+_FEED_LINE_ORDER = ("headlines", "x", "reddit")  # The order feed_lines() returns its lines in.
 
 
 def _money(value):
@@ -57,16 +59,21 @@ def _choices(row, job):
 
 def _feeds(settings_dir):
     from core.market.feeds import feed_lines
+    from core.market.options import options_line
     from core.market.window import window_line
     folder = Path(settings_dir) / "market"
     records = {key: _read_json(folder / name) for key, _, name in _FEEDS}
     feeds, lines = [], []
-    for index, (key, label, _) in enumerate(_FEEDS):
+    for key, label, _ in _FEEDS:
         record = records[key] or {}
+        if key == "options" and not record:
+            continue  # The options view has not run yet: no row rather than an empty one.
         def format_line(value):
             if key == "window":
                 return window_line(value)
-            return feed_lines({"headlines": {}, "x": {}, "reddit": {}, key: value})[index - 1]
+            if key == "options":
+                return options_line(value)
+            return feed_lines({"headlines": {}, "x": {}, "reddit": {}, key: value})[_FEED_LINE_ORDER.index(key)]
         try:
             line = format_line(record)
         except (KeyError, TypeError, ValueError, AttributeError, IndexError):

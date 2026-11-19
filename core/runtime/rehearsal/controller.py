@@ -313,12 +313,14 @@ def _memory_effect(memory, wake_id, action, output, library_refs=None, key_scope
 
 
 class RehearsalController:
-    def __init__(self, store, run_id, *, transport, repo_root=None, market=None, feeds=None):
+    def __init__(self, store, run_id, *, transport, repo_root=None, market=None, feeds=None, options=None):
         """``market()`` returns the shared market window record (read-only), or
         None for no window; see core/market/window.py. ``feeds()`` returns the
-        cached headlines and X posts; see core/market/feeds.py."""
+        cached headlines and X posts; see core/market/feeds.py. ``options()``
+        returns the cached options view; see core/market/options.py."""
         self.market = market
         self.feeds = feeds
+        self.options = options
         self.store = store
         self.run_id = run_id
         self.transport = transport
@@ -388,6 +390,14 @@ class RehearsalController:
                 record = {"status": "unavailable", "reason": "the window could not be read"}
             private["market_line"] = window_line(record)
             private["market"] = inquiry_evidence(record)
+        if self.options is not None:
+            from core.market.options import options_evidence, options_line
+            try:
+                chain = self.options()
+            except Exception:
+                chain = {"status": "unavailable", "reason": "the options view could not be read"}
+            private["market_line"] = "\n".join(filter(None, [private.get("market_line"), options_line(chain)]))
+            private["options"] = options_evidence(chain)
         if self.feeds is not None:
             from core.market.feeds import feed_lines
             try:
@@ -602,6 +612,8 @@ class RehearsalController:
                              phase=0, model_call=model_call,
                              evidence={"market_data": ((details or {}).get("private_context") or {}).get(
                                            "market") or {"status": "unavailable"},
+                                       "options": ((details or {}).get("private_context") or {}).get(
+                                           "options") or {"status": "unavailable"},
                                        "own_positions": {"status": "unavailable"},
                                        "stage_invitation": "A finite private nontrading session; no action is required."})
         if errors:
