@@ -1,6 +1,6 @@
 # Calls and settlement: write a call down, check it later, hand back the result
 
-Status: draft for owner approval. Nothing is built yet.
+Status: approved. Phase 1 is built (PR #53); phases 2 and 3 are not built yet.
 
 ## In plain words
 
@@ -57,8 +57,11 @@ broker. Paper trades stay a separate, later step.
 - Refusals end the wake as failed with a code, never crash the tick:
   `call_symbol_not_watched`, `call_no_price` (no committed price, or a price with
   no time of its own), `call_too_many_open`, `call_not_offered`.
-- Continuity shows the agent its own open calls (symbol, way, settle date), so it
-  knows what's pending.
+- The next choice lists the agent's own open calls (symbol, way, horizon, entry
+  session, confidence and sealed price), so it knows what's pending. No settle
+  date is shown, since none is stored.
+- The witness records "call offered" on wakes whose decision record carries
+  `call_options`, separate from the five-item recorded menu, and never the reason.
 - Tests: a valid call is stored with the committed price; resume reuses it; each
   refusal; a price with no time is refused; the cap of 5; append-only; offered
   only beside a window; the next wake lists the open call.

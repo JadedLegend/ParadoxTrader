@@ -14,6 +14,7 @@ import stat
 from threading import RLock
 from uuid import uuid4
 
+from .calls import CALL_OPTIONS
 from .store import (OWNERS, CAPABILITIES, CHOICE_ACTIONS, JOURNAL_OPTIONS, LIMIT_CAPS, MAX_WAKES_PER_AGENT, RehearsalStore,
                     RehearsalError, RehearsalConflict, _integer, _safe, _uuid, _refs)
 
@@ -97,6 +98,11 @@ def _facts(snapshot, scope):
                     raise RehearsalError("invalid witness journal offers")
                 job["offered_journal_modes"] = list(JOURNAL_OPTIONS["modes"])
                 job["offered_journal_options"] = dict(JOURNAL_OPTIONS)
+            # A call is offered beside the five frozen offers, never among them.
+            if context.get("call_options") is not None:
+                if _dump(context["call_options"]) != _dump(CALL_OPTIONS):
+                    raise RehearsalError("invalid witness call offers")
+                job["call_offered"] = True
         jobs.append(job)
     if len({j["wake_id"] for j in jobs}) != len(jobs):
         raise RehearsalError("duplicate witness wake")
@@ -152,6 +158,9 @@ def _render(facts):
         lines.append("Recorded menu: " + ", ".join(CAPABILITIES) + ".")
     if any(j["offered_journal_modes"] is not None for j in jobs):
         lines.append("Journal submodes offered: " + ", ".join(JOURNAL_OPTIONS["modes"]) + ".")
+    call_offers = sum(j.get("call_offered") is True for j in jobs)
+    if call_offers:
+        lines.append(f"Call offered beside the market window on {call_offers} wakes.")
     if len(offered) < len(jobs):
         lines.append(f"Historical offers unknown (no historical offer snapshot) for {len(jobs) - len(offered)} wakes.")
     if len(run["prepared_owners"]) == 1:

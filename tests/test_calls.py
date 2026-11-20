@@ -15,6 +15,7 @@ from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule
 from core.runtime.rehearsal.home import CARRIED_FILES
 from core.runtime.rehearsal.provider import OpenRouterTransport
 from core.runtime.rehearsal.store import RehearsalStore
+from core.runtime.rehearsal.witness import WitnessStore
 from tests.test_day_runs import day_manifest
 from tests.test_market_window import KEY_ID, NOW, SECRET, BlockedNetwork, ScriptedData
 
@@ -139,10 +140,15 @@ class CallWakeTests(BlockedNetwork):
         calls = CallStore(store.safe_run_file(run_id, CALLS_FILE)).open_calls("tempest")
         self.assertEqual([(c["symbol"], c["entry_price"]) for c in calls], [("SPY", "505")])
         self.assertEqual(job["record_refs"], [{"kind": "call", "id": calls[0]["call_id"]}])
+        [account] = WitnessStore(store.safe_run_file(run_id, "witness.sqlite3")).list_accounts("tempest")["accounts"]
+        self.assertIn("Call offered beside the market window on 1 wakes.", account["content"])
+        self.assertIn("Recorded menu: rest, journal, inquire, library, roam.", account["content"])
+        self.assertNotIn(CALL["reason"], account["content"])  # The witness never sees the reason.
 
         while len(choices) < 2 and clock[0].minute < 40:  # Tick on to Tempest's next own slot.
             clock[0] += timedelta(minutes=1)
             beat.tick()
+        self.assertGreaterEqual(len(choices), 2, "Tempest never reached a second wake")
         self.assertIn("Your open calls (1 of 5", choices[1])
         self.assertIn("SPY up within 5 trading days", choices[1])
 

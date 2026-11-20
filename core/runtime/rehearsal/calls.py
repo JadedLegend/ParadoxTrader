@@ -16,11 +16,10 @@ The database lives in each run (``calls.sqlite3``) and carries to the next day
 with the rest of the home, so open calls stay open.
 """
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 import re
 import sqlite3
-from zoneinfo import ZoneInfo
 
 CALLS_FILE = "calls.sqlite3"
 CALL_OPTIONS = {
@@ -32,19 +31,27 @@ CALL_OPTIONS = {
 }
 CALL_FIELDS = ("symbol", "direction", "horizon_days", "confidence", "reason")
 _SYMBOL = re.compile(r"[A-Z]{1,5}(?:[.][A-Z]{1,2})?")
-_EASTERN = ZoneInfo("America/New_York")
+
+
+def _session(moment):
+    """The trading session (Eastern date) of a price time. Without tz data, US Eastern
+    standard time gives the same date for any time a US session prices."""
+    try:
+        from zoneinfo import ZoneInfo
+        return moment.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    except Exception:
+        return moment.astimezone(timezone(timedelta(hours=-5))).date().isoformat()
+
 
 CALL_INSTRUCTIONS = (
-    "\nCALL (offered on this wake): you may instead choose action call to write down one "
-    "forecast, sealed with the price you were shown below. Fields: symbol (a ticker in this "
-    "wake's window), direction up|down, horizon_days an integer 1-20 (trading days), "
-    "confidence low|medium|high, and an optional reason of at most 400 characters. "
-    # A shape, not sample values: a concrete example would be copied by every agent.
-    "Shape: {\"action\":\"call\",\"symbol\":<ticker>,\"direction\":<up|down>,\"horizon_days\":<1-20>,"
-    "\"confidence\":<low|medium|high>,\"reason\":<your words>}. A call is a forecast, not a trade: it buys "
-    "nothing. After the horizon, the actual close is recorded beside it and shown to you. "
-    "It can never be edited; a changed view is a new call or a journal note. At most five "
-    "open calls per agent. No call is owed."
+    # Kept short: choice prompts already reach the input bound, and every byte here
+    # is trimmed from the agent's own continuity. A shape, not sample values: a
+    # concrete example would be copied by every agent.
+    "\nCALL (offered on this wake): or choose a forecast sealed with the price shown below: "
+    "{\"action\":\"call\",\"symbol\":<ticker in the window>,\"direction\":<up|down>,"
+    "\"horizon_days\":<1-20 trading days>,\"confidence\":<low|medium|high>,\"reason\":<optional, "
+    "at most 400 characters>}. Not a trade; nothing is bought. The later close is recorded beside "
+    "it and shown to you. Never edited; at most five open. No call is owed."
 )
 
 _SCHEMA = """
@@ -153,7 +160,7 @@ class CallStore:
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (agent_id, run_id, wake_id, choice["symbol"], choice["direction"], choice["horizon_days"],
                  choice["confidence"], choice.get("reason", ""), price, moment.isoformat(), status,
-                 moment.astimezone(_EASTERN).date().isoformat(), stamp.isoformat()))
+                 _session(moment), stamp.isoformat()))
             return cursor.lastrowid
 
     @staticmethod
