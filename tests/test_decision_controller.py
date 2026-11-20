@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from core.memory.engine import ThresholdMemory
+from core.runtime.rehearsal.calls import CALL_OPTIONS
 from core.runtime.rehearsal.continuity import (
     MAX_CHARS, MAX_REFS, clip_continuity, owner_continuity, public_coverage,
 )
@@ -353,20 +354,36 @@ class DecisionControllerTests(unittest.TestCase):
                    "truncated": False, "chars": 4000, "unavailable": False,
                    "excerpts": [{"kind": "journal", "id": 1, "wake_id": "siren-r1",
                                  "body": "界" * 4000, "source": "agent", "body_truncated": False}]}
-        # Set a cap that fits all structural offers, but not the entire excerpt.
-        controller.manifest["limits"]["max_input_bytes"] = 18600
-        with patch("core.runtime.rehearsal.controller.owner_continuity", return_value=context):
-            metadata, private = controller._new_decision_context(job)
-        messages = controller._choice_messages(metadata, private)
-        self.assertTrue(private["include_metadata"])
-        self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))
-        self.assertLessEqual(controller._input_size(job, messages), 18600)
-        self.assertTrue(metadata["continuity"]["truncated"])
-        self.assertEqual(context["chars"], 4000)
-        controller.manifest["limits"]["max_input_bytes"] = 1000
-        with patch("core.runtime.rehearsal.controller.owner_continuity", return_value=context):
-            with self.assertRaisesRegex(ProviderError, "input_bound_exceeded"):
-                controller._new_decision_context(job)
+        market = {
+            "status": "open", "source": "alpaca-iex",
+            "quotes": [{"symbol": "SPY", "last": 505.0, "as_of": "2026-11-19T14:58:00+00:00"}],
+        }
+        # Leave room for the mandatory offers even with a market window, but
+        # force the controller to trim the UTF-8 journal excerpt.
+        cap = 21_500
+        for with_market in (False, True):
+            with self.subTest(with_market=with_market), patch(
+                "core.runtime.rehearsal.controller.owner_continuity", return_value=context
+            ):
+                controller.market = (lambda: market) if with_market else None
+                controller.manifest["limits"]["max_input_bytes"] = cap
+                metadata, private = controller._new_decision_context(job)
+                messages = controller._choice_messages(metadata, private)
+                self.assertTrue(private["include_metadata"])
+                if with_market:
+                    self.assertEqual(metadata["call_options"], CALL_OPTIONS)
+                    self.assertIn('"call_options":' + json.dumps(CALL_OPTIONS, sort_keys=True, separators=(",", ":")),
+                                  messages[0]["content"])
+                else:
+                    self.assertNotIn("call_options", metadata)
+                self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))
+                self.assertLessEqual(controller._input_size(job, messages), cap)
+                self.assertTrue(metadata["continuity"]["truncated"])
+                self.assertGreater(private["continuity"]["chars"], 0)
+                self.assertEqual(context["chars"], 4000)
+                controller.manifest["limits"]["max_input_bytes"] = 1000
+                with self.assertRaisesRegex(ProviderError, "input_bound_exceeded"):
+                    controller._new_decision_context(job)
 
 
 if __name__ == "__main__":
