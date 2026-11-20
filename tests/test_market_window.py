@@ -146,10 +146,15 @@ class SettingsTests(BlockedNetwork):
 
 class WakeTests(BlockedNetwork):
     def test_every_choice_sees_the_window_and_inquire_gets_the_quotes(self):
+        from core.runtime.orientation import LESSON_ORIENTATION
+
         store = RehearsalStore(self.root / "sessions")
         window = MarketWindow(self.root / "market", ["SPY", "QQQ"], lambda: (KEY_ID, SECRET),
                               http_get=ScriptedData(), now=lambda: NOW)
         http, prompts = ScriptedHTTP(), []
+        contract = {"symbol": "SPY261120C00505000", "type": "call", "strike": 505.0,
+                    "expiration": "2026-11-20", "bid": 2.1, "ask": 2.18, "iv": 0.142,
+                    "delta": 0.5, "quote_time": "2026-11-18T09:00:00+00:00", "stale": False}
 
         def recording(url, **kwargs):
             prompts.append(chr(10).join(str(m.get("content", "")) for m in kwargs["json"]["messages"]))
@@ -161,10 +166,8 @@ class WakeTests(BlockedNetwork):
         def run_wake(run_id, owner, step=None):
             return RehearsalController(store, run_id, transport=OpenRouterTransport(
                 "scripted-offline", http_post=recording), market=window.read,
-                options=lambda: {"symbol": "SPY", "status": "open", "feed": "indicative", "contracts": [
-                    {"symbol": "SPY261120C00505000", "type": "call", "strike": 505.0, "expiration": "2026-11-20",
-                     "bid": 2.1, "ask": 2.18, "iv": 0.142, "delta": 0.5, "quote_time": "2026-11-18T09:00:00+00:00",
-                     "stale": False}]},
+                options=lambda: {"symbol": "SPY", "status": "open", "feed": "indicative",
+                                 "contracts": [dict(contract)]},
                 feeds=lambda: {"headlines": {"status": "ok", "items": [{"title": "Fed holds rates", "source": "Wire"}]},
                                "x": {"status": "unavailable", "reason": "it answered 403"}}).run_wake(owner, step=step)
 
@@ -177,6 +180,7 @@ class WakeTests(BlockedNetwork):
         self.assertEqual([w["status"] for w in result["wakes"]], ["completed"] * 3)
         choices = [p for p in prompts if "Outside the window" in p]
         self.assertEqual(len(choices), 3)
+        self.assertIn(LESSON_ORIENTATION, choices[0])
         self.assertIn("SPY 505 (+1.00%)", choices[0])
         self.assertIn("Headlines (Massive news): Fed holds rates (Wire)", choices[0])
         self.assertIn("On X: unavailable (it answered 403).", choices[0])
@@ -185,6 +189,21 @@ class WakeTests(BlockedNetwork):
         self.assertIn("SPY options (Alpaca indicative feed, delayed", choices[0])
         self.assertIn("call 505 2.1/2.18 IV 14.2%", choices[0])
         self.assertTrue(any('"strike":505.0' in p.replace(" ", "") for p in alchemist))  # Contracts reach the inquiry.
+
+        run_id = result["run_id"]
+        earlier = store.get_decision_details(run_id, "tempest-r1")
+        self.assertTrue(earlier["requests"])
+        self.assertEqual(earlier["private_context"]["options"]["contracts"][0]["ask"], 2.18)
+
+        contract.update(ask=2.40, quote_time="2026-11-18T09:14:00+00:00")
+        clock[0] += timedelta(minutes=14)
+        self.assertEqual(beat.tick()["run_id"], run_id)
+        request_count = len(prompts)
+        later = store.get_decision_details(run_id, "tempest-r2")
+        self.assertEqual(later["private_context"]["options"]["contracts"][0]["ask"], 2.40)
+        self.assertIn("call 505 2.1/2.4", later["private_context"]["market_line"])
+        self.assertEqual(store.get_decision_details(run_id, "tempest-r1"), earlier)
+        self.assertEqual(len(prompts), request_count)
 
 
 if __name__ == "__main__":
