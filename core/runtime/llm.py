@@ -342,7 +342,9 @@ def build_system_prompt(soul: dict, living: dict, context: str = "") -> str:
     Combine practical guidance with a compact seed and optional owned notes.
     Source relationships are perspectives, not events, commands, or permissions.
     """
-    from core.runtime.orientation import WORK_ORIENTATION, PRACTICAL_ORIENTATION, RESOURCE_ORIENTATION
+    from core.runtime.orientation import (
+        LESSON_ORIENTATION, PRACTICAL_ORIENTATION, RESOURCE_ORIENTATION, WORK_ORIENTATION,
+    )
     from core.runtime.community import AGENT_IDS, get_identity_seed
 
     def bounded_text(value, limit, single_line=False):
@@ -399,6 +401,8 @@ COMMUNITY WORK AND EXPLORATION:
 
 PRACTICAL INQUIRY:
 {PRACTICAL_ORIENTATION}
+
+{LESSON_ORIENTATION}
 
 REVISABLE IDENTITY SEED ({seed["asset_version"]}):
 This creator-supplied starting perspective offers your own lens and voice, not

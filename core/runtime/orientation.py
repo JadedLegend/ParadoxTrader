@@ -9,6 +9,9 @@ ORIENTATION_DIR = Path(__file__).with_name("orientations")
 WORK_ORIENTATION = (ORIENTATION_DIR / "work_and_exploration.md").read_text(encoding="utf-8").strip()
 PRACTICAL_ORIENTATION = (ORIENTATION_DIR / "practical_inquiry.md").read_text(encoding="utf-8").strip()
 
+_LESSON_SKILL = Path(__file__).with_name("skills") / "learning-from-inquiry" / "SKILL.md"
+LESSON_ORIENTATION = _LESSON_SKILL.read_text(encoding="utf-8").split("\n---\n", 1)[1].strip()
+
 RESOURCE_ORIENTATION = """HRV is the existing simulated activity/recovery balance, not money, provider credits,
 measured biological state, or a judgment of accomplishment. Its action costs and
 specialty discounts are configured estimates, not measured token or dollar costs.
