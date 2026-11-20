@@ -5,5 +5,8 @@
 # Markdown hard-break spaces. Do not normalize or rewrite their source bytes.
 library/originals/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
 
+# The research room's collection is kept byte-exact so its MANIFEST.sha256 stays valid.
+library/research/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+
 # Incoming materials are kept byte-exact so their MANIFEST.sha256 stays valid.
 materials/incoming/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

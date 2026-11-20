@@ -90,6 +90,12 @@ def _validate_corpus(corpus):
             metadata["text_sha256"] = _identifier(document["text_sha256"], _SHA256, "text_sha256")
         if "status" in document:
             metadata["status"] = _string(document["status"], "status", 128)
+        # Research-room labels: short plain text, so an excerpt can say what kind of
+        # source it is (a reading note about a paper, its evidence and review depth).
+        for field, limit in (("room", 32), ("kind", 128), ("authors", 512), ("year", 16), ("area", 128),
+                             ("evidence", 256), ("review_depth", 256), ("url", 512)):
+            if field in document:
+                metadata[field] = _string(document[field], field, limit, allow_empty=True)
         if "first_section_id" in document:
             first_section_id = document["first_section_id"]
             if first_section_id is not None:

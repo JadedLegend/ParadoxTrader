@@ -173,6 +173,68 @@ def build_corpus(originals):
     return {'schema_version': 1, 'documents': documents, 'sections': sections}
 
 
+RESEARCH = LIBRARY / 'research'
+
+
+def _research_manifest(folder):
+    """The collection's own checksums: every reading note must match them."""
+    hashes = {}
+    for line in (folder / 'MANIFEST.sha256').read_text(encoding='utf-8').splitlines():
+        if line.strip():
+            digest, _, name = line.strip().partition('  ')
+            hashes[name.strip()] = digest
+    return hashes
+
+
+def build_research_corpus(folder=RESEARCH):
+    """The research room: the collection's reading notes P01..P21, one document each.
+
+    Notes are assistant-authored summaries, not the papers; the title says so.
+    Paper facts (authors, year, evidence type, review depth, link) come from
+    source-catalog.json. Bytes are checked against MANIFEST.sha256.
+    """
+    catalog = {paper['id']: paper for paper in json.loads((folder / 'source-catalog.json').read_text(encoding='utf-8'))['papers']}
+    manifest = _research_manifest(folder)
+    documents, sections = [], []
+    for path in sorted((folder / 'reading-notes').glob('P[0-9][0-9].md')):
+        relative = f'reading-notes/{path.name}'
+        raw = path.read_bytes()
+        if manifest.get(relative) != sha256(raw):
+            raise ValueError(f'Reading note does not match MANIFEST.sha256: {relative}')
+        paper = catalog.get(path.stem)
+        if paper is None:
+            raise ValueError(f'Reading note has no catalog entry: {path.stem}')
+        document_id = 'doc-' + sha256(f'research/{path.name}'.encode('utf-8'))[:12]
+        text = raw.decode('utf-8').lstrip('﻿').replace('\r\n', '\n')
+        document_sections = []
+        for start, end, window in split_text(text):
+            if window.strip():
+                document_sections.append({
+                    'section_id': f'{document_id}-s{len(document_sections) + 1:05d}',
+                    'document_id': document_id,
+                    'locator': f'{relative} · extracted characters {start + 1}–{end}',
+                    'text': window,
+                })
+        documents.append({
+            'document_id': document_id,
+            'title': f"Reading note {paper['id']}: {paper['title']}",
+            'filename': relative, 'format': 'md', 'sha256': sha256(raw),
+            'text_sha256': sha256(text.encode('utf-8')),
+            'extraction': 'UTF-8 text; BOM removed and line endings normalized in extraction only',
+            'section_count': len(document_sections), 'char_count': len(text),
+            'first_section_id': document_sections[0]['section_id'] if document_sections else None,
+            'status': 'extracted' if document_sections else 'no_extractable_text',
+            'room': 'research', 'kind': 'reading note about the paper, not the paper',
+            'authors': paper['authors'], 'year': str(paper['year']), 'area': paper.get('group', ''),
+            'evidence': paper['evidence_type'], 'review_depth': paper['inspection_level'],
+            'url': paper['canonical_url'],
+        })
+        sections.extend(document_sections)
+    if not documents:
+        raise ValueError('The research room has no reading notes')
+    return {'schema_version': 1, 'documents': documents, 'sections': sections}
+
+
 def atomic_write(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent,
@@ -211,13 +273,20 @@ def main():
     corpus = build_corpus(originals)
     rendered = json.dumps(corpus, ensure_ascii=False, indent=2) + '\n'
     output = LIBRARY / 'corpus.json'
+    research = build_research_corpus()
+    research_rendered = json.dumps(research, ensure_ascii=False, indent=2) + '\n'
+    research_output = LIBRARY / 'research-corpus.json'
     if args.check:
         if not output.is_file() or output.read_text(encoding='utf-8') != rendered:
             raise SystemExit('Original hashes or extracted corpus differ; rebuild explicitly to update the index')
+        if not research_output.is_file() or research_output.read_text(encoding='utf-8') != research_rendered:
+            raise SystemExit('Research notes or their extracted corpus differ; rebuild explicitly to update the index')
         print('Original hashes and deterministic extraction match the stored library.')
     else:
         atomic_write(output, rendered)
-        print(f'Library: {len(corpus["documents"])} originals, {len(corpus["sections"])} bounded sections.')
+        atomic_write(research_output, research_rendered)
+        print(f'Library: {len(corpus["documents"])} originals, {len(corpus["sections"])} bounded sections; '
+              f'research room: {len(research["documents"])} reading notes, {len(research["sections"])} sections.')
 
 
 if __name__ == '__main__':

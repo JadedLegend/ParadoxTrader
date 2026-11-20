@@ -26,6 +26,9 @@ AGENT_IDS = OWNERS = (
     "tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter",
 )
 CAPABILITIES = ("rest", "journal", "inquire", "library", "roam")
+# The library's rooms (docs/specs/LIBRARY_ROOMS.md). A library choice may name one.
+LIBRARY_ROOMS = ("writings", "research")
+
 JOURNAL_OPTIONS = {
     "modes": ["note", "compost", "distill", "witness"],
     "channels": ["trading", "idea", "orientation", "unclassified"],
@@ -56,7 +59,8 @@ _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "
 _INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
     "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "library.sqlite3",
-    "witness.sqlite3", "library_corpus.json", "profiles/snapshot.json", "home.json",
+    "witness.sqlite3", "library_corpus.json", "library_research_corpus.json", "library_research.sqlite3",
+    "profiles/snapshot.json", "home.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
     *(f"memory/{owner}.sqlite3" for owner in OWNERS),
     *(f"memory/{owner}-{owner}-r{round_number}-library.json" for owner in OWNERS
@@ -364,10 +368,12 @@ def _validate_manifest(raw):
 
 
 def _choice(value):
-    allowed = {"action", "query", "journal_mode", "channels", "source_ids", "release"}
+    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release"}
     if (not isinstance(value, dict) or set(value) - allowed
             or not isinstance(value.get("action"), str) or value["action"] not in CAPABILITIES):
         raise RehearsalError("invalid choice")
+    if "room" in value and (value["action"] != "library" or value["room"] not in LIBRARY_ROOMS):
+        raise RehearsalError("invalid library room")
     if "query" in value:
         query = value["query"]
         if (value["action"] != "library" or not isinstance(query, str) or not query.strip()
