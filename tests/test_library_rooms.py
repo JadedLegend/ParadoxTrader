@@ -48,6 +48,13 @@ class LibraryRoomTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "MANIFEST"):
             import_library.build_research_corpus(tampered)
 
+    def test_missing_expected_note_is_rejected_before_extraction(self):
+        folder = self.root / "research"
+        shutil.copytree(ROOT / "library" / "research", folder)
+        (folder / "reading-notes" / "P01.md").unlink()
+        with self.assertRaisesRegex(ValueError, "missing:.*P01.md"):
+            import_library.build_research_corpus(folder)
+
     def test_the_library_choice_takes_an_optional_room(self):
         self.assertEqual(validate_choice('{"action":"library","query":"options","room":"research"}')["room"], "research")
         validate_choice('{"action":"library","room":"writings"}')

@@ -196,7 +196,13 @@ def build_research_corpus(folder=RESEARCH):
     catalog = {paper['id']: paper for paper in json.loads((folder / 'source-catalog.json').read_text(encoding='utf-8'))['papers']}
     manifest = _research_manifest(folder)
     documents, sections = [], []
-    for path in sorted((folder / 'reading-notes').glob('P[0-9][0-9].md')):
+    paths = sorted((folder / 'reading-notes').glob('P[0-9][0-9].md'))
+    expected = {f'P{number:02d}.md' for number in range(1, 22)}
+    discovered = {path.name for path in paths}
+    if discovered != expected:
+        raise ValueError(f'Reading notes must contain P01–P21; missing: {sorted(expected - discovered)}; '
+                         f'unexpected: {sorted(discovered - expected)}')
+    for path in paths:
         relative = f'reading-notes/{path.name}'
         raw = path.read_bytes()
         if manifest.get(relative) != sha256(raw):

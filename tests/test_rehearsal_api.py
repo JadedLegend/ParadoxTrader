@@ -213,7 +213,18 @@ class RehearsalReadAPI(unittest.TestCase):
         self.assertTrue(value['record']['truncated'])
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(self.request(route.replace('agent_id=tempest', 'agent_id=siren'))[0], 404)
+        research = run / 'library_research.sqlite3'
+        path.rename(research)
+        # Both shelves exist; only the research shelf contains the referenced ID.
+        with sqlite3.connect(path) as conn:
+            conn.execute('CREATE TABLE library_sections(section_id TEXT,document_id TEXT,locator TEXT,text TEXT)')
+        self.assertEqual(self.request(route)[0], 200)
+        self.assertEqual(research.read_bytes(), before)
+        self.assertEqual(self.request(route.replace('agent_id=tempest', 'agent_id=siren'))[0], 404)
         self.job['record_refs'] = []
+        self.assertEqual(self.request(route)[0], 404)
+        self.job['record_refs'] = [{'kind': 'library', 'id': section_id}]
+        research.unlink()
         self.assertEqual(self.request(route)[0], 404)
 
     def test_inquiry_uuid_uses_existing_lineage_owner_check_without_schema_writes(self):
