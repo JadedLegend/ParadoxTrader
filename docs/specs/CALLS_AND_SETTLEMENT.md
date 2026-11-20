@@ -1,6 +1,12 @@
 # Calls and settlement: write a call down, check it later, hand back the result
 
-Status: draft for owner approval. Nothing is built yet.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:521a7a97f0fca40a0717343331d8eee0b9531a817d291191e0134e13fbc3b2a1 -->
+
+Status: Phase 1 is built. Phases 2 and 3 are not built yet.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## In plain words
 
@@ -57,8 +63,14 @@ broker. Paper trades stay a separate, later step.
 - Refusals end the wake as failed with a code, never crash the tick:
   `call_symbol_not_watched`, `call_no_price` (no committed price, or a price with
   no time of its own), `call_too_many_open`, `call_not_offered`.
-- Continuity shows the agent its own open calls (symbol, way, settle date), so it
-  knows what's pending.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:17e90cef4ae1e8adee6246c8cc714f327bc8a9b2cc78b25a24e62d31d5a3a2a7 -->
+
+- Continuity shows the agent its own open calls (symbol, direction, entry session,
+  and horizon in trading days), so it knows what's pending.
+
+<!-- /coderabbit-ai-generated:v1 -->
 - Tests: a valid call is stored with the committed price; resume reuses it; each
   refusal; a price with no time is refused; the cap of 5; append-only; offered
   only beside a window; the next wake lists the open call.

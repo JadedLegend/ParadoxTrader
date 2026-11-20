@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from core.memory.engine import ThresholdMemory
+from core.runtime.rehearsal.calls import CALL_OPTIONS
 from core.runtime.rehearsal.continuity import (
     MAX_CHARS, MAX_REFS, clip_continuity, owner_continuity, public_coverage,
 )
@@ -347,20 +348,29 @@ class DecisionControllerTests(unittest.TestCase):
 
     def test_choice_fits_with_mandatory_metadata_and_marks_context_before_commit(self):
         controller = self.controller(lambda _url, **kwargs: Response(model=kwargs["json"]["model"]))
+        controller.market = lambda: {
+            "status": "open", "source": "alpaca-iex",
+            "quotes": [{"symbol": "SPY", "last": 505.0, "as_of": "2026-11-19T14:58:00+00:00"}],
+        }
         controller.prepare_profiles()
         job = next(j for j in self.store.list_jobs(self.run_id) if j["wake_id"] == "siren-r2")
         context = {"status": "available", "refs": [{"kind": "journal", "id": 1, "wake_id": "siren-r1"}],
                    "truncated": False, "chars": 4000, "unavailable": False,
                    "excerpts": [{"kind": "journal", "id": 1, "wake_id": "siren-r1",
                                  "body": "界" * 4000, "source": "agent", "body_truncated": False}]}
-        # Set a cap that fits all structural offers, but not the entire excerpt.
-        controller.manifest["limits"]["max_input_bytes"] = 18600
+        # Use a tight cap that fits the mandatory context, including call options.
+        cap = 21_500
+        controller.manifest["limits"]["max_input_bytes"] = cap
         with patch("core.runtime.rehearsal.controller.owner_continuity", return_value=context):
             metadata, private = controller._new_decision_context(job)
         messages = controller._choice_messages(metadata, private)
         self.assertTrue(private["include_metadata"])
+        self.assertEqual(metadata["call_options"], CALL_OPTIONS)
+        self.assertIn('"call_options":' + json.dumps(CALL_OPTIONS, sort_keys=True, separators=(",", ":")),
+                      messages[0]["content"])
         self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))
-        self.assertLessEqual(controller._input_size(job, messages), 18600)
+        self.assertLessEqual(controller._input_size(job, messages), cap)
+        self.assertGreater(metadata["continuity"]["chars"], 0)
         self.assertTrue(metadata["continuity"]["truncated"])
         self.assertEqual(context["chars"], 4000)
         controller.manifest["limits"]["max_input_bytes"] = 1000
