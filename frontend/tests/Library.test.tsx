@@ -248,4 +248,23 @@ describe('Library source reader', () => {
     expect(document.querySelector('a[download]')).toBeNull()
     expect(screen.queryByRole('button', { name: /upload|delete|wake|execute/i })).toBeNull()
   })
+
+  it('opens the research room on its own shelf, with labels and a link to the original paper', async () => {
+    const user = await renderLibrary()
+    expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0)
+    const note = { ...metadata, document_id: 'doc-000000000009', title: 'Reading note P01: Momentum',
+      room: 'research', kind: 'reading note about the paper, not the paper', authors: 'Jegadeesh & Titman', year: '1993', evidence: 'empirical',
+      review_depth: 'full read', url: 'https://example.org/paper' }
+    vi.mocked(getLibraryDocuments).mockResolvedValueOnce({ ...catalog, documents: [note], total: 21 })
+    await user.click(screen.getByRole('tab', { name: 'Research' }))
+    expect((await screen.findAllByText('Reading note P01: Momentum')).length).toBeGreaterThan(0)
+    expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0, 'research')
+    expect(screen.getByRole('tab', { name: 'Research' }).getAttribute('aria-selected')).toBe('true')
+    expect(document.body.textContent).toContain('Jegadeesh & Titman · 1993 · empirical · full read')
+    const link = screen.getByRole('link', { name: 'Original publication' })
+    expect(link.getAttribute('href')).toBe('https://example.org/paper')
+    expect(link.getAttribute('rel')).toContain('noreferrer')
+    await search(user)
+    expect(searchLibrary).toHaveBeenLastCalledWith('source', undefined, 3, 600, 'research')
+  })
 })

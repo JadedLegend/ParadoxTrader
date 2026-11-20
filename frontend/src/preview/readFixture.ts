@@ -40,11 +40,12 @@ export function readFixture(path: string): unknown {
       if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid library ${name}.`)
       return parsed
     }
+    const room = url.searchParams.get('room') === 'research' ? 'research' : 'writings'
     return import('../library/client').then(async (library): Promise<unknown> => {
-      if (route === '/api/library/documents') return library.listDocuments(integer('limit', 50), integer('offset', 0))
+      if (route === '/api/library/documents') return library.listDocuments(integer('limit', 50), integer('offset', 0), room)
       if (route === '/api/library/search') return library.queryLibrary(url.searchParams.get('q') ?? '',
-        url.searchParams.get('document_id') || undefined, integer('limit', 3), integer('max_chars', 600))
-      return library.readSection(decodeURIComponent(section![1]), integer('offset', 0), integer('max_chars', 1200))
+        url.searchParams.get('document_id') || undefined, integer('limit', 3), integer('max_chars', 600), room)
+      return library.readSection(decodeURIComponent(section![1]), integer('offset', 0), integer('max_chars', 1200), room)
     })
   }
   if (route === '/api/status' || route === '/api/agents') return { ...meta, agents: fixture.agents }

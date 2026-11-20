@@ -12,6 +12,15 @@ export interface LibraryDocument {
   section_count: number
   char_count: number
   first_section_id?: string | null
+  // Research-room labels: what the note is and what kind of evidence its paper holds.
+  room?: string
+  kind?: string
+  authors?: string
+  year?: string
+  area?: string
+  evidence?: string
+  review_depth?: string
+  url?: string
 }
 
 export interface LibrarySection {
