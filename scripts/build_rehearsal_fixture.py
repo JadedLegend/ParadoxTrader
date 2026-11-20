@@ -95,7 +95,14 @@ def build_fixture():
                     rows = memory.read_journal(limit=100) if kind == 'journal' else memory.get_recent_episodes(limit=100)
                     record = next(row for row in rows if row['id'] == record_id)
                 elif kind == 'library':
-                    record = LibraryStore(corpus_path=path / 'library_corpus.json', db_path=path / 'library.sqlite3').read_section(record_id, max_chars=1200)
+                    # The reference names a section, not a room: try writings, then research.
+                    try:
+                        record = LibraryStore(corpus_path=path / 'library_corpus.json', db_path=path / 'library.sqlite3').read_section(record_id, max_chars=1200)
+                    except KeyError:
+                        if not (path / 'library_research_corpus.json').exists():
+                            raise
+                        record = LibraryStore(corpus_path=path / 'library_research_corpus.json',
+                                              db_path=path / 'library_research.sqlite3').read_section(record_id, max_chars=1200)
                 elif kind == 'witness':
                     record = _witness_account(WitnessStore(path / 'witness.sqlite3').get_account(record_id, owner), owner)
                 else:

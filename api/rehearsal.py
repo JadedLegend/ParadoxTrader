@@ -306,9 +306,16 @@ def _record(store, run_id, params):
             _error(404, 'rehearsal_record_not_found')
         value = _witness_account(account, owner)
     elif kind == 'library':
-        path = _safe_file(run_path, 'library.sqlite3')
-        with _read_connection(path) as conn:
-            row = conn.execute('SELECT section_id,document_id,locator,text FROM library_sections WHERE section_id=? LIMIT 1', (record_id,)).fetchone()
+        # A library reference names a section, not a room; section IDs differ by room, so
+        # check the writings shelf and then the research shelf when the run has one.
+        row = None
+        for shelf in ('library.sqlite3', 'library_research.sqlite3'):
+            if shelf != 'library.sqlite3' and not (Path(run_path) / shelf).exists():
+                continue
+            with _read_connection(_safe_file(run_path, shelf)) as conn:
+                row = conn.execute('SELECT section_id,document_id,locator,text FROM library_sections WHERE section_id=? LIMIT 1', (record_id,)).fetchone()
+            if row is not None:
+                break
         if row is None:
             _error(404, 'rehearsal_record_not_found')
         value = dict(row)

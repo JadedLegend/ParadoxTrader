@@ -216,6 +216,22 @@ class RehearsalReadAPI(unittest.TestCase):
         self.job['record_refs'] = []
         self.assertEqual(self.request(route)[0], 404)
 
+    def test_library_ref_to_a_research_section_reads_the_research_shelf(self):
+        run = Path(self.temp) / ID
+        run.mkdir()
+        writings, research = 'doc-123456789abc-s00001', 'doc-abcdef123456-s00001'
+        for name, section_id, text in (('library.sqlite3', writings, 'writing'), ('library_research.sqlite3', research, 'note')):
+            with sqlite3.connect(run / name) as conn:
+                conn.execute('CREATE TABLE library_sections(section_id TEXT,document_id TEXT,locator TEXT,text TEXT)')
+                conn.execute('INSERT INTO library_sections VALUES(?,?,?,?)', (section_id, section_id[:16], 'Mock source', text))
+        self.store.run_path.return_value = run
+        self.job['record_refs'] = [{'kind': 'library', 'id': writings}, {'kind': 'library', 'id': research}]
+        for section_id, text in ((writings, 'writing'), (research, 'note')):
+            status, value, _ = self.request(f'/api/rehearsals/{ID}/records?agent_id=tempest&kind=library&id={section_id}')
+            self.assertEqual((status, value['record']['text']), (200, text))
+        (run / 'library_research.sqlite3').unlink()  # A run from before the rooms has no research shelf.
+        self.assertEqual(self.request(f'/api/rehearsals/{ID}/records?agent_id=tempest&kind=library&id={research}')[0], 404)
+
     def test_inquiry_uuid_uses_existing_lineage_owner_check_without_schema_writes(self):
         from core.trading.lineage import LineageStore
         run = Path(self.temp) / ID
