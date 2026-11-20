@@ -354,12 +354,13 @@ class DecisionControllerTests(unittest.TestCase):
                    "truncated": False, "chars": 4000, "unavailable": False,
                    "excerpts": [{"kind": "journal", "id": 1, "wake_id": "siren-r1",
                                  "body": "界" * 4000, "source": "agent", "body_truncated": False}]}
-        market = {"status": "open", "as_of": "2026-11-19T14:58:00+00:00", "quotes": [
-            {"symbol": "SPY", "last": 505.0, "as_of": "2026-11-19T14:58:00+00:00"},
-        ]}
+        market = {
+            "status": "open", "source": "alpaca-iex",
+            "quotes": [{"symbol": "SPY", "last": 505.0, "as_of": "2026-11-19T14:58:00+00:00"}],
+        }
         # Leave room for the mandatory offers even with a market window, but
         # force the controller to trim the UTF-8 journal excerpt.
-        cap = 22_000
+        cap = 21_500
         for with_market in (False, True):
             with self.subTest(with_market=with_market), patch(
                 "core.runtime.rehearsal.controller.owner_continuity", return_value=context
@@ -371,7 +372,8 @@ class DecisionControllerTests(unittest.TestCase):
                 self.assertTrue(private["include_metadata"])
                 if with_market:
                     self.assertEqual(metadata["call_options"], CALL_OPTIONS)
-                    self.assertIn('"call_options":', messages[0]["content"])
+                    self.assertIn('"call_options":' + json.dumps(CALL_OPTIONS, sort_keys=True, separators=(",", ":")),
+                                  messages[0]["content"])
                 else:
                     self.assertNotIn("call_options", metadata)
                 self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))

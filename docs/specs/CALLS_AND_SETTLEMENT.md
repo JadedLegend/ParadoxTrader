@@ -2,9 +2,9 @@
 
 <!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:1018e0a711da1c444a07645f718887846cf7d3e82f199d06958109e8409dbdcd -->
+<!-- coderabbit-ai-generated-section:v1:521a7a97f0fca40a0717343331d8eee0b9531a817d291191e0134e13fbc3b2a1 -->
 
-Status: Phase 1 is built. Phases 2 and 3 are not yet built.
+Status: Phase 1 is built. Phases 2 and 3 are not built yet.
 
 <!-- /coderabbit-ai-generated:v1 -->
 
@@ -51,7 +51,7 @@ broker. Paper trades stay a separate, later step.
 
 <!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:ba3eab8eed11096acadfae40e5b933d4e2cd9843256c9248fedbcb8d1eecef20 -->
+<!-- coderabbit-ai-generated-section:v1:e850087e37361303d82a36754172d0e936dcdd237c683903f8abdae946d693ad -->
 
 - New choice: `{"action": "call", "symbol": "GLD", "direction": "up" | "down",
   "horizon_days": 1-20, "confidence": "low" | "medium" | "high", "reason": "..."}`.
@@ -68,7 +68,7 @@ broker. Paper trades stay a separate, later step.
   `call_symbol_not_watched`, `call_no_price` (no committed price, or a price with
   no time of its own), `call_too_many_open`, `call_not_offered`.
 - Continuity shows the agent its own open calls (symbol, direction, entry session,
-  and horizon), so it knows what's pending.
+  and horizon in trading days), so it knows what's pending.
 - Tests: a valid call is stored with the committed price; resume reuses it; each
   refusal; a price with no time is refused; the cap of 5; append-only; offered
   only beside a window; the next wake lists the open call.
