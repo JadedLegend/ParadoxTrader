@@ -19,6 +19,8 @@ const ROOMS: { id: LibraryRoom; name: string; about: string }[] = [
 const roomArgs = (room: LibraryRoom): [] | [LibraryRoom] => room === 'research' ? [room] : []
 
 export default function Library() {
+  const [focusedRoom, setFocusedRoom] = useState<LibraryRoom>('writings')
+  const tabRefs = useRef<Partial<Record<LibraryRoom, HTMLButtonElement | null>>>({})
   const [room, setRoom] = useState<LibraryRoom>('writings')
   const [catalog, setCatalog] = useState<LibraryDocumentsResponse | null>(null)
   const [catalogOffset, setCatalogOffset] = useState(0)
@@ -47,6 +49,7 @@ export default function Library() {
 
   const loadCatalog = useCallback(async (offset: number) => {
     const request = ++catalogRequest.current
+    setCatalogOffset(offset)
     setCatalogLoading(true)
     setCatalogError('')
     setCatalog(null)
@@ -138,10 +141,24 @@ export default function Library() {
 
       <div className="journal-tabs mb-16" role="tablist" aria-label="Library rooms">
         {ROOMS.map(item => <button key={item.id} type="button" role="tab" aria-selected={room === item.id}
+          id={`library-tab-${item.id}`} aria-controls={`library-panel-${item.id}`}
+          ref={node => { tabRefs.current[item.id] = node }}
+          tabIndex={focusedRoom === item.id ? 0 : -1}
+          onFocus={() => setFocusedRoom(item.id)}
+          onKeyDown={event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            const index = ROOMS.findIndex(candidate => candidate.id === item.id)
+            const next = ROOMS[(index + (event.key === 'ArrowRight' ? 1 : -1) + ROOMS.length) % ROOMS.length]
+            tabRefs.current[next.id]?.focus()
+          }}
           className={room === item.id ? 'btn btn-primary' : 'btn btn-ghost'}
-          onClick={() => { if (room !== item.id) { setRoom(item.id); setFilter(''); setDraft(''); resetSearch() } }}>
+          onClick={() => { if (room !== item.id) { setRoom(item.id); setCatalogOffset(0); setFilter(''); setDraft(''); resetSearch() } }}>
           {item.name}</button>)}
       </div>
+      {ROOMS.filter(item => item.id !== room).map(item =>
+        <div key={item.id} role="tabpanel" id={`library-panel-${item.id}`} aria-labelledby={`library-tab-${item.id}`} hidden />)}
+      <div role="tabpanel" id={`library-panel-${room}`} aria-labelledby={`library-tab-${room}`}>
       <p className="settings-note mb-16">{ROOMS.find(item => item.id === room)!.about}</p>
 
       <div className="library-searchbar">
@@ -237,6 +254,7 @@ export default function Library() {
             </div>
           </>}
         </section>
+      </div>
       </div>
     </div>
   )
