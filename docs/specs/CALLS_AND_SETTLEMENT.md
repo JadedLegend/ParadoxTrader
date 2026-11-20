@@ -1,6 +1,12 @@
 # Calls and settlement: write a call down, check it later, hand back the result
 
-Status: draft for owner approval. Nothing is built yet.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:1018e0a711da1c444a07645f718887846cf7d3e82f199d06958109e8409dbdcd -->
+
+Status: Phase 1 is built. Phases 2 and 3 are not yet built.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## In plain words
 
@@ -43,6 +49,10 @@ broker. Paper trades stay a separate, later step.
 
 ## Phase 1: make a call
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ba3eab8eed11096acadfae40e5b933d4e2cd9843256c9248fedbcb8d1eecef20 -->
+
 - New choice: `{"action": "call", "symbol": "GLD", "direction": "up" | "down",
   "horizon_days": 1-20, "confidence": "low" | "medium" | "high", "reason": "..."}`.
   Reason up to 400 characters. `horizon_days` counts trading days.
@@ -57,11 +67,13 @@ broker. Paper trades stay a separate, later step.
 - Refusals end the wake as failed with a code, never crash the tick:
   `call_symbol_not_watched`, `call_no_price` (no committed price, or a price with
   no time of its own), `call_too_many_open`, `call_not_offered`.
-- Continuity shows the agent its own open calls (symbol, way, settle date), so it
-  knows what's pending.
+- Continuity shows the agent its own open calls (symbol, direction, entry session,
+  and horizon), so it knows what's pending.
 - Tests: a valid call is stored with the committed price; resume reuses it; each
   refusal; a price with no time is refused; the cap of 5; append-only; offered
   only beside a window; the next wake lists the open call.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Status: built in `build/calls-phase1`.
 
