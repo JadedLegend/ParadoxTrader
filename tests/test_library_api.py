@@ -190,6 +190,24 @@ class LibraryAPIContracts(unittest.TestCase):
                             and any(alias.name == "get_library" for alias in node.names)
                             for node in API_AST.body))
 
+    def test_rooms_select_distinct_real_shelves_and_unknown_rooms_are_rejected(self):
+        from core import data_dir
+        with mock.patch.object(library_module, "_store", None), \
+                mock.patch.object(library_module, "_research_store", None), \
+                mock.patch.object(data_dir, "db_path", side_effect=lambda name: str(self.root / name)):
+            handlers = {name: extracted_handler(name, library_module.get_library) for name in HANDLERS}
+            writings = handlers["library_documents"]()
+            research = handlers["library_documents"](room="research")
+            self.assertEqual(writings, handlers["library_documents"](room="writings"))
+            self.assertEqual(research["total"], 21)
+            section = research["documents"][0]["first_section_id"]
+            self.assertEqual(handlers["library_section"](section, room="research")["section_id"], section)
+            self.assertTrue(handlers["library_search"]("options", room="research")["results"])
+            self.assert_http(404, "library_section_not_found", handlers["library_section"], section)
+            for name, args in (("library_documents", ()), ("library_search", ("options",)),
+                               ("library_section", (section,))):
+                self.assert_http(400, "invalid_library_request", handlers[name], *args, room="attic")
+
     def test_default_accessor_is_lazy_and_cached_without_touching_real_data(self):
         fake_data_dir = mock.Mock()
         fake_data_dir.db_path.return_value = str(self.db_path)

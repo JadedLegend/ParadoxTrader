@@ -58,6 +58,53 @@ async function search(user: ReturnType<typeof userEvent.setup>, text = 'source')
 }
 
 describe('Library source reader', () => {
+  it('links room tabs and panels and supports manual keyboard activation with roving focus', async () => {
+    const user = await renderLibrary()
+    const writings = screen.getByRole('tab', { name: 'Writings' })
+    const research = screen.getByRole('tab', { name: 'Research' })
+    expect(writings.tabIndex).toBe(0)
+    expect(research.tabIndex).toBe(-1)
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(writings.id)
+    expect(document.getElementById(research.getAttribute('aria-controls')!)).toBeTruthy()
+    writings.focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(research)
+    expect(research.tabIndex).toBe(0)
+    expect(writings.tabIndex).toBe(-1)
+    expect(research.getAttribute('aria-selected')).toBe('false')
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(writings)
+    await user.keyboard('{ArrowRight}{Enter}')
+    await waitFor(() => expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0, 'research'))
+    expect(screen.getByRole('tabpanel').id).toBe(research.getAttribute('aria-controls'))
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(research.id)
+  })
+
+  it('retries a failed pagination request at the requested offset', async () => {
+    vi.mocked(getLibraryDocuments).mockResolvedValueOnce({ ...catalog, total: 100 })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ ...catalog, total: 100, offset: 50 })
+    const user = await renderLibrary()
+    await user.click(screen.getByRole('button', { name: 'Next documents' }))
+    await user.click(await screen.findByRole('button', { name: 'Retry catalog' }))
+    await waitFor(() => expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 50))
+    expect(getLibraryDocuments).toHaveBeenCalledTimes(3)
+  })
+
+  it('retries a failed first room load at zero after browsing a later page', async () => {
+    vi.mocked(getLibraryDocuments).mockResolvedValueOnce({ ...catalog, total: 100 })
+      .mockResolvedValueOnce({ ...catalog, total: 100, offset: 50 })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ ...catalog, total: 21 })
+    const user = await renderLibrary()
+    await user.click(screen.getByRole('button', { name: 'Next documents' }))
+    await waitFor(() => expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 50))
+    await screen.findByText('51–51 of 100')
+    await user.click(screen.getByRole('tab', { name: 'Research' }))
+    await user.click(await screen.findByRole('button', { name: 'Retry catalog' }))
+    await waitFor(() => expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0, 'research'))
+  })
+
   it('shows the real-source local notice, catalog metadata, full accessible hash, and initial pagination', async () => {
     await renderLibrary()
     expect(screen.getByRole('heading', { level: 1, name: 'Library' })).toBeTruthy()
@@ -247,5 +294,24 @@ describe('Library source reader', () => {
     expect(document.querySelector('input[type="file"]')).toBeNull()
     expect(document.querySelector('a[download]')).toBeNull()
     expect(screen.queryByRole('button', { name: /upload|delete|wake|execute/i })).toBeNull()
+  })
+
+  it('opens the research room on its own shelf, with labels and a link to the original paper', async () => {
+    const user = await renderLibrary()
+    expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0)
+    const note = { ...metadata, document_id: 'doc-000000000009', title: 'Reading note P01: Momentum',
+      room: 'research', kind: 'reading note about the paper, not the paper', authors: 'Jegadeesh & Titman', year: '1993', evidence: 'empirical',
+      review_depth: 'full read', url: 'https://example.org/paper' }
+    vi.mocked(getLibraryDocuments).mockResolvedValueOnce({ ...catalog, documents: [note], total: 21 })
+    await user.click(screen.getByRole('tab', { name: 'Research' }))
+    expect((await screen.findAllByText('Reading note P01: Momentum')).length).toBeGreaterThan(0)
+    expect(getLibraryDocuments).toHaveBeenLastCalledWith(50, 0, 'research')
+    expect(screen.getByRole('tab', { name: 'Research' }).getAttribute('aria-selected')).toBe('true')
+    expect(document.body.textContent).toContain('Jegadeesh & Titman · 1993 · empirical · full read')
+    const link = screen.getByRole('link', { name: 'Original publication' })
+    expect(link.getAttribute('href')).toBe('https://example.org/paper')
+    expect(link.getAttribute('rel')).toContain('noreferrer')
+    await search(user)
+    expect(searchLibrary).toHaveBeenLastCalledWith('source', undefined, 3, 600, 'research')
   })
 })

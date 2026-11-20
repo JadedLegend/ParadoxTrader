@@ -409,7 +409,7 @@ def usage_events(agent_id: Optional[str] = None, limit: int | str = 50, offset: 
 
 
 @app.get("/api/library/documents")
-def library_documents(limit: int | str = 50, offset: int | str = 0):
+def library_documents(limit: int | str = 50, offset: int | str = 0, room: str = "writings"):
     """Browse imported metadata only, without reading originals or agent stores."""
     try:
         # Accept decimal HTTP query strings; let the store reject every other type.
@@ -417,7 +417,7 @@ def library_documents(limit: int | str = 50, offset: int | str = 0):
             limit = int(limit)
         if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
             offset = int(offset)
-        return get_library().list_documents(limit=limit, offset=offset)
+        return get_library(room=room).list_documents(limit=limit, offset=offset)
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid_library_request") from None
     except Exception:
@@ -425,14 +425,14 @@ def library_documents(limit: int | str = 50, offset: int | str = 0):
 
 
 @app.get("/api/library/search")
-def library_search(q: str, document_id: Optional[str] = None, limit: int | str = 3, max_chars: int | str = 600):
+def library_search(q: str, document_id: Optional[str] = None, limit: int | str = 3, max_chars: int | str = 600, room: str = "writings"):
     """Search lexical source terms; identifiers are not filenames or file paths."""
     try:
         if isinstance(limit, str) and len(limit) <= 10 and limit.isascii() and limit.isdecimal():
             limit = int(limit)
         if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
             max_chars = int(max_chars)
-        return get_library().search(q, document_id=document_id, limit=limit, max_chars=max_chars)
+        return get_library(room=room).search(q, document_id=document_id, limit=limit, max_chars=max_chars)
     except KeyError:
         raise HTTPException(status_code=404, detail="library_document_not_found") from None
     except ValueError:
@@ -442,14 +442,14 @@ def library_search(q: str, document_id: Optional[str] = None, limit: int | str =
 
 
 @app.get("/api/library/sections/{section_id}")
-def library_section(section_id: str, offset: int | str = 0, max_chars: int | str = 1200):
+def library_section(section_id: str, offset: int | str = 0, max_chars: int | str = 1200, room: str = "writings"):
     """Read a bounded section window while preserving its extraction locator."""
     try:
         if isinstance(offset, str) and len(offset) <= 10 and offset.isascii() and offset.isdecimal():
             offset = int(offset)
         if isinstance(max_chars, str) and len(max_chars) <= 10 and max_chars.isascii() and max_chars.isdecimal():
             max_chars = int(max_chars)
-        return get_library().read_section(section_id, offset=offset, max_chars=max_chars)
+        return get_library(room=room).read_section(section_id, offset=offset, max_chars=max_chars)
     except KeyError:
         raise HTTPException(status_code=404, detail="library_section_not_found") from None
     except ValueError:

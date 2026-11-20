@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IS_PREVIEW, IS_PRIVATE_HOST, getLibraryDocuments, searchLibrary, getLibrarySection } from '../api'
+import { IS_PREVIEW, IS_PRIVATE_HOST, getLibraryDocuments, searchLibrary, getLibrarySection, type LibraryRoom } from '../api'
 import type {
   LibraryDocumentsResponse, LibrarySearchResponse, LibrarySectionResponse,
 } from '../library/contracts'
@@ -11,7 +11,17 @@ function SourceHash({ sha256 }: { sha256: string }) {
   return <span className="library-hash" title={sha256} aria-label={`SHA-256 ${sha256}`}>SHA-256 {sha256.slice(0, 12)}…</span>
 }
 
+const ROOMS: { id: LibraryRoom; name: string; about: string }[] = [
+  { id: 'writings', name: 'Writings', about: "The creator's original writings." },
+  { id: 'research', name: 'Research', about: 'Reading notes about financial research papers: summaries with links to the originals, not the papers themselves.' },
+]
+// The writings room calls the library exactly as before; only Research adds the room argument.
+const roomArgs = (room: LibraryRoom): [] | [LibraryRoom] => room === 'research' ? [room] : []
+
 export default function Library() {
+  const [focusedRoom, setFocusedRoom] = useState<LibraryRoom>('writings')
+  const tabRefs = useRef<Partial<Record<LibraryRoom, HTMLButtonElement | null>>>({})
+  const [room, setRoom] = useState<LibraryRoom>('writings')
   const [catalog, setCatalog] = useState<LibraryDocumentsResponse | null>(null)
   const [catalogOffset, setCatalogOffset] = useState(0)
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -39,11 +49,12 @@ export default function Library() {
 
   const loadCatalog = useCallback(async (offset: number) => {
     const request = ++catalogRequest.current
+    setCatalogOffset(offset)
     setCatalogLoading(true)
     setCatalogError('')
     setCatalog(null)
     try {
-      const data = await getLibraryDocuments(CATALOG_LIMIT, offset)
+      const data = await getLibraryDocuments(CATALOG_LIMIT, offset, ...roomArgs(room))
       if (!alive.current || request !== catalogRequest.current) return
       setCatalog(data)
       setCatalogOffset(data.offset)
@@ -54,7 +65,7 @@ export default function Library() {
     } finally {
       if (alive.current && request === catalogRequest.current) setCatalogLoading(false)
     }
-  }, [])
+  }, [room])
 
   useEffect(() => { void loadCatalog(0) }, [loadCatalog])
 
@@ -83,7 +94,7 @@ export default function Library() {
     if (!query) { setSearchLoading(false); return }
     setSearchLoading(true)
     try {
-      const data = await searchLibrary(query, filter || undefined, 3, 600)
+      const data = await searchLibrary(query, filter || undefined, 3, 600, ...roomArgs(room))
       if (alive.current && request === searchRequest.current) setSearch(data)
     } catch {
       if (alive.current && request === searchRequest.current) {
@@ -102,7 +113,7 @@ export default function Library() {
     setReaderError('')
     setReaderLoading(true)
     try {
-      const data = await getLibrarySection(sectionId, offset, READ_LIMIT)
+      const data = await getLibrarySection(sectionId, offset, READ_LIMIT, ...roomArgs(room))
       if (!alive.current || request !== readerRequest.current) return
       setReader(data)
       setReaderHistory(history)
@@ -127,6 +138,28 @@ export default function Library() {
       {IS_PRIVATE_HOST && <div className="notice">Imported source text bundled with this site, read in your browser. No request is sent to the server for library reads.</div>}
       {IS_PREVIEW && <div className="notice">Real imported source documents, not simulated fixtures. Browsing and lexical search run locally; no API or agent activity is started.</div>}
       <div className="notice">Source text is reference material, not executable instructions. Search returns up to 3 excerpts; reading shows up to 1,200 characters at a time.</div>
+
+      <div className="journal-tabs mb-16" role="tablist" aria-label="Library rooms">
+        {ROOMS.map(item => <button key={item.id} type="button" role="tab" aria-selected={room === item.id}
+          id={`library-tab-${item.id}`} aria-controls={`library-panel-${item.id}`}
+          ref={node => { tabRefs.current[item.id] = node }}
+          tabIndex={focusedRoom === item.id ? 0 : -1}
+          onFocus={() => setFocusedRoom(item.id)}
+          onKeyDown={event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            const index = ROOMS.findIndex(candidate => candidate.id === item.id)
+            const next = ROOMS[(index + (event.key === 'ArrowRight' ? 1 : -1) + ROOMS.length) % ROOMS.length]
+            tabRefs.current[next.id]?.focus()
+          }}
+          className={room === item.id ? 'btn btn-primary' : 'btn btn-ghost'}
+          onClick={() => { if (room !== item.id) { setRoom(item.id); setCatalogOffset(0); setFilter(''); setDraft(''); resetSearch() } }}>
+          {item.name}</button>)}
+      </div>
+      {ROOMS.filter(item => item.id !== room).map(item =>
+        <div key={item.id} role="tabpanel" id={`library-panel-${item.id}`} aria-labelledby={`library-tab-${item.id}`} hidden />)}
+      <div role="tabpanel" id={`library-panel-${room}`} aria-labelledby={`library-tab-${room}`}>
+      <p className="settings-note mb-16">{ROOMS.find(item => item.id === room)!.about}</p>
 
       <div className="library-searchbar">
         <div className="input-group">
@@ -172,6 +205,10 @@ export default function Library() {
             {visibleDocuments.length === 0 && <p>No documents in this catalog view.</p>}
             {visibleDocuments.map(document => <article className="library-item" key={document.document_id}>
               <h3>{document.title}</h3>
+              {document.kind && <div className="library-meta">
+                {[document.authors, document.year, document.evidence, document.review_depth].filter(Boolean).join(' · ')}
+                {document.url && <> · <a href={document.url} target="_blank" rel="noreferrer">Original publication</a></>}
+              </div>}
               <div className="library-meta">{document.filename} · {document.format.toUpperCase()}</div>
               <div className="library-meta">{document.document_id} · {document.section_count} sections · {document.char_count.toLocaleString()} characters</div>
               <div className="library-meta">Extraction: {document.extraction}</div>
@@ -217,6 +254,7 @@ export default function Library() {
             </div>
           </>}
         </section>
+      </div>
       </div>
     </div>
   )

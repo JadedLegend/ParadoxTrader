@@ -61,6 +61,8 @@ export function createLocalLibrary(corpus: LibraryCorpus) {
     format: document.format, sha256: document.sha256, extraction: document.extraction,
     ...(document.text_sha256 !== undefined ? { text_sha256: document.text_sha256 } : {}),
     ...(document.status !== undefined ? { status: document.status } : {}),
+    ...Object.fromEntries((['room', 'kind', 'authors', 'year', 'area', 'evidence', 'review_depth', 'url'] as const)
+      .filter(key => typeof document[key] === 'string').map(key => [key, document[key]])),
     section_count: document.section_count, char_count: document.char_count,
     first_section_id: null as string | null,
   })).sort((a, b) => a.document_id < b.document_id ? -1 : a.document_id > b.document_id ? 1 : 0)
@@ -155,22 +157,24 @@ export function createLocalLibrary(corpus: LibraryCorpus) {
 
 // This module is safe to import with App/api: source text is not part of that
 // initial dependency graph. The real, private corpus is loaded once on demand.
-let localLibrary: Promise<ReturnType<typeof createLocalLibrary>> | undefined
-function loadLibrary() {
-  localLibrary ??= import('../../../library/corpus.json').then(module =>
-    createLocalLibrary(module.default as LibraryCorpus),
-  )
-  return localLibrary
+// Two rooms (docs/specs/LIBRARY_ROOMS.md): each shelf loads only when it is opened.
+export type LibraryRoom = 'writings' | 'research'
+const shelves: Partial<Record<LibraryRoom, Promise<ReturnType<typeof createLocalLibrary>>>> = {}
+function loadLibrary(room: LibraryRoom = 'writings') {
+  shelves[room] ??= (room === 'research'
+    ? import('../../../library/research-corpus.json')
+    : import('../../../library/corpus.json')).then(module => createLocalLibrary(module.default as LibraryCorpus))
+  return shelves[room]!
 }
 
-export async function listDocuments(limit = 50, offset = 0) {
-  return (await loadLibrary()).listDocuments(limit, offset)
+export async function listDocuments(limit = 50, offset = 0, room: LibraryRoom = 'writings') {
+  return (await loadLibrary(room)).listDocuments(limit, offset)
 }
 
-export async function queryLibrary(query: string, documentId?: string, limit = 3, maxChars = 600) {
-  return (await loadLibrary()).queryLibrary(query, documentId, limit, maxChars)
+export async function queryLibrary(query: string, documentId?: string, limit = 3, maxChars = 600, room: LibraryRoom = 'writings') {
+  return (await loadLibrary(room)).queryLibrary(query, documentId, limit, maxChars)
 }
 
-export async function readSection(sectionId: string, offset = 0, maxChars = 1200) {
-  return (await loadLibrary()).readSection(sectionId, offset, maxChars)
+export async function readSection(sectionId: string, offset = 0, maxChars = 1200, room: LibraryRoom = 'writings') {
+  return (await loadLibrary(room)).readSection(sectionId, offset, maxChars)
 }
