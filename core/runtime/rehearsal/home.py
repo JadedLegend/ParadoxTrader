@@ -28,7 +28,7 @@ HOME_FILE = "home.json"
 SCHEMA_VERSION = 1
 CARRIED_STATUSES = ("completed", "partial", "stopped")
 CARRIED_FILES = (*(f"memory/{owner}.sqlite3" for owner in OWNERS), "witness.sqlite3",
-                 "trade_queue.sqlite3")
+                 "trade_queue.sqlite3", "calls.sqlite3")
 CARRIED_REF_KINDS = ("journal", "episode", "inquiry")
 MAX_LOOKBACK = 3
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)

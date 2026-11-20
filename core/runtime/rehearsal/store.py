@@ -22,10 +22,15 @@ from uuid import UUID, uuid4
 from core.usage.pricing import (decimal_add as _decimal_add, decimal_text as _decimal_text,
                                 decimal_value, validate_model)
 
+from .calls import CALL_FIELDS, CALL_OPTIONS, validate_call_fields
+
 AGENT_IDS = OWNERS = (
     "tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter",
 )
 CAPABILITIES = ("rest", "journal", "inquire", "library", "roam")
+# A call (docs/specs/CALLS_AND_SETTLEMENT.md) is offered beside the five, only on
+# wakes with a market window, so it is a valid choice but not one of the frozen offers.
+CHOICE_ACTIONS = (*CAPABILITIES, "call")
 # The library's rooms (docs/specs/LIBRARY_ROOMS.md). A library choice may name one.
 LIBRARY_ROOMS = ("writings", "research")
 
@@ -58,7 +63,7 @@ _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "
 # Keep the provider's conservative bounded_input accounting without importing it.
 _INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
-    "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "library.sqlite3",
+    "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "calls.sqlite3", "library.sqlite3",
     "witness.sqlite3", "library_corpus.json", "library_research_corpus.json", "library_research.sqlite3",
     "profiles/snapshot.json", "home.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
@@ -196,8 +201,10 @@ def _message_input(messages):
 def _decision_metadata(value):
     keys = {"schema_version", "offered_actions", "action_costs", "constraints",
             "admission_snapshot", "model", "continuity"}
-    if not isinstance(value, dict) or not keys <= set(value) or set(value) - keys - {"journal_options"}:
+    if not isinstance(value, dict) or not keys <= set(value) or set(value) - keys - {"journal_options", "call_options"}:
         raise RehearsalError("invalid decision metadata")
+    if "call_options" in value and _dump(value["call_options"]) != _dump(CALL_OPTIONS):
+        raise RehearsalError("invalid call options")
     if "journal_options" in value and _dump(value["journal_options"]) != _dump(JOURNAL_OPTIONS):
         raise RehearsalError("invalid journal options")
     _integer(value["schema_version"], "schema_version", 1, 1)
@@ -368,10 +375,14 @@ def _validate_manifest(raw):
 
 
 def _choice(value):
-    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release"}
+    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release", *CALL_FIELDS}
     if (not isinstance(value, dict) or set(value) - allowed
-            or not isinstance(value.get("action"), str) or value["action"] not in CAPABILITIES):
+            or not isinstance(value.get("action"), str) or value["action"] not in CHOICE_ACTIONS):
         raise RehearsalError("invalid choice")
+    try:
+        validate_call_fields(value)
+    except ValueError:
+        raise RehearsalError("invalid call") from None
     if "room" in value and (value["action"] != "library" or value["room"] not in LIBRARY_ROOMS):
         raise RehearsalError("invalid library room")
     if "query" in value:
@@ -416,7 +427,7 @@ def _refs(value):
         raise RehearsalError("invalid record_refs")
     result = []
     for ref in value:
-        if not isinstance(ref, dict) or set(ref) != {"kind", "id"} or ref["kind"] not in ("journal", "episode", "inquiry", "library", "witness"):
+        if not isinstance(ref, dict) or set(ref) != {"kind", "id"} or ref["kind"] not in ("journal", "episode", "inquiry", "library", "witness", "call"):
             raise RehearsalError("invalid record ref")
         ident = ref["id"]
         if ref["kind"] == "witness":
@@ -1203,7 +1214,7 @@ class RehearsalStore:
     def finish_job(self, run_id, wake_id, token, *, status="completed", action=None, failure_code=None, record_refs=None):
         if not isinstance(status, str) or status not in _TERMINAL:
             raise RehearsalError("invalid job status")
-        if action is not None and action not in CAPABILITIES:
+        if action is not None and action not in CHOICE_ACTIONS:
             raise RehearsalError("invalid action")
         failure_code = _safe(failure_code, "failure_code", nullable=True)
         refs = _refs(record_refs)

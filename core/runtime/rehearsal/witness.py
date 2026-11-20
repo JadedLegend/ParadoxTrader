@@ -14,7 +14,7 @@ import stat
 from threading import RLock
 from uuid import uuid4
 
-from .store import (OWNERS, CAPABILITIES, JOURNAL_OPTIONS, LIMIT_CAPS, MAX_WAKES_PER_AGENT, RehearsalStore,
+from .store import (OWNERS, CAPABILITIES, CHOICE_ACTIONS, JOURNAL_OPTIONS, LIMIT_CAPS, MAX_WAKES_PER_AGENT, RehearsalStore,
                     RehearsalError, RehearsalConflict, _integer, _safe, _uuid, _refs)
 
 _LOCKS = {}
@@ -66,7 +66,7 @@ def _facts(snapshot, scope):
         if wake != f"{agent}-r{round_number}":
             raise RehearsalError("invalid witness wake")
         status, action = raw["status"], raw["action"]
-        if status not in (*_TERMINAL, "pending", "running") or action not in (*CAPABILITIES, None):
+        if status not in (*_TERMINAL, "pending", "running") or action not in (*CHOICE_ACTIONS, None):
             raise RehearsalError("invalid witness job")
         job = {"wake_id": wake, "agent_id": agent, "round": round_number,
                "status": status, "action": action,
@@ -166,7 +166,7 @@ def _render(facts):
                 line += f" Recorded code: {job['failure_code']}."
             lines.append(line)
     else:
-        actions = {action: sum(j["choice_committed"] and j["action"] == action for j in jobs) for action in CAPABILITIES}
+        actions = {action: sum(j["choice_committed"] and j["action"] == action for j in jobs) for action in CHOICE_ACTIONS}
         modes = {mode: sum(j["choice_committed"] and j.get("journal_mode") == mode for j in jobs) for mode in JOURNAL_OPTIONS["modes"]}
         lines.append("Committed choices (wake counts): " + (", ".join(f"{k}={v}" for k, v in actions.items() if v) or "0") + ".")
         if any(modes.values()):
