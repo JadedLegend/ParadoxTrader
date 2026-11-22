@@ -33,7 +33,7 @@ Design for review, 17 November 2026. Builds on the merged continuing home (#26, 
 - **Each tick** starts the wakes that are due, in time order, one at a time, at most three per tick. A wake past its grace window is recorded as missed and never caught up.
 - **Pause lives in the database** as the source of truth. `stop` also stops a wake that is being prepared or running. These carry over from #28.
 - **Clock-only mode.** The clock computes and records slots but dispatches nothing. It is the first droplet install (Manus's plan, stages 3–4), so the clock can be watched keeping time before anything is spent.
-- **Choices per wake:** `choices_per_wake` (1-3, default 1). Each choice is its own stored turn (choose, then do it); later turns see earlier ones. Rest, a failed turn, a pause or a low budget ends the wake early. Wake slots times choices may not exceed 48 turns per agent per day.
+- **Choices per wake:** `choices_per_wake` (1-4, default 1). Each choice is its own stored turn (choose, then do it); later turns see earlier ones. Rest, a failed turn, a pause or a low budget ends the wake early. Wake slots times choices may not exceed 96 turns per agent per day. A skill opened on one move stays at hand for the later moves of the same wake (see `SKILL_SHELF.md`, phase 2).
 - **Status says why nothing happened:** paused, clock-only, over budget, an earlier wake uncertain, outside hours, or the key not set.
 
 ## Settings page

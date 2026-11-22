@@ -176,8 +176,8 @@ class DayRunTests(unittest.TestCase):
 
     def test_api_accepts_any_wake_number_of_the_same_owner_only(self):
         self.assertTrue(_owner_wake("siren", "siren-r1"))
-        self.assertTrue(_owner_wake("siren", "siren-r48"))
-        for owner, wake in (("siren", "siren-r49"), ("siren", "siren-r0"), ("siren", "siren-r01"),
+        self.assertTrue(_owner_wake("siren", "siren-r96"))
+        for owner, wake in (("siren", "siren-r97"), ("siren", "siren-r0"), ("siren", "siren-r01"),
                             ("siren", "tempest-r1"), ("siren", "siren-r1x"), ("shadow", "shadow-r")):
             with self.subTest(wake=wake):
                 self.assertFalse(_owner_wake(owner, wake))

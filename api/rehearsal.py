@@ -187,11 +187,11 @@ def _integer(params, key, default, minimum, maximum):
     return int(value)
 
 
-MAX_WAKES_PER_AGENT = 48
+MAX_WAKES_PER_AGENT = 96
 
 
 def _owner_wake(owner, wake):
-    """True when ``wake`` is one of ``owner``'s wake IDs: ``<owner>-r<n>``, 1 <= n <= 48."""
+    """True when ``wake`` is one of ``owner``'s wake IDs: ``<owner>-r<n>``, 1 <= n <= 96."""
     if not isinstance(owner, str) or not isinstance(wake, str) or not wake.startswith(owner + '-r'):
         return False
     number = wake[len(owner) + 2:]

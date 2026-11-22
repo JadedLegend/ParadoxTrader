@@ -52,6 +52,7 @@ from .home import CARRIED_STATUSES, continue_home, read_home
 from .provider import ProviderError
 from .store import MAX_WAKES_PER_AGENT, OWNERS, RehearsalConflict, RehearsalError
 
+MAX_CHOICES_PER_WAKE = 4  # Moves in one wake; rest ends it early.
 LEDGER = "heartbeat.sqlite3"
 PAUSE = "heartbeat.paused"
 LOCK = "heartbeat.lock"
@@ -77,7 +78,7 @@ class Schedule:
     max_wakes_per_tick: int
     models_file: str = None
     settings_dir: str = None   # The owner's Settings page (models, budget, key) wins when set.
-    choices_per_wake: int = 1  # Turns in one wake: choose, do it, then maybe choose once more.
+    choices_per_wake: int = 1  # Turns in one wake (1-4): choose, do it, then maybe choose again.
 
     @classmethod
     def from_config(cls, raw):
@@ -116,7 +117,7 @@ class Schedule:
                 raise ValueError
         except (KeyError, TypeError, ValueError, ArithmeticError):
             raise RehearsalError("invalid_heartbeat_config") from None
-        if (not 1 <= grace <= 60 or mode not in ("offline", "real") or not 1 <= choices <= 3
+        if (not 1 <= grace <= 60 or mode not in ("offline", "real") or not 1 <= choices <= MAX_CHOICES_PER_WAKE
                 or dispatch not in ("clock-only", "live") or not 1 <= per_tick <= 7
                 or not Decimal("0") <= budget <= Decimal("100")
                 or (mode == "real" and not isinstance(models_file, str) and not isinstance(raw.get("settings_dir"), str))

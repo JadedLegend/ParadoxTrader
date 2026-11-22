@@ -99,6 +99,20 @@ class SkillRefused(ValueError):
         self.code = code
 
 
+MAX_OPEN_SKILLS = 2  # At most two open books on the desk at once.
+
+
+def _open_skill_messages(private_context):
+    """The full texts of skills opened earlier in this wake, oldest first."""
+    messages = []
+    for name in private_context.get("open_skills") or []:
+        text = skill_text(name)
+        if text is not None:
+            messages.append({"role": "user", "content":
+                             f"Skill you opened earlier in this wake (still at hand): {name}\n" + text})
+    return messages
+
+
 def decision_metadata(manifest, job, snapshot, continuity):
     """Frozen offers/limits and a shared admission observation, not a reservation.
 
@@ -394,6 +408,7 @@ class RehearsalController:
                 metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         if private_context["include_continuity"]:
             content += "\n\n" + continuity_message(private_context["continuity"])["content"]
+        content += "".join("\n\n" + message["content"] for message in _open_skill_messages(private_context))
         if private_context.get("open_calls"):
             content += "\n\n" + private_context["open_calls"]
         if private_context.get("market_line"):
@@ -412,6 +427,9 @@ class RehearsalController:
                              + ("Choosing rest ends the wake." if step[0] < step[1] else "It is the last one."))
         private = {"continuity": continuity, "include_metadata": True, "include_continuity": True,
                    "choice_instructions": instructions}
+        opened = self._opened_this_wake(job)
+        if opened:
+            private["open_skills"] = opened
         if self.market is not None:
             # Read once and committed with the context, so a resumed wake and its
             # inquiry see exactly what this choice saw.
@@ -456,6 +474,11 @@ class RehearsalController:
         # prepared identities or original sources. If the structural request
         # cannot fit, fail before dispatch rather than silently hide the offers.
         meta, item = candidate(0)
+        # An open skill is the first thing set down when the page is full; the
+        # offers themselves never are.
+        while private.get("open_skills") and self._input_size(job, self._choice_messages(meta, item)) > cap:
+            private["open_skills"] = private["open_skills"][1:]
+            meta, item = candidate(0)
         if self._input_size(job, self._choice_messages(meta, item)) > cap:
             raise ProviderError("input_bound_exceeded")
         low, high = 0, continuity["chars"] if private["include_continuity"] else 0
@@ -486,11 +509,35 @@ class RehearsalController:
                 raise RehearsalError("decision_context_unavailable")
         return details
 
+    def _opened_this_wake(self, job):
+        """Names of shelf skills this owner opened on earlier moves of this same wake.
+
+        A wake of several moves stores each move as its own round, numbered in a
+        row, so the earlier moves of this wake are the rounds just before this
+        one. Skills from earlier wakes are not carried: the book goes back on
+        the shelf when the wake ends.
+        """
+        step = getattr(self, "_step", None)
+        if not step or step[0] <= 1:
+            return []
+        first = job["round"] - (step[0] - 1)
+        names = []
+        for row in sorted(self.store.list_jobs(self.run_id), key=lambda row: row["round"]):
+            if (row["agent_id"] == job["agent_id"] and first <= row["round"] < job["round"]
+                    and row["status"] == "completed" and row["action"] == "skill"):
+                name = (self.store.get_choice(self.run_id, row["wake_id"]) or {}).get("name")
+                if skill_text(name) is not None and name not in names:
+                    names.append(name)
+        return names[-MAX_OPEN_SKILLS:]
+
     def _activity_continuity(self, job, messages, details):
         if details is None:
             return messages  # Old/manual staged choices do not invent offers.
         continuity = details["private_context"]["continuity"]
         cap = self.manifest["limits"]["max_input_bytes"]
+        for skill in reversed(_open_skill_messages(details["private_context"])):
+            if self._input_size(job, [*messages, skill]) <= cap:  # Newest first; set down what does not fit.
+                messages = [messages[0], skill, *messages[1:]]
         # Keep original activity/library sources untouched, but bound newly
         # added continuity independently of the source material's input size.
         def candidate(chars):

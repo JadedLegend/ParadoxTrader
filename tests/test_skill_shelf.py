@@ -101,5 +101,70 @@ class SkillWakeTests(BlockedNetwork):
         self.assertEqual(activity, [])
 
 
+class OpenSkillSittingTests(BlockedNetwork):
+    """Shelf phase 2: a skill opened on one move stays at hand for the rest of the wake."""
+
+    def sitting(self, moves, choices):
+        store = RehearsalStore(self.root / "sessions")
+        scripted, seen = ScriptedHTTP(), []  # seen: (kind, text) for each of Tempest's requests.
+
+        def http(url, **kwargs):
+            text = "\n".join(str(m.get("content", "")) for m in kwargs["json"]["messages"])
+            if "Stable owner ID: tempest" not in text:
+                return scripted(url, **kwargs)
+            if "REHEARSAL CHOICE" in text:
+                move = sum(kind == "choice" for kind, _ in seen)
+                seen.append(("choice", text))
+                scripted.calls += 1
+                return ScriptedResponse({"id": f"sit-{move}", "model": kwargs["json"].get("model"),
+                                         "provider": "scripted-offline",
+                                         "choices": [{"message": {"content": json.dumps(moves[move])},
+                                                      "finish_reason": "stop"}],
+                                         "usage": {"prompt_tokens": 60, "completion_tokens": 20,
+                                                   "total_tokens": 80, "cost": "0"}})
+            seen.append(("activity", text))
+            return scripted(url, **kwargs)
+
+        def prepare_day(budget_usd, wakes_per_agent, models=None):
+            return store.prepare(day_manifest(wakes=wakes_per_agent, budget=budget_usd))["run_id"]
+
+        def run_wake(run_id, owner, step=None):
+            return RehearsalController(store, run_id, transport=OpenRouterTransport(
+                "scripted-offline", http_post=http)).run_wake(owner, step=step)
+
+        config = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
+                  "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live",
+                  "choices_per_wake": choices}
+        clock = [datetime(2026, 11, 18, 9, 1, tzinfo=timezone.utc)]
+        beat = Heartbeat(store, Schedule.from_config(config), prepare_day=prepare_day, run_wake=run_wake,
+                         now=lambda: clock[0])
+        run_id = beat.tick()["run_id"]  # Tempest only.
+        return store, run_id, seen, beat, clock
+
+    def test_later_moves_of_the_wake_still_hold_the_opened_skill(self):
+        body = SKILLS["outside-voices"]["body"]
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "journal"}, {"action": "rest"}], choices=4)
+        kinds = [kind for kind, _ in seen]
+        self.assertEqual(kinds, ["choice", "activity", "choice", "activity", "choice"])  # Rest ended it.
+        self.assertNotIn("still at hand", seen[0][1])
+        self.assertIn(body, seen[1][1])  # Opening it delivers the text.
+        for kind, text in seen[2:]:
+            with self.subTest(kind=kind):  # The journal choice, the journal itself, and the rest choice.
+                self.assertIn("Skill you opened earlier in this wake (still at hand): outside-voices", text)
+                self.assertIn(body, text)
+        self.assertIn("choice 3 of 4", seen[-1][1])
+
+    def test_the_skill_goes_back_on_the_shelf_when_the_wake_ends(self):
+        _, _, seen, beat, clock = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                {"action": "rest"}, {"action": "rest"}], choices=2)
+        self.assertEqual(len(seen), 3)  # Skill, its reading, then rest.
+        clock[0] = datetime(2026, 11, 18, 9, 15, tzinfo=timezone.utc)  # Tempest's next wake.
+        for _ in range(3):  # Other agents due within the grace window go first, three per tick.
+            beat.tick()
+        self.assertEqual([kind for kind, _ in seen[3:]], ["choice"])
+        self.assertNotIn("still at hand", seen[3][1])
+
+
 if __name__ == "__main__":
     unittest.main()
