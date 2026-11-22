@@ -48,6 +48,10 @@ def skill_text(name):
     return skill["body"] if skill else None
 
 
+# Paths that cannot open a skill (the legacy agent_loop wake and council) keep
+# every skill's full text on the page instead of the table of contents.
+FULL_SKILLS_ORIENTATION = "\n\n".join(s["body"] for s in SKILLS.values())
+
 SHELF_ORIENTATION = "\n".join(
     ["SKILLS ON THE SHELF (open one with the skill choice when it would help; none is required):"]
     + [f"- {s['name']}: {s['description']}" for s in SKILLS.values()]

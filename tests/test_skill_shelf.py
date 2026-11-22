@@ -19,7 +19,7 @@ from tests.test_market_window import BlockedNetwork
 class ShelfTests(unittest.TestCase):
     def test_the_page_lists_every_skill_and_its_always_line_but_not_the_full_text(self):
         self.assertEqual(set(SKILLS), {"learning-from-inquiry", "outside-voices"})
-        prompt = build_system_prompt({"agent_id": "tempest"}, {})
+        prompt = build_system_prompt({"agent_id": "tempest"}, {}, shelf=True)
         self.assertIn(SHELF_ORIENTATION, prompt)
         for skill in SKILLS.values():
             with self.subTest(skill=skill["name"]):
@@ -29,6 +29,12 @@ class ShelfTests(unittest.TestCase):
                 self.assertNotIn(skill["body"], prompt)
         self.assertNotIn("TODO", prompt)
         self.assertIn('{"action":"skill","name":"<a name from the shelf>"}', CHOICE_INSTRUCTIONS)
+
+    def test_paths_without_the_skill_choice_keep_every_full_text(self):
+        prompt = build_system_prompt({"agent_id": "tempest"}, {})  # agent_loop and council.
+        self.assertNotIn("SKILLS ON THE SHELF", prompt)
+        for skill in SKILLS.values():
+            self.assertIn(skill["body"], prompt)
 
     def test_a_skill_opens_by_its_exact_name_only(self):
         self.assertEqual(skill_text("outside-voices"), SKILLS["outside-voices"]["body"])

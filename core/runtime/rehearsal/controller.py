@@ -275,7 +275,8 @@ def snapshot_profiles(store, run_id, repo_root=None):
             files[relative] = raw
         soul = json.loads(files[f"profiles/{owner}_soul.json"].decode("utf-8"))
         living = json.loads(files[f"profiles/{owner}_living.json"].decode("utf-8"))
-        prompt = _prompt_builder()(soul, living) + "\n\n" + SESSION_RULES
+        # Only this controller offers the skill choice, so only it gets the shelf.
+        prompt = _prompt_builder()(soul, living, shelf=True) + "\n\n" + SESSION_RULES
         files[f"profiles/{owner}_prompt.txt"] = prompt.encode("utf-8")
     corpus_path = repo / "library" / "corpus.json"
     existing_corpus = _run_file(run_path, "library_corpus.json")
