@@ -114,7 +114,7 @@ def _facts(snapshot, scope):
         outcome = raw["outcome"]
         if outcome not in ("in_flight", "success", "http_error", "transport_error", "invalid_response", "failed", "uncertain", "not_sent"):
             raise RehearsalError("invalid witness request outcome")
-        if raw["activity"] not in (*CAPABILITIES, "choice", "choose_action", "inquiry") or raw["dispatched"] not in (0, 1):
+        if raw["activity"] not in (*CAPABILITIES, "choice", "choose_action", "inquiry", "skill") or raw["dispatched"] not in (0, 1):
             raise RehearsalError("invalid witness request")
         requests.append({"request_id": _uuid(raw["request_id"], "request_id"),
                          "wake_id": raw["wake_id"], "agent_id": raw["agent_id"],

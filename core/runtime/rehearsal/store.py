@@ -30,7 +30,7 @@ AGENT_IDS = OWNERS = (
 CAPABILITIES = ("rest", "journal", "inquire", "library", "roam")
 # A call (docs/specs/CALLS_AND_SETTLEMENT.md) is offered beside the five, only on
 # wakes with a market window, so it is a valid choice but not one of the frozen offers.
-CHOICE_ACTIONS = (*CAPABILITIES, "call")
+CHOICE_ACTIONS = (*CAPABILITIES, "call", "skill")  # skill: open one shelf skill (SKILL_SHELF.md).
 # The library's rooms (docs/specs/LIBRARY_ROOMS.md). A library choice may name one.
 LIBRARY_ROOMS = ("writings", "research")
 
@@ -51,8 +51,10 @@ DEFAULT_LIMITS = {
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
 MAX_WAKES_PER_AGENT = 48
 DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
+DAY_MAX_INPUT_BYTES = 32000  # Day runs only, as above; matches provider.DAY_MAX_INPUT_BYTES.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
-              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
+              "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS,
+              "max_input_bytes": DAY_MAX_INPUT_BYTES}
 RUN_KINDS = ("rehearsal", "day")
 _SAFE = re.compile(r"[a-zA-Z0-9_.:-]{1,128}\Z")
 _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
@@ -184,7 +186,7 @@ def _message_input(messages):
                 or not isinstance(message["role"], str)
                 or message["role"] not in ("system", "user", "assistant")
                 or not isinstance(message["content"], str)
-                or len(message["content"]) > 24000):
+                or len(message["content"]) > DAY_MAX_INPUT_BYTES):
             raise RehearsalError("invalid request messages")
         normalized.append({"role": message["role"], "content": message["content"]})
     try:
@@ -193,7 +195,7 @@ def _message_input(messages):
     except (UnicodeError, ValueError, TypeError):
         raise RehearsalError("invalid request messages") from None
     size = len(encoded) + _INPUT_PROTOCOL_BYTES + _INPUT_MESSAGE_BYTES * len(normalized)
-    if size > 24000:
+    if size > DAY_MAX_INPUT_BYTES:  # Each run's own, smaller limit is checked on admission.
         raise RehearsalBudgetExceeded("request input limit exceeded")
     return literal, hashlib.sha256(encoded).hexdigest(), size
 
@@ -300,7 +302,8 @@ def _validate_manifest(raw):
     limits = {name: _integer(limits[name], name, 1, cap) for name, cap in LIMIT_CAPS.items()} | {"budget_usd": raw["limits"]["budget_usd"]}
     if kind == "rehearsal" and (limits["wakes_per_agent"] != 2
                                 or limits["max_requests"] > DEFAULT_LIMITS["max_requests"]
-                                or limits["max_output_tokens"] > DEFAULT_LIMITS["max_output_tokens"]):
+                                or limits["max_output_tokens"] > DEFAULT_LIMITS["max_output_tokens"]
+                                or limits["max_input_bytes"] > DEFAULT_LIMITS["max_input_bytes"]):
         raise RehearsalError("two rounds required")
     if not isinstance(limits["budget_usd"], str):
         raise RehearsalError("invalid budget_usd")
@@ -375,7 +378,7 @@ def _validate_manifest(raw):
 
 
 def _choice(value):
-    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release", *CALL_FIELDS}
+    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release", "name", *CALL_FIELDS}
     if (not isinstance(value, dict) or set(value) - allowed
             or not isinstance(value.get("action"), str) or value["action"] not in CHOICE_ACTIONS):
         raise RehearsalError("invalid choice")
@@ -383,6 +386,11 @@ def _choice(value):
         validate_call_fields(value)
     except ValueError:
         raise RehearsalError("invalid call") from None
+    name = value.get("name")
+    if (value["action"] == "skill") != ("name" in value) or ("name" in value and (
+            not isinstance(name, str) or not 1 <= len(name) <= 64
+            or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in name))):
+        raise RehearsalError("invalid skill choice")
     if "room" in value and (value["action"] != "library" or value["room"] not in LIBRARY_ROOMS):
         raise RehearsalError("invalid library room")
     if "query" in value:
@@ -1238,10 +1246,10 @@ class RehearsalStore:
     def reserve_request(self, run_id, wake_id, token, *, agent_id, activity, model, input_bytes, max_output_tokens, reserved_usd):
         if agent_id not in OWNERS:
             raise RehearsalError("invalid agent_id")
-        if activity not in (*CAPABILITIES, "choice", "choose_action", "inquiry"):
+        if activity not in (*CAPABILITIES, "choice", "choose_action", "inquiry", "skill"):
             raise RehearsalError("invalid activity")
         model = _model(model)
-        _integer(input_bytes, "input_bytes", 0, 24000)
+        _integer(input_bytes, "input_bytes", 0, DAY_MAX_INPUT_BYTES)
         _integer(max_output_tokens, "max_output_tokens", 1, DAY_MAX_OUTPUT_TOKENS)  # And the run's own limit below.
         amount = _money(reserved_usd, "reserved_usd")
         with self._connection(run_id, write=True) as connection:

@@ -35,6 +35,19 @@ def _rehearsal_cli():
     return module
 
 
+def day_input_bytes(manifest):
+    """The larger day page (DAY_MAX_INPUT_BYTES), but no more than every chosen
+    model's context leaves after the full day reply room, so a bigger page
+    never squeezes a thinking model's answer. Never below the rehearsal page,
+    so a small model keeps today's behaviour."""
+    from core.runtime.rehearsal.provider import DAY_MAX_INPUT_BYTES, DAY_MAX_OUTPUT_TOKENS
+    rows = manifest["catalog_snapshot"]["models"]
+    room = min([DAY_MAX_INPUT_BYTES]
+               + [row["context_length"] - min(DAY_MAX_OUTPUT_TOKENS, row["max_completion_tokens"])
+                  for row in rows])
+    return max(manifest["limits"]["max_input_bytes"], room)
+
+
 def day_output_tokens(manifest):
     """Room for models that think first: up to DAY_MAX_OUTPUT_TOKENS, but no
     more than every chosen model can give, so one small model never stops the
@@ -72,6 +85,7 @@ def build(root, config_path):
         manifest["kind"] = "day"
         manifest["limits"]["wakes_per_agent"] = wakes_per_agent
         manifest["limits"]["max_requests"] = 2 * wakes_per_agent * 7
+        manifest["limits"]["max_input_bytes"] = day_input_bytes(manifest)
         manifest["limits"]["max_output_tokens"] = day_output_tokens(manifest)
         return store.prepare(manifest)["run_id"]
 

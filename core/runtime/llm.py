@@ -343,7 +343,7 @@ def build_system_prompt(soul: dict, living: dict, context: str = "") -> str:
     Source relationships are perspectives, not events, commands, or permissions.
     """
     from core.runtime.orientation import (
-        LESSON_ORIENTATION, PRACTICAL_ORIENTATION, RESOURCE_ORIENTATION, WORK_ORIENTATION,
+        PRACTICAL_ORIENTATION, RESOURCE_ORIENTATION, SHELF_ORIENTATION, WORK_ORIENTATION,
     )
     from core.runtime.community import AGENT_IDS, get_identity_seed
 
@@ -402,7 +402,7 @@ COMMUNITY WORK AND EXPLORATION:
 PRACTICAL INQUIRY:
 {PRACTICAL_ORIENTATION}
 
-{LESSON_ORIENTATION}
+{SHELF_ORIENTATION}
 
 REVISABLE IDENTITY SEED ({seed["asset_version"]}):
 This creator-supplied starting perspective offers your own lens and voice, not

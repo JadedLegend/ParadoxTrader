@@ -146,7 +146,7 @@ class SettingsTests(BlockedNetwork):
 
 class WakeTests(BlockedNetwork):
     def test_every_choice_sees_the_window_and_inquire_gets_the_quotes(self):
-        from core.runtime.orientation import LESSON_ORIENTATION
+        from core.runtime.orientation import SHELF_ORIENTATION
 
         store = RehearsalStore(self.root / "sessions")
         window = MarketWindow(self.root / "market", ["SPY", "QQQ"], lambda: (KEY_ID, SECRET),
@@ -180,7 +180,7 @@ class WakeTests(BlockedNetwork):
         self.assertEqual([w["status"] for w in result["wakes"]], ["completed"] * 3)
         choices = [p for p in prompts if "Outside the window" in p]
         self.assertEqual(len(choices), 3)
-        self.assertIn(LESSON_ORIENTATION, choices[0])
+        self.assertIn(SHELF_ORIENTATION, choices[0])  # The table of contents, not full skill texts.
         self.assertIn("SPY 505 (+1.00%)", choices[0])
         self.assertIn("Headlines (Massive news): Fed holds rates (Wire)", choices[0])
         self.assertIn("On X: unavailable (it answered 403).", choices[0])
