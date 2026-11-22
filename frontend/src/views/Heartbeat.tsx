@@ -112,9 +112,9 @@ export default function Heartbeat() {
           <div className="stat-sub">of {money(today?.daily_budget_usd)} a day{today?.spent_complete === false ? ' · some costs not reported yet' : ''}</div>
         </div>
         <div className="stat-tile">
-          <div className="stat-label">Set aside</div>
-          <div className="stat-value">{money(today?.reserved_usd)}</div>
-          <div className="stat-sub">Worst-case holds counted against the budget</div>
+          <div className="stat-label">Counted against the budget</div>
+          <div className="stat-value">{money(today?.counted_usd)}</div>
+          <div className="stat-sub">Actual charges, plus worst-case holds not yet charged</div>
         </div>
       </div>
 

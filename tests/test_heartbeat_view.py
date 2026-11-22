@@ -87,11 +87,13 @@ class HeartbeatViewTests(unittest.TestCase):
                                                 ("0.25", 0, 1, True), (None, 0, 1, False)):
             with self.subTest(cost=cost, missing=missing, count=count):
                 with patch.object(beat.store, "get_run", return_value={**run, "known_cost_usd": cost,
-                        "unknown_cost_requests": missing, "request_count": count, "reserved_usd": "0.5"}):
+                        "unknown_cost_requests": missing, "request_count": count, "reserved_usd": "0.9",
+                        "counted_usd": "0.5"}):
                     today = day_view(beat)["today"]
                 self.assertEqual(today["spent_complete"], complete)
                 self.assertEqual(today["spent_usd"], cost or "0")
-                self.assertEqual(today["reserved_usd"], "0.5")
+                self.assertEqual(today["counted_usd"], "0.5")  # Counted, not the raw set-aside.
+                self.assertNotIn("reserved_usd", today)
 
     def test_clock_only_slots_are_left_out_and_an_empty_day_is_plain(self):
         beat = self.heartbeat(dispatch="clock-only")

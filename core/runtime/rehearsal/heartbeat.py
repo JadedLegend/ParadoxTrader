@@ -314,7 +314,9 @@ class Heartbeat:
             "SELECT run_id FROM days WHERE local_date=? ORDER BY opened_at", (today,)).fetchall()]
 
     def _reserved_today(self, conn, today):
-        return sum((Decimal(run["reserved_usd"]) for run in self._today_runs(conn, today)), Decimal(0))
+        """What today's segments count against the budget: reported charges, plus
+        full set-asides for anything not yet confirmed (see counted_usd)."""
+        return sum((Decimal(run["counted_usd"]) for run in self._today_runs(conn, today)), Decimal(0))
 
     def _close_earlier_days(self, conn, today):
         closed = []
@@ -350,7 +352,7 @@ class Heartbeat:
                     self.store.close_day(run["run_id"])
                 except RehearsalConflict:
                     return run["run_id"], None  # A wake is running; switch on a later tick.
-            spent_before += Decimal(run["reserved_usd"])
+            spent_before += Decimal(run["counted_usd"])
         runs = self._runs()
         previous = self._previous(runs)
         budget = max(Decimal(0), self.daily_budget() - spent_before)
@@ -534,7 +536,7 @@ class Heartbeat:
                 "mode": self.schedule.mode, "local_time": local.isoformat(),
                 "today": {"run_id": run["run_id"] if run else None,
                           "status": run["status"] if run else None,
-                          "reserved_usd": format(reserved, "f"),
+                          "counted_usd": format(reserved, "f"),
                           "daily_budget_usd": format(self.daily_budget(), "f"),
                           "slot_outcomes": counts},
                 "next_wake_by_agent": next_wakes, "problems": problems}
