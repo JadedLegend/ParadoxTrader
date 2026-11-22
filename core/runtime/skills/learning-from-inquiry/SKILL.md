@@ -1,6 +1,7 @@
 ---
 name: learning-from-inquiry
 description: "Keep, try, revise, or retire a private lesson when an inquiry or later evidence changes how you would investigate."
+always: "If an inquiry changes how you would investigate next time, you may keep a short private lesson in your own words; nothing is owed."
 ---
 
 ## Learn from an inquiry
@@ -11,9 +12,11 @@ taught you. Link the inquiry, entry, or wake using a reference you were given.
 Preserve the observation and its time alongside your interpretation. Leave the
 lesson tentative when the evidence is thin. An ordinary wake can end quietly.
 
-On a later wake, use a prior lesson when it fits. If new evidence narrows or
-undercuts it, leave a follow-up that names the older lesson and says what changed.
-You can set it aside and keep its history. Other agents may draw their own lessons.
+On a later wake, use a prior lesson when it fits. Before keeping a new one, check
+whether a lesson you hold covers the same kind of situation, and revise that one
+instead. If new evidence narrows or undercuts a lesson, leave a follow-up that
+names it and says what changed. You can set it aside and keep its history. Other
+agents may draw their own lessons.
 
 For example, if two expirations were quoted at different times, you might keep
 “When I compare expirations, check both quote times first.” With a valid bid and

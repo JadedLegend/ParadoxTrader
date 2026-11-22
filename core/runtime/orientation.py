@@ -9,8 +9,54 @@ ORIENTATION_DIR = Path(__file__).with_name("orientations")
 WORK_ORIENTATION = (ORIENTATION_DIR / "work_and_exploration.md").read_text(encoding="utf-8").strip()
 PRACTICAL_ORIENTATION = (ORIENTATION_DIR / "practical_inquiry.md").read_text(encoding="utf-8").strip()
 
-_LESSON_SKILL = Path(__file__).with_name("skills") / "learning-from-inquiry" / "SKILL.md"
-LESSON_ORIENTATION = _LESSON_SKILL.read_text(encoding="utf-8").split("\n---\n", 1)[1].strip()
+SKILLS_DIR = Path(__file__).with_name("skills")
+# The page carries one line per skill (see docs/specs/SKILL_SHELF.md), so these
+# bounds keep a growing shelf from refilling the agents' 24-32 KB page.
+MAX_SKILLS, MAX_DESCRIPTION, MAX_ALWAYS, MAX_SKILL_BODY = 20, 200, 300, 6000
+
+
+def _load_skill(folder):
+    """name, description, optional always line, and the body after the frontmatter."""
+    text = (folder / "SKILL.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+    if not text.startswith("---\n") or "\n---\n" not in text[4:]:
+        raise ValueError(f"skill {folder.name}: missing frontmatter")
+    head, body = text[4:].split("\n---\n", 1)
+    fields = {}
+    for line in head.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip() in ("name", "description", "always"):
+            fields[key.strip()] = value.strip().strip('"').strip()
+    skill = {"name": fields.get("name", ""), "description": fields.get("description", ""),
+             "always": fields.get("always", ""), "body": body.strip()}
+    if (skill["name"] != folder.name or not skill["description"]
+            or len(skill["description"]) > MAX_DESCRIPTION or len(skill["always"]) > MAX_ALWAYS
+            or not skill["body"] or len(skill["body"]) > MAX_SKILL_BODY):
+        raise ValueError(f"skill {folder.name}: name, description, always or body out of bounds")
+    return skill
+
+
+SKILLS = {folder.name: _load_skill(folder)
+          for folder in sorted(SKILLS_DIR.iterdir()) if (folder / "SKILL.md").is_file()}
+if len(SKILLS) > MAX_SKILLS:
+    raise ValueError("too many skills on the shelf")
+SKILL_NAMES = tuple(SKILLS)
+
+
+def skill_text(name):
+    """A shelf skill's full text, or None for a name not on the shelf."""
+    skill = SKILLS.get(name) if isinstance(name, str) else None
+    return skill["body"] if skill else None
+
+
+# Paths that cannot open a skill (the legacy agent_loop wake and council) keep
+# every skill's full text on the page instead of the table of contents.
+FULL_SKILLS_ORIENTATION = "\n\n".join(s["body"] for s in SKILLS.values())
+
+SHELF_ORIENTATION = "\n".join(
+    ["SKILLS ON THE SHELF (open one with the skill choice when it would help; none is required):"]
+    + [f"- {s['name']}: {s['description']}" for s in SKILLS.values()]
+    + [line for s in SKILLS.values() if s["always"] for line in ("", s["always"])]
+)
 
 RESOURCE_ORIENTATION = """HRV is the existing simulated activity/recovery balance, not money, provider credits,
 measured biological state, or a judgment of accomplishment. Its action costs and

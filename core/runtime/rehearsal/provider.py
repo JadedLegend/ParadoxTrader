@@ -33,8 +33,11 @@ LIMIT_CEILINGS = {
 # Models that think before answering count that thinking toward max_tokens,
 # so a day run may give each reply up to DAY_MAX_OUTPUT_TOKENS.
 DAY_MAX_OUTPUT_TOKENS = 3000
+# Day runs carry the market window, feeds, calls and continuity beside the
+# fixed working prompt, so their page may be larger than a rehearsal's.
+DAY_MAX_INPUT_BYTES = 32000
 DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": 48, "max_requests": 2 * 48 * 7,
-                      "max_output_tokens": DAY_MAX_OUTPUT_TOKENS}
+                      "max_output_tokens": DAY_MAX_OUTPUT_TOKENS, "max_input_bytes": DAY_MAX_INPUT_BYTES}
 # Input tokens are conservatively bounded by UTF-8 bytes, not a chars/4 guess.
 # This explicit protocol allowance is included in both context and reservation.
 PROTOCOL_OVERHEAD_BYTES = 2048
@@ -400,7 +403,7 @@ class OpenRouterTransport:
         manifest = validate_manifest(store.get_manifest(run_id))
         if (manifest["mode"] == "offline") == self.is_live:
             raise ProviderError("transport_mode_mismatch")
-        if agent_id not in AGENT_IDS or activity not in ("choice", *CAPABILITIES):
+        if agent_id not in AGENT_IDS or activity not in ("choice", "skill", *CAPABILITIES):
             raise ProviderError("invalid_request_owner_or_activity")
         if validator is not None and not callable(validator):
             raise ProviderError("invalid_response_validator")
