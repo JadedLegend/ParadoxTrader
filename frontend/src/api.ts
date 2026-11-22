@@ -80,7 +80,7 @@ export interface HeartbeatWake {
 export interface HeartbeatView {
   available: boolean; reason: string; paused?: boolean; dispatch?: string; local_time?: string
   choices_per_wake?: number
-  today?: { run_id: string | null; status: string | null; reserved_usd: string; spent_usd: string; spent_complete: boolean
+  today?: { run_id: string | null; status: string | null; counted_usd: string; spent_usd: string; spent_complete: boolean
     daily_budget_usd: string; slot_outcomes: Record<string, number> }
   next_wake_by_agent?: Record<string, string>
   problems?: { agent_id: string | null; scheduled_at: string; note: string | null }[]

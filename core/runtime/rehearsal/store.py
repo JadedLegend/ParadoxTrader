@@ -450,6 +450,24 @@ def _refs(value):
     return _dump(result)
 
 
+def counted_usd(request):
+    """What one request counts against the budget (docs/specs/BUDGET_ACTUAL_CHARGES.md).
+
+    Only a successful request whose charge the provider reported counts that
+    charge. Everything else (in flight, uncertain, failed, never sent, or an
+    unknown or estimated charge) keeps its full worst-case set-aside, so the
+    guard can never admit more than the budget allows. Failures never release:
+    an error can still be billed even when it reports nothing.
+    """
+    reserved = Decimal(request["reserved_usd"])
+    if request["outcome"] != "success":
+        return reserved
+    usage = json.loads(request["usage"]) if request["usage"] else {}
+    if usage.get("cost_status") == "reported" and usage.get("cost_usd") is not None:
+        return Decimal(usage["cost_usd"])
+    return reserved
+
+
 def _usage(raw):
     # Only explicitly recognized numeric metadata survives; raw content is never stored.
     if raw is None:
@@ -799,11 +817,13 @@ class RehearsalStore:
         row = cls._run(connection)
         manifest = json.loads(row["manifest"])
         reserved = Decimal(0)
+        counted = Decimal(0)
         known = Decimal(0)
         unknown = 0
-        requests = connection.execute("SELECT reserved_usd,usage FROM requests").fetchall()
+        requests = connection.execute("SELECT reserved_usd,usage,outcome FROM requests").fetchall()
         for request in requests:
             reserved = decimal_add(reserved, Decimal(request["reserved_usd"]))
+            counted = decimal_add(counted, counted_usd(request))
             cost = json.loads(request["usage"])["cost_usd"]
             if cost is None:
                 unknown += 1
@@ -820,7 +840,8 @@ class RehearsalStore:
                 "created_at": row["created_at"], "started_at": row["started_at"], "ended_at": row["ended_at"],
                 "stop_requested": bool(row["stop_requested"]), "limits": manifest["limits"],
                 "agent_models": manifest["agent_models"], "request_count": len(requests),
-                "reserved_usd": decimal_text(reserved), "known_cost_usd": decimal_text(known) if len(requests) > unknown else None,
+                "reserved_usd": decimal_text(reserved), "counted_usd": decimal_text(counted),
+                "known_cost_usd": decimal_text(known) if len(requests) > unknown else None,
                 "unknown_cost_requests": unknown, "agents": agents, "capabilities": manifest["capabilities"]}
 
     def get_run(self, run_id):
@@ -1266,7 +1287,7 @@ class RehearsalStore:
                 raise RehearsalConflict("committed output must not be regenerated")
             if input_bytes > limits["max_input_bytes"] or max_output_tokens > limits["max_output_tokens"]:
                 raise RehearsalBudgetExceeded("request input or output limit exceeded")
-            requests = connection.execute("SELECT reserved_usd,outcome,wake_id,activity FROM requests").fetchall()
+            requests = connection.execute("SELECT reserved_usd,usage,outcome,wake_id,activity FROM requests").fetchall()
             if any(request["wake_id"] == wake_id and request["outcome"] in ("uncertain", "in_flight") for request in requests):
                 raise RehearsalConflict("unresolved request must not be resent")
             choice_request = activity in ("choice", "choose_action")
@@ -1277,9 +1298,11 @@ class RehearsalStore:
                 raise RehearsalBudgetExceeded("request attempt limit exceeded")
             if sum(request["outcome"] == "in_flight" for request in requests) >= limits["max_parallelism"]:
                 raise RehearsalConflict("request parallelism limit exceeded")
+            # The new request is held at its full set-aside; earlier ones count
+            # what the provider actually charged once it is reported.
             total = amount
             for request in requests:
-                total = decimal_add(total, Decimal(request["reserved_usd"]))
+                total = decimal_add(total, counted_usd(request))
             if total > _money(limits["budget_usd"], "budget_usd"):
                 raise RehearsalBudgetExceeded("USD admission budget exceeded")
             request_id = str(uuid4())

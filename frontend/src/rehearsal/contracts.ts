@@ -22,7 +22,7 @@ export interface RehearsalRun {
   run_id: string; mode: 'offline' | 'real'; status: RehearsalStatus
   created_at: string; started_at: string | null; ended_at: string | null; stop_requested: boolean
   limits: RehearsalLimits; agent_models: Record<RehearsalAgentId, string>; capabilities: RehearsalAction[]
-  request_count: number; reserved_usd: string; known_cost_usd: string | null; unknown_cost_requests: number
+  request_count: number; reserved_usd: string; counted_usd?: string; known_cost_usd: string | null; unknown_cost_requests: number
   reported_cost_usd?: string | null; estimated_cost_usd?: string | null
   agents: RehearsalAgentProgress[]
 }

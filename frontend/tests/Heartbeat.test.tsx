@@ -11,7 +11,7 @@ vi.mock('../src/api', async importOriginal => ({
 const VIEW: api.HeartbeatView = {
   available: true, reason: 'running: next wake 2026-11-19T10:08:00-05:00', paused: false, dispatch: 'live',
   choices_per_wake: 2,
-  today: { run_id: 'r1', status: 'open', reserved_usd: '0.3653', spent_usd: '0.0933', spent_complete: true,
+  today: { run_id: 'r1', status: 'open', counted_usd: '0.3653', spent_usd: '0.0933', spent_complete: true,
     daily_budget_usd: '3.00', slot_outcomes: { woke: 2, missed: 1 } },
   next_wake_by_agent: { siren: '2026-11-19T10:08:00-05:00', tempest: '2026-11-19T10:30:00-05:00' },
   problems: [{ agent_id: 'oracle', scheduled_at: '2026-11-19T09:34:00-05:00', note: 'oracle on z-ai/glm-5.3: output_truncated' }],

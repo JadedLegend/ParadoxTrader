@@ -119,7 +119,8 @@ def decision_metadata(manifest, job, snapshot, continuity):
                   "reservation_ceiling_usd": decimal_text(ceiling * (1 if action == "rest" else 2)),
                   "basis": "catalog_upper_bound"} for action in CAPABILITIES]
     reserved = Decimal(snapshot["reserved_usd"])
-    remaining = max(Decimal(0), decimal_add(Decimal(limits["budget_usd"]), reserved.copy_negate()))
+    counted = Decimal(snapshot.get("counted_usd", snapshot["reserved_usd"]))
+    remaining = max(Decimal(0), decimal_add(Decimal(limits["budget_usd"]), counted.copy_negate()))
     return {"schema_version": 1, "offered_actions": list(CAPABILITIES), "action_costs": costs,
             "constraints": limits,
             "admission_snapshot": {"reserved_usd": decimal_text(reserved),

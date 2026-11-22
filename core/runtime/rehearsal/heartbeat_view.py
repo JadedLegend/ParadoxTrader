@@ -96,7 +96,7 @@ def day_view(heartbeat, *, settings_dir=None):
     status = heartbeat.status()
     today = heartbeat._local_now().date().isoformat()
     rows, run_ids = _ledger_rows(heartbeat.root, today)
-    jobs, spent, reserved, unknown = {}, Decimal(0), Decimal(0), False
+    jobs, spent, counted, unknown = {}, Decimal(0), Decimal(0), False
     for run_id in run_ids:
         try:
             run = heartbeat.store.get_run(run_id)
@@ -104,7 +104,7 @@ def day_view(heartbeat, *, settings_dir=None):
         except Exception:
             unknown = True
             continue
-        reserved += _money(run.get("reserved_usd"))
+        counted += _money(run.get("counted_usd"))
         if run.get("unknown_cost_requests") or (run.get("known_cost_usd") is None and run.get("request_count")):
             unknown = True
         spent += _money(run.get("known_cost_usd"))
@@ -125,7 +125,7 @@ def day_view(heartbeat, *, settings_dir=None):
                        "next_wake": (status.get("next_wake_by_agent") or {}).get(owner)})
     view = dict(status)
     view["today"] = dict(status.get("today") or {}, spent_usd=format(spent, "f"), spent_complete=not unknown,
-                         reserved_usd=format(reserved, "f"))
+                         counted_usd=format(counted, "f"))
     view.update(choices_per_wake=heartbeat.schedule.choices_per_wake, wakes=wakes, agents=agents,
                 window=_feeds(settings_dir) if settings_dir else {"lines": [], "feeds": []})
     return view
