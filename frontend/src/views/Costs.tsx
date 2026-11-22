@@ -275,7 +275,7 @@ function PrivateCosts() {
       <h2 className="card-title">Run {run.run_id.slice(0, 8)} · {label(run.status)}</h2>
       <dl className="rehearsal-metrics">
         <div><dt>Request admissions</dt><dd>{run.request_count} / {run.limits.max_requests}</dd></div>
-        <div><dt>Admission reserved</dt><dd>{sessionDollars(run.reserved_usd)} / {sessionDollars(run.limits.budget_usd)}</dd></div>
+        <div><dt>Counted against the budget</dt><dd>{sessionDollars(run.counted_usd ?? run.reserved_usd)} / {sessionDollars(run.limits.budget_usd)}</dd></div>
         <div><dt>Known cost</dt><dd>{sessionDollars(run.known_cost_usd)}</dd></div>
         <div><dt>Reported subtotal</dt><dd>{sessionDollars(run.reported_cost_usd)}</dd></div>
         <div><dt>Estimated subtotal</dt><dd>{sessionDollars(run.estimated_cost_usd)}</dd></div>

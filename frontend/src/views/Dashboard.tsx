@@ -65,7 +65,7 @@ function PrivateDashboard() {
           <p className="rehearsal-meta">{run.run_id} · Created {run.created_at} · Ended: {run.ended_at ?? 'Not ended'}</p>
           <dl className="rehearsal-metrics">
             <div><dt>Request admissions</dt><dd>{run.request_count} / {run.limits.max_requests}</dd></div>
-            <div><dt>Admission reserved</dt><dd>{dollars(run.reserved_usd)} / {dollars(run.limits.budget_usd)}</dd></div>
+            <div><dt>Counted against the budget</dt><dd>{dollars(run.counted_usd ?? run.reserved_usd)} / {dollars(run.limits.budget_usd)}</dd></div>
             <div><dt>Known cost</dt><dd>{dollars(run.known_cost_usd)}</dd></div>
             <div><dt>Unknown-cost requests</dt><dd>{run.unknown_cost_requests}</dd></div>
           </dl>

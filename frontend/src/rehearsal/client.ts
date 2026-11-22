@@ -55,7 +55,7 @@ function privateContext(value: unknown, owner: string, depth = 0): RehearsalPriv
   return Object.fromEntries(Object.entries(value).filter(([key]) => privateFields.has(key)).map(([key, item]) => [key, privateContext(item, owner, depth + 1)]))
 }
 function summary(value: RehearsalRun): RehearsalRun {
-  return { ...pick(value, ['run_id', 'mode', 'status', 'created_at', 'started_at', 'ended_at', 'stop_requested', 'request_count', 'reserved_usd', 'known_cost_usd', 'unknown_cost_requests', 'reported_cost_usd', 'estimated_cost_usd']),
+  return { ...pick(value, ['run_id', 'mode', 'status', 'created_at', 'started_at', 'ended_at', 'stop_requested', 'request_count', 'reserved_usd', 'counted_usd', 'known_cost_usd', 'unknown_cost_requests', 'reported_cost_usd', 'estimated_cost_usd']),
     limits: pick(value.limits, ['wakes_per_agent', 'max_requests', 'max_output_tokens', 'max_input_bytes', 'max_runtime_seconds', 'request_timeout_seconds', 'max_parallelism', 'budget_usd']),
     agent_models: Object.fromEntries(REHEARSAL_AGENTS.filter(agent => Object.hasOwn(value.agent_models, agent.id)).map(agent => [agent.id, value.agent_models[agent.id]])) as RehearsalRun['agent_models'],
     agents: value.agents.filter(agent => REHEARSAL_AGENTS.some(owner => owner.id === agent.agent_id)).map(agent => pick(agent, ['agent_id', 'pending', 'completed', 'failed', 'stopped', 'uncertain'])),
