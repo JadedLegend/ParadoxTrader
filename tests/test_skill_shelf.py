@@ -162,8 +162,21 @@ class OpenSkillSittingTests(BlockedNetwork):
                                          {"action": "rest"}], choices=4)
         last = seen[-1][1]  # The fourth move's choice: both open, oldest first.
         marker = "Skill you opened earlier in this wake (still at hand): "
+        reopened = seen[-2][1]
+        self.assertEqual(reopened.count(SKILLS["outside-voices"]["body"]), 1)
+        self.assertIn(marker + "learning-from-inquiry", reopened)
         self.assertEqual(last.count(marker), 2)
         self.assertLess(last.index(marker + "learning-from-inquiry"), last.index(marker + "outside-voices"))
+
+    def test_opening_a_third_skill_sets_down_the_oldest_during_the_activity(self):
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "skill", "name": "learning-from-inquiry"},
+                                         {"action": "skill", "name": "making-calls"}], choices=3)
+        kind, text = seen[-1]
+        self.assertEqual(kind, "activity")
+        self.assertIn(SKILLS["making-calls"]["body"], text)
+        self.assertIn(SKILLS["learning-from-inquiry"]["body"], text)
+        self.assertNotIn(SKILLS["outside-voices"]["body"], text)
 
     def test_the_skill_goes_back_on_the_shelf_when_the_wake_ends(self):
         _, _, seen, beat, clock = self.sitting([{"action": "skill", "name": "outside-voices"},

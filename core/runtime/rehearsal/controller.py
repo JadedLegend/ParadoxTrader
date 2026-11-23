@@ -102,15 +102,18 @@ class SkillRefused(ValueError):
 MAX_OPEN_SKILLS = 2  # At most two open books on the desk at once.
 
 
-def _open_skill_messages(private_context):
-    """The full texts of skills opened earlier in this wake, oldest first."""
+def _open_skill_messages(private_context, *, current_skill=None):
+    """The newest carried skills, oldest first, after reserving room for the current skill."""
     messages = []
     for name in private_context.get("open_skills") or []:
+        if name == current_skill:
+            continue  # The activity already carries the newly reopened skill.
         text = skill_text(name)
         if text is not None:
             messages.append({"role": "user", "content":
                              f"Skill you opened earlier in this wake (still at hand): {name}\n" + text})
-    return messages
+    slots = MAX_OPEN_SKILLS - (current_skill is not None)
+    return messages[max(0, len(messages) - slots):]
 
 
 def decision_metadata(manifest, job, snapshot, continuity):
@@ -534,13 +537,13 @@ class RehearsalController:
                     names.append(name)
         return names[-MAX_OPEN_SKILLS:]
 
-    def _activity_continuity(self, job, messages, details):
+    def _activity_continuity(self, job, messages, details, *, current_skill=None):
         if details is None:
             return messages  # Old/manual staged choices do not invent offers.
         continuity = details["private_context"]["continuity"]
         cap = self.manifest["limits"]["max_input_bytes"]
         notes = continuity_message(continuity)
-        for skill in reversed(_open_skill_messages(details["private_context"])):
+        for skill in reversed(_open_skill_messages(details["private_context"], current_skill=current_skill)):
             # Newest first; a skill that would push out the owner's notes is set down.
             if self._input_size(job, [messages[0], notes, *messages[1:], skill]) <= cap:
                 messages = [messages[0], skill, *messages[1:]]
@@ -815,7 +818,8 @@ class RehearsalController:
                         # Both record consumers resolve stable section IDs in either shelf.
                         library_refs = [{"kind": "library", "id": row["section_id"]} for row in sources.get("results", [])]
                         _write_once(citations_path, json.dumps(library_refs, sort_keys=True).encode("utf-8") + b"\n")
-                    messages = self._activity_continuity(job, messages, details)
+                    messages = self._activity_continuity(
+                        job, messages, details, current_skill=choice["name"] if action == "skill" else None)
                     output = self._generate(job, action, messages, validator=validate_activity_text)
                     self.store.commit_output(self.run_id, wake_id, self._token, output)
                 with self._memory_lock:
