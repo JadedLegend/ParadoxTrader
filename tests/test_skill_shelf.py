@@ -105,8 +105,8 @@ class SkillWakeTests(BlockedNetwork):
 class OpenSkillSittingTests(BlockedNetwork):
     """Shelf phase 2: a skill opened on one move stays at hand for the rest of the wake."""
 
-    def sitting(self, moves, choices):
-        store = RehearsalStore(self.root / "sessions")
+    def sitting(self, moves, choices, home="sessions"):
+        store = RehearsalStore(self.root / home)
         scripted, seen = ScriptedHTTP(), []  # seen: (kind, text) for each of Tempest's requests.
 
         def http(url, **kwargs):
@@ -169,6 +169,23 @@ class OpenSkillSittingTests(BlockedNetwork):
         self.assertEqual(last.count(marker), 2)
         self.assertLess(last.index(marker + "learning-from-inquiry"), last.index(marker + "outside-voices"))
 
+    def test_when_each_fits_alone_but_not_both_the_newest_is_kept(self):
+        moves = [{"action": "skill", "name": "outside-voices"},
+                 {"action": "skill", "name": "learning-from-inquiry"}, {"action": "rest"}]
+        store, run_id, _, _, _ = self.sitting(moves, choices=3, home="measure")
+        cap = store.get_manifest(run_id)["limits"]["max_input_bytes"]
+        [rest_choice] = [r for r in store.get_decision_details(run_id, "tempest-r3")["requests"]
+                         if r["activity"] == "choice"]
+        room = cap - rest_choice["input_bytes"]  # Free bytes with both skills open, at their real size.
+        self.assertGreater(room, 0)
+        # Grow each skill by just over half the free room ("é" is two bytes): one fits, both do not.
+        with self.oversized("outside-voices", "learning-from-inquiry", extra=room // 4 + 1):
+            store, run_id, seen, _, _ = self.sitting(moves, choices=3)
+        rest = seen[-1][1]
+        self.assertIn(self.AT_HAND + "learning-from-inquiry", rest)
+        self.assertNotIn(self.AT_HAND + "outside-voices", rest)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 3)
+
     def test_opening_a_third_skill_sets_down_the_oldest_during_the_activity(self):
         _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
                                          {"action": "skill", "name": "learning-from-inquiry"},
@@ -181,13 +198,13 @@ class OpenSkillSittingTests(BlockedNetwork):
 
     AT_HAND = "Skill you opened earlier in this wake (still at hand): "
 
-    def oversized(self, *names):
+    def oversized(self, *names, extra=20000):
         """Make the named open skills too big for any page (multibyte, so bytes not characters count)."""
         from core.runtime.rehearsal import controller as module
         original = module._open_skill_messages
 
         def bigger(private_context, **kwargs):
-            return [dict(m, content=m["content"] + "é" * 20000)
+            return [dict(m, content=m["content"] + "é" * extra)
                     if any(m["content"].startswith(self.AT_HAND + name + "\n") for name in names) else m
                     for m in original(private_context, **kwargs)]
         return patch.object(module, "_open_skill_messages", bigger)
