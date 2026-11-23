@@ -1,6 +1,11 @@
 # The skill shelf: a table of contents in the prompt, the full text on request
 
-Status: phase 1 built in `build/agent-skills`; phases 2 and 3 not started.
+Status: phase 1 built (PR #55); phases 2 and 3 not started.
+
+On the shelf: `learning-from-inquiry`, `outside-voices`, and `making-calls` (before,
+during and after a call; borrows tradermonty's pre-trade check and post-mortem, and
+RKiding's strengthened / weakened / falsified sorting). Its "after" part waits on
+calls phases 2 and 3 (settle, hand the result back) in `CALLS_AND_SETTLEMENT.md`.
 
 ## In plain words
 

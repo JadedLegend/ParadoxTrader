@@ -18,7 +18,7 @@ from tests.test_market_window import BlockedNetwork
 
 class ShelfTests(unittest.TestCase):
     def test_the_page_lists_every_skill_and_its_always_line_but_not_the_full_text(self):
-        self.assertEqual(set(SKILLS), {"learning-from-inquiry", "outside-voices"})
+        self.assertEqual(set(SKILLS), {"learning-from-inquiry", "making-calls", "outside-voices"})
         prompt = build_system_prompt({"agent_id": "tempest"}, {}, shelf=True)
         self.assertIn(SHELF_ORIENTATION, prompt)
         for skill in SKILLS.values():
