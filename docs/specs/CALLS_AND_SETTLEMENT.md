@@ -1,6 +1,7 @@
 # Calls and settlement: write a call down, check it later, hand back the result
 
-Status: approved. Phase 1 is built (PR #53); phases 2 and 3 are not built yet.
+Status: approved. Phase 1 is built (PR #53); phase 2 is built in `build/settle-calls`;
+phase 3 is not built yet.
 
 ## In plain words
 
@@ -82,6 +83,27 @@ Status: built in `build/calls-phase1`.
   problems list.
 - Tests: right, wrong, flat; holiday and weekend settle dates; missing price, then
   retry, then unsettled; settling twice is a no-op.
+
+Status: built in `build/settle-calls`. How it works:
+
+- `core/market/closes.py` reads Alpaca's daily bars (IEX feed, the data
+  account's paper key). Each bar's Eastern date is one trading session, so the
+  sessions that come back are the calendar: Thanksgiving simply has no bar.
+- The settle session is the `horizon_days`-th session after the entry session.
+  The move compares that close with the sealed entry price. SPY's move compares
+  its closes on the entry and settle sessions; when either is missing it is left
+  out, never 0.
+- A session counts only once it has closed (after 16:30 Eastern), so a
+  still-moving bar is never used.
+- Every tick checks, after its wakes and at most every 30 minutes, and only
+  while some call is open. A missing close stays pending and becomes
+  `unsettled` 5 sessions later. With no market data at all, weekdays are
+  counted instead (plus 2 for holidays), so an outage still ends.
+- Settlements go into the newest day run's `calls.sqlite3`, which carries to
+  the next day. A settled call leaves the agent's open list.
+- Only on `mode: real` with Settings, like the market window. Pending reasons
+  show on the heartbeat page's problems list: ticker, date and call number,
+  never the agent's reason.
 
 ## Phase 3: hand the result back
 
