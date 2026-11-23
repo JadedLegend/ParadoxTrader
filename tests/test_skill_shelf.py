@@ -155,6 +155,16 @@ class OpenSkillSittingTests(BlockedNetwork):
                 self.assertIn(body, text)
         self.assertIn("choice 3 of 4", seen[-1][1])
 
+    def test_reopening_a_skill_makes_it_the_newest_open_one(self):
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "skill", "name": "learning-from-inquiry"},
+                                         {"action": "skill", "name": "outside-voices"},
+                                         {"action": "rest"}], choices=4)
+        last = seen[-1][1]  # The fourth move's choice: both open, oldest first.
+        marker = "Skill you opened earlier in this wake (still at hand): "
+        self.assertEqual(last.count(marker), 2)
+        self.assertLess(last.index(marker + "learning-from-inquiry"), last.index(marker + "outside-voices"))
+
     def test_the_skill_goes_back_on_the_shelf_when_the_wake_ends(self):
         _, _, seen, beat, clock = self.sitting([{"action": "skill", "name": "outside-voices"},
                                                 {"action": "rest"}, {"action": "rest"}], choices=2)

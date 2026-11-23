@@ -474,11 +474,13 @@ class RehearsalController:
         # prepared identities or original sources. If the structural request
         # cannot fit, fail before dispatch rather than silently hide the offers.
         meta, item = candidate(0)
-        # An open skill is the first thing set down when the page is full; the
-        # offers themselves never are.
-        while private.get("open_skills") and self._input_size(job, self._choice_messages(meta, item)) > cap:
+        # An open skill is the first thing set down when the page is full: checked
+        # against the owner's full notes, so a skill never pushes those out. The
+        # offers themselves are never set down.
+        full = continuity["chars"] if private["include_continuity"] else 0
+        while private.get("open_skills") and self._input_size(job, self._choice_messages(*candidate(full))) > cap:
             private["open_skills"] = private["open_skills"][1:]
-            meta, item = candidate(0)
+        meta, item = candidate(0)
         if self._input_size(job, self._choice_messages(meta, item)) > cap:
             raise ProviderError("input_bound_exceeded")
         low, high = 0, continuity["chars"] if private["include_continuity"] else 0
@@ -526,7 +528,9 @@ class RehearsalController:
             if (row["agent_id"] == job["agent_id"] and first <= row["round"] < job["round"]
                     and row["status"] == "completed" and row["action"] == "skill"):
                 name = (self.store.get_choice(self.run_id, row["wake_id"]) or {}).get("name")
-                if skill_text(name) is not None and name not in names:
+                if skill_text(name) is not None:
+                    if name in names:
+                        names.remove(name)  # Reopening makes it the newest.
                     names.append(name)
         return names[-MAX_OPEN_SKILLS:]
 
@@ -535,8 +539,10 @@ class RehearsalController:
             return messages  # Old/manual staged choices do not invent offers.
         continuity = details["private_context"]["continuity"]
         cap = self.manifest["limits"]["max_input_bytes"]
+        notes = continuity_message(continuity)
         for skill in reversed(_open_skill_messages(details["private_context"])):
-            if self._input_size(job, [*messages, skill]) <= cap:  # Newest first; set down what does not fit.
+            # Newest first; a skill that would push out the owner's notes is set down.
+            if self._input_size(job, [messages[0], notes, *messages[1:], skill]) <= cap:
                 messages = [messages[0], skill, *messages[1:]]
         # Keep original activity/library sources untouched, but bound newly
         # added continuity independently of the source material's input size.
