@@ -4,6 +4,7 @@ HTTP; the network is blocked."""
 from datetime import datetime, timezone
 import json
 import unittest
+from unittest.mock import patch
 
 from core.runtime.llm import build_system_prompt
 from core.runtime.orientation import SHELF_ORIENTATION, SKILLS, skill_text
@@ -177,6 +178,51 @@ class OpenSkillSittingTests(BlockedNetwork):
         self.assertIn(SKILLS["making-calls"]["body"], text)
         self.assertIn(SKILLS["learning-from-inquiry"]["body"], text)
         self.assertNotIn(SKILLS["outside-voices"]["body"], text)
+
+    AT_HAND = "Skill you opened earlier in this wake (still at hand): "
+
+    def oversized(self, *names):
+        """Make the named open skills too big for any page (multibyte, so bytes not characters count)."""
+        from core.runtime.rehearsal import controller as module
+        original = module._open_skill_messages
+
+        def bigger(private_context, **kwargs):
+            return [dict(m, content=m["content"] + "é" * 20000)
+                    if any(m["content"].startswith(self.AT_HAND + name + "\n") for name in names) else m
+                    for m in original(private_context, **kwargs)]
+        return patch.object(module, "_open_skill_messages", bigger)
+
+    def assert_within_bounds_with_notes_whole(self, store, run_id, moves):
+        cap = store.get_manifest(run_id)["limits"]["max_input_bytes"]
+        for round_number in range(1, moves + 1):
+            details = store.get_decision_details(run_id, f"tempest-r{round_number}")
+            with self.subTest(move=round_number):
+                self.assertFalse(details["metadata"]["continuity"]["truncated"])  # Notes never clipped for a skill.
+                for request in details["requests"]:
+                    self.assertLessEqual(request["input_bytes"], cap)
+
+    def test_a_skill_too_big_for_the_page_is_set_down_in_choices_and_activities(self):
+        with self.oversized("outside-voices", "learning-from-inquiry"):
+            store, run_id, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                      {"action": "skill", "name": "learning-from-inquiry"},
+                                                      {"action": "journal"}, {"action": "rest"}], choices=4)
+        self.assertEqual([kind for kind, _ in seen],
+                         ["choice", "activity", "choice", "activity", "choice", "activity", "choice"])
+        for kind, text in seen[2:]:
+            with self.subTest(kind=kind):
+                self.assertNotIn(self.AT_HAND, text)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 4)
+
+    def test_when_only_one_open_skill_fits_the_newest_is_kept(self):
+        with self.oversized("outside-voices"):
+            store, run_id, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                      {"action": "skill", "name": "learning-from-inquiry"},
+                                                      {"action": "journal"}, {"action": "rest"}], choices=4)
+        journal_choice, journal, rest_choice = seen[4][1], seen[5][1], seen[6][1]
+        for text in (journal_choice, journal, rest_choice):
+            self.assertIn(self.AT_HAND + "learning-from-inquiry", text)
+            self.assertNotIn(self.AT_HAND + "outside-voices", text)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 4)
 
     def test_the_skill_goes_back_on_the_shelf_when_the_wake_ends(self):
         _, _, seen, beat, clock = self.sitting([{"action": "skill", "name": "outside-voices"},
