@@ -6,7 +6,7 @@ category: testing
 
 # ParadoxTrader tests: run from a git archive on Linux, confirm in CI
 
-- Run the suite from `git archive` of HEAD inside WSL, not from the Windows working tree (it has CRLF checkouts). Build the archive from the tree you will PR: `git add` every intended change (new files too), then `git archive -o out.tar $(git write-tree)`. `write-tree` records only staged content, so an unrelated unstaged edit stays out. Do not use `git stash create`: it picks up unstaged edits, skips untracked files, and prints nothing on a clean tree.
+- Run the suite from `git archive` of the staged tree inside WSL, not from the Windows working tree (it has CRLF checkouts). Build the archive from the tree you will PR: `git add` every intended change (new files too), then `git archive -o out.tar $(git write-tree)`. `write-tree` records only staged content, so an unrelated unstaged edit stays out. Do not use `git stash create`: it picks up unstaged edits, skips untracked files, and prints nothing on a clean tree.
 - Filter WSL output with `grep -E "^(Ran|OK|FAILED|FAIL:|ERROR:)"`; the wrapper script tails only 400 lines, so a long failure can be cut off.
 - From Git Bash, call WSL with `MSYS_NO_PATHCONV=1 wsl -e bash SCRIPT`. Without it Git Bash rewrites `/mnt/c/...` paths and the call fails.
 - Run one module with `python -m unittest tests.MODULE`, or one test by its dotted name, before the full suite.
