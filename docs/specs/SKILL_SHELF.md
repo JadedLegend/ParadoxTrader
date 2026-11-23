@@ -2,6 +2,11 @@
 
 Status: phase 1 built (PR #55); phase 2 built in `build/four-moves`; phase 3 not started.
 
+On the shelf: `learning-from-inquiry`, `outside-voices`, and `making-calls` (before,
+during and after a call; borrows tradermonty's pre-trade check and post-mortem, and
+RKiding's strengthened / weakened / falsified sorting). Its "after" part waits on
+calls phases 2 and 3 (settle, hand the result back) in `CALLS_AND_SETTLEMENT.md`.
+
 ## In plain words
 
 Every wake, an agent reads one page with a 24 KB limit. About 20 KB is already
