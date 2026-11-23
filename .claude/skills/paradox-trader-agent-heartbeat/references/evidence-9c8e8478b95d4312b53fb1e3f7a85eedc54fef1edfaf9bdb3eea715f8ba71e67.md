@@ -1,0 +1,1 @@
+"- In flight, uncertain, failed (even reporting $0), unknown-cost and estimated-cost requests all count in full." / "Failures never release their set-aside, even when they report $0. An error can still be billed, and that was a deliberate earlier rule" / "The day test didn't really exercise the fix: the test model prices are zero, so nothing gets set aside."

@@ -15,4 +15,5 @@ category: verification
 - Settings checks: a saved key shows only its last four characters and the field clears; "Remove key" appears; the model list loads from the live catalog in the browser.
 - For a phone-width check, set the viewport, test for horizontal overflow with JavaScript, then reset it with preset `desktop` before the turn ends.
 - Use only a fake test key and throwaway data. Never type a real key into the preview.
+- The private dashboard has no public HTTPS address, so Better Design's `finalize-dashboard-review` cannot return VALID for it. Measure at 1440 and 375 locally, and say in the PR body that the public-preview review was not done. Do not claim it passed.
 - Before the turn ends, delete the preview's scratch `settings_dir`. A key that reaches the preview persists there, and a Check connection run then calls the live provider with it.

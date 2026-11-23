@@ -1,1 +1,0 @@
-{"action": "create", "reason": "Adding a Settings button or route silently failed: the page's private-host allowlist did not include the new path, so no request left the browser. Class-level rule for any Settings page endpoint.", "evidence": "references/evidence-9a73f95a1c45bc005a171f2c1e58884090553be4f468e4640c5b4a8c1df485c3.md"}

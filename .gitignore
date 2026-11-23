@@ -49,3 +49,10 @@ dist-release/
 # Personal Claude Code settings
 .claude/settings.json
 .claude/settings.local.json
+
+# Bookkeeping that Claude Code plugins write on each machine (autoharness runs, skill ledgers, locks)
+.claude/autoharness/
+.claude/skills/**/.ledger.jsonl
+.claude/skills/**/.sidecar.json
+.claude/skills/**/*.lock
+
