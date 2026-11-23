@@ -11,3 +11,5 @@ This repository is indexed by Graphify: a code graph over its call, dependency, 
 
 Fall back to grep or file reads only for what the graph does not model: literal string or comment matches, non-indexed files, or reading a file you have already located. If no Graphify tools are listed, check the MCP server connection.
 <!-- graphify-rules-end -->
+
+If the Graphify tools stay unavailable after checking the MCP connection, use CodeGraph (`codegraph explore`) when a `.codegraph/` index exists, otherwise grep and file reads. Use Graphify again once it reconnects.
