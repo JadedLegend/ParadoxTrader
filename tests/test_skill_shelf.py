@@ -4,6 +4,7 @@ HTTP; the network is blocked."""
 from datetime import datetime, timezone
 import json
 import unittest
+from unittest.mock import patch
 
 from core.runtime.llm import build_system_prompt
 from core.runtime.orientation import SHELF_ORIENTATION, SKILLS, skill_text
@@ -99,6 +100,156 @@ class SkillWakeTests(BlockedNetwork):
         store, run_id, job, activity = self.wake("no-such-skill")
         self.assertEqual((job["status"], job["failure_code"]), ("failed", "skill_not_found"))
         self.assertEqual(activity, [])
+
+
+class OpenSkillSittingTests(BlockedNetwork):
+    """Shelf phase 2: a skill opened on one move stays at hand for the rest of the wake."""
+
+    def sitting(self, moves, choices, home="sessions"):
+        store = RehearsalStore(self.root / home)
+        scripted, seen = ScriptedHTTP(), []  # seen: (kind, text) for each of Tempest's requests.
+
+        def http(url, **kwargs):
+            text = "\n".join(str(m.get("content", "")) for m in kwargs["json"]["messages"])
+            if "Stable owner ID: tempest" not in text:
+                return scripted(url, **kwargs)
+            if "REHEARSAL CHOICE" in text:
+                move = sum(kind == "choice" for kind, _ in seen)
+                seen.append(("choice", text))
+                scripted.calls += 1
+                return ScriptedResponse({"id": f"sit-{move}", "model": kwargs["json"].get("model"),
+                                         "provider": "scripted-offline",
+                                         "choices": [{"message": {"content": json.dumps(moves[move])},
+                                                      "finish_reason": "stop"}],
+                                         "usage": {"prompt_tokens": 60, "completion_tokens": 20,
+                                                   "total_tokens": 80, "cost": "0"}})
+            seen.append(("activity", text))
+            return scripted(url, **kwargs)
+
+        def prepare_day(budget_usd, wakes_per_agent, models=None):
+            return store.prepare(day_manifest(wakes=wakes_per_agent, budget=budget_usd))["run_id"]
+
+        def run_wake(run_id, owner, step=None):
+            return RehearsalController(store, run_id, transport=OpenRouterTransport(
+                "scripted-offline", http_post=http)).run_wake(owner, step=step)
+
+        config = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
+                  "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live",
+                  "choices_per_wake": choices}
+        clock = [datetime(2026, 11, 18, 9, 1, tzinfo=timezone.utc)]
+        beat = Heartbeat(store, Schedule.from_config(config), prepare_day=prepare_day, run_wake=run_wake,
+                         now=lambda: clock[0])
+        run_id = beat.tick()["run_id"]  # Tempest only.
+        return store, run_id, seen, beat, clock
+
+    def test_later_moves_of_the_wake_still_hold_the_opened_skill(self):
+        body = SKILLS["outside-voices"]["body"]
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "journal"}, {"action": "rest"}], choices=4)
+        kinds = [kind for kind, _ in seen]
+        self.assertEqual(kinds, ["choice", "activity", "choice", "activity", "choice"])  # Rest ended it.
+        self.assertNotIn("still at hand", seen[0][1])
+        self.assertIn(body, seen[1][1])  # Opening it delivers the text.
+        for kind, text in seen[2:]:
+            with self.subTest(kind=kind):  # The journal choice, the journal itself, and the rest choice.
+                self.assertIn("Skill you opened earlier in this wake (still at hand): outside-voices", text)
+                self.assertIn(body, text)
+        self.assertIn("choice 3 of 4", seen[-1][1])
+
+    def test_reopening_a_skill_makes_it_the_newest_open_one(self):
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "skill", "name": "learning-from-inquiry"},
+                                         {"action": "skill", "name": "outside-voices"},
+                                         {"action": "rest"}], choices=4)
+        last = seen[-1][1]  # The fourth move's choice: both open, oldest first.
+        marker = "Skill you opened earlier in this wake (still at hand): "
+        reopened = seen[-2][1]
+        self.assertEqual(reopened.count(SKILLS["outside-voices"]["body"]), 1)
+        self.assertIn(marker + "learning-from-inquiry", reopened)
+        self.assertEqual(last.count(marker), 2)
+        self.assertLess(last.index(marker + "learning-from-inquiry"), last.index(marker + "outside-voices"))
+
+    def test_when_each_fits_alone_but_not_both_the_newest_is_kept(self):
+        moves = [{"action": "skill", "name": "outside-voices"},
+                 {"action": "skill", "name": "learning-from-inquiry"}, {"action": "rest"}]
+        store, run_id, _, _, _ = self.sitting(moves, choices=3, home="measure")
+        cap = store.get_manifest(run_id)["limits"]["max_input_bytes"]
+        [rest_choice] = [r for r in store.get_decision_details(run_id, "tempest-r3")["requests"]
+                         if r["activity"] == "choice"]
+        room = cap - rest_choice["input_bytes"]  # Free bytes with both skills open, at their real size.
+        self.assertGreater(room, 0)
+        # Grow each skill by just over half the free room ("é" is two bytes): one fits, both do not.
+        with self.oversized("outside-voices", "learning-from-inquiry", extra=room // 4 + 1):
+            store, run_id, seen, _, _ = self.sitting(moves, choices=3)
+        rest = seen[-1][1]
+        self.assertIn(self.AT_HAND + "learning-from-inquiry", rest)
+        self.assertNotIn(self.AT_HAND + "outside-voices", rest)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 3)
+
+    def test_opening_a_third_skill_sets_down_the_oldest_during_the_activity(self):
+        _, _, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                         {"action": "skill", "name": "learning-from-inquiry"},
+                                         {"action": "skill", "name": "making-calls"}], choices=3)
+        kind, text = seen[-1]
+        self.assertEqual(kind, "activity")
+        self.assertIn(SKILLS["making-calls"]["body"], text)
+        self.assertIn(SKILLS["learning-from-inquiry"]["body"], text)
+        self.assertNotIn(SKILLS["outside-voices"]["body"], text)
+
+    AT_HAND = "Skill you opened earlier in this wake (still at hand): "
+
+    def oversized(self, *names, extra=20000):
+        """Make the named open skills too big for any page (multibyte, so bytes not characters count)."""
+        from core.runtime.rehearsal import controller as module
+        original = module._open_skill_messages
+
+        def bigger(private_context, **kwargs):
+            return [dict(m, content=m["content"] + "é" * extra)
+                    if any(m["content"].startswith(self.AT_HAND + name + "\n") for name in names) else m
+                    for m in original(private_context, **kwargs)]
+        return patch.object(module, "_open_skill_messages", bigger)
+
+    def assert_within_bounds_with_notes_whole(self, store, run_id, moves):
+        cap = store.get_manifest(run_id)["limits"]["max_input_bytes"]
+        for round_number in range(1, moves + 1):
+            details = store.get_decision_details(run_id, f"tempest-r{round_number}")
+            with self.subTest(move=round_number):
+                self.assertFalse(details["metadata"]["continuity"]["truncated"])  # Notes never clipped for a skill.
+                for request in details["requests"]:
+                    self.assertLessEqual(request["input_bytes"], cap)
+
+    def test_a_skill_too_big_for_the_page_is_set_down_in_choices_and_activities(self):
+        with self.oversized("outside-voices", "learning-from-inquiry"):
+            store, run_id, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                      {"action": "skill", "name": "learning-from-inquiry"},
+                                                      {"action": "journal"}, {"action": "rest"}], choices=4)
+        self.assertEqual([kind for kind, _ in seen],
+                         ["choice", "activity", "choice", "activity", "choice", "activity", "choice"])
+        for kind, text in seen[2:]:
+            with self.subTest(kind=kind):
+                self.assertNotIn(self.AT_HAND, text)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 4)
+
+    def test_when_only_one_open_skill_fits_the_newest_is_kept(self):
+        with self.oversized("outside-voices"):
+            store, run_id, seen, _, _ = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                      {"action": "skill", "name": "learning-from-inquiry"},
+                                                      {"action": "journal"}, {"action": "rest"}], choices=4)
+        journal_choice, journal, rest_choice = seen[4][1], seen[5][1], seen[6][1]
+        for text in (journal_choice, journal, rest_choice):
+            self.assertIn(self.AT_HAND + "learning-from-inquiry", text)
+            self.assertNotIn(self.AT_HAND + "outside-voices", text)
+        self.assert_within_bounds_with_notes_whole(store, run_id, 4)
+
+    def test_the_skill_goes_back_on_the_shelf_when_the_wake_ends(self):
+        _, _, seen, beat, clock = self.sitting([{"action": "skill", "name": "outside-voices"},
+                                                {"action": "rest"}, {"action": "rest"}], choices=2)
+        self.assertEqual(len(seen), 3)  # Skill, its reading, then rest.
+        clock[0] = datetime(2026, 11, 18, 9, 15, tzinfo=timezone.utc)  # Tempest's next wake.
+        for _ in range(3):  # Other agents due within the grace window go first, three per tick.
+            beat.tick()
+        self.assertEqual([kind for kind, _ in seen[3:]], ["choice"])
+        self.assertNotIn("still at hand", seen[3][1])
 
 
 if __name__ == "__main__":

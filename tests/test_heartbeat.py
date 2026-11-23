@@ -305,13 +305,13 @@ class HeartbeatTests(unittest.TestCase):
         self.assertIn(("tempest", "09:00", "woke"), self.slots())
 
     def test_choices_per_wake_is_bounded(self):
-        for value in (0, 4, "2", True):
+        for value in (0, 5, "2", True):
             with self.subTest(value=value), self.assertRaises(RehearsalError):
                 Schedule.from_config({**CONFIG, "choices_per_wake": value})
         too_many = {**CONFIG, "active_window": ["00:00", "20:00"], "active_interval_minutes": 60}
-        Schedule.from_config({**too_many, "choices_per_wake": 2})  # 20 wakes x 2 = 40 turns: allowed.
-        with self.assertRaises(RehearsalError):
-            Schedule.from_config({**too_many, "choices_per_wake": 3})  # 60 turns: over the daily cap.
+        Schedule.from_config({**too_many, "choices_per_wake": 4})  # 20 wakes x 4 = 80 turns: allowed.
+        with self.assertRaises(RehearsalError):  # 40 wakes x 3 = 120 turns: over the daily cap of 96.
+            Schedule.from_config({**too_many, "active_interval_minutes": 30, "choices_per_wake": 3})
 
     def test_daylight_saving_days_keep_every_wake_distinct_and_in_order(self):
         schedule = Schedule.from_config({**CONFIG, "timezone": "America/New_York",

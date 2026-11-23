@@ -1,6 +1,6 @@
 # The skill shelf: a table of contents in the prompt, the full text on request
 
-Status: phase 1 built (PR #55); phases 2 and 3 not started.
+Status: phase 1 built (PR #55); phase 2 built in `build/four-moves`; phase 3 not started.
 
 On the shelf: `learning-from-inquiry`, `outside-voices`, and `making-calls` (before,
 during and after a call; borrows tradermonty's pre-trade check and post-mortem, and
@@ -55,10 +55,18 @@ the agents on every wake stay printed.
 
 ## Phase 2: an opened skill stays at hand for the rest of the wake
 
+Status: built in `build/four-moves`, alongside raising moves per wake to 4.
+
 - With more than one turn per wake, a skill opened on turn one is still in
-  context for the later turns of that wake. It does not follow the agent into
-  the next wake unless the agent opens it again.
-- Tests: turn two sees the text opened on turn one; the next wake does not.
+  context for the later turns of that wake: their choices and their activities
+  (journal, inquire, roam, library). It does not follow the agent into the next
+  wake unless the agent opens it again.
+- At most two open skills at once, newest kept. When the page is full, an open
+  skill is set down before anything else; the offered choices never are.
+- Only the skill's name is frozen with the move's context, so a resumed move
+  sees the same skill.
+- Tests: later moves of a wake (choice and activity) see the text opened on an
+  earlier move; the next wake does not.
 
 ## Phase 3: agents can ask for a skill (builder's piece)
 
