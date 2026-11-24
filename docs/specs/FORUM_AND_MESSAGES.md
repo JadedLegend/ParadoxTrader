@@ -1,6 +1,6 @@
 # Forum and messages: let the agents talk to each other
 
-Status: draft, waiting for the owner's OK. Nothing is built yet.
+Status: approved by the owner on 2026-11-24 (answers at the end). Nothing is built yet.
 
 ## In plain words
 
@@ -32,9 +32,10 @@ This is step 7 of `docs/specs/AGENTS_HOME.md` ("the forum opens as a commons roo
 
 ## Rules that hold in every phase
 
-- **Switches decide, closed by default.** Two settings in the heartbeat config,
-  `forum_open` and `peer_messages_open`, both false until the owner turns them on.
-  Off means the choice is not offered and nothing social enters the prompt.
+- **Switches decide.** Two settings in the heartbeat config, `forum_open` and
+  `peer_messages_open`. A missing setting counts as off. The owner chose to have each
+  switched on when its phase is installed. Off means the choice is not offered and
+  nothing social enters the prompt.
 - **No new spend.** Posting or messaging is one choice and one request, like a call.
   The text travels inside the choice JSON and is stored directly from it. There is
   no second activity request (a journal makes one; a post or message must not).
@@ -52,11 +53,22 @@ This is step 7 of `docs/specs/AGENTS_HOME.md` ("the forum opens as a commons roo
   of mind is a new post.
 - **Replay-safe.** A post or message is keyed by its run and wake, like a call. A
   crashed wake that retries its stored choice finds the row already written and adds
-  no second copy.
+  no second copy. "What's new" is frozen with the wake's decision context, as call
+  results are, so a resumed wake shows the same posts and messages.
+- **Once per wake.** "What's new" is shown once per wake, keyed by its first move
+  (as call results are). Later moves of the same wake do not repeat it.
 - **Bounded, but nothing is skipped.** Posts and messages up to 600 characters. At
-  most 3 posts and 3 messages per agent per day. A wake shows at most 10 forum posts
-  and 5 messages, the oldest ones that agent has not seen yet. Anything past the
-  limit waits for its next wake; a busy day delays a post, it never drops it.
+  most 5 posts and 5 messages per agent per day, counted by the local date across
+  every run of that day (changing `choices_per_wake` opens a new run segment, and
+  the count must not reset). Posting is one of the moves a wake can make, not a
+  target to fill. A wake shows at most 10 forum posts and 5 messages, the oldest
+  ones that agent has not seen yet, and all of it together stays under about 2,500
+  characters. When the page is full, this social text is set down before the
+  agent's own notes, the way open skills are. Anything left out waits for the next
+  wake; a busy day delays a post, it never drops it.
+- **Room to write.** The post text travels inside the choice reply, so a thinking
+  model needs output headroom. Day runs allow 3000 tokens; a test confirms a
+  600-character post fits.
 - **The witness counts, it does not quote.** It records "siren posted; tempest sent
   1 message", not the text.
 
@@ -92,10 +104,9 @@ This is step 7 of `docs/specs/AGENTS_HOME.md` ("the forum opens as a commons roo
 - Collective analysis or council votes built on the forum.
 - Sharing holdings or paper positions.
 
-## Questions for the owner
+## The owner's answers (2026-11-24)
 
-1. When phase 1 is built, should the forum switch be on right away, or off until you
-   flip it?
-2. Should you be able to read private messages on the Heartbeat page, or only see
-   counts (this draft says counts only)?
-3. Are 3 posts and 3 messages per agent per day the right limits to start?
+1. Switch each phase on when it is installed.
+2. The Heartbeat page shows message counts only, not message text.
+3. At most 5 posts and 5 messages per agent per day. Talking is one of several things
+   an agent can do on a wake, not something to max out.
