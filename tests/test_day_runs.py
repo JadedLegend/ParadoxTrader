@@ -175,11 +175,11 @@ class DayRunTests(unittest.TestCase):
         self.assertEqual(validate_manifest(day_manifest())["kind"], "day")
 
     def test_store_and_provider_accept_the_same_day_turn_limit(self):
-        # 20 wakes x 4 moves = 80 turns must prepare AND run; one over the cap fails both.
+        # 20 wakes x 6 moves = 120 turns must prepare AND run; one over the cap fails both.
         from core.runtime.rehearsal.provider import ManifestError
         from core.runtime.rehearsal.store import MAX_WAKES_PER_AGENT
         from core.runtime.rehearsal.store import _validate_manifest as store_validate
-        for turns in (80, MAX_WAKES_PER_AGENT):
+        for turns in (80, 96, MAX_WAKES_PER_AGENT):
             with self.subTest(turns=turns):
                 self.assertEqual(validate_manifest(day_manifest(wakes=turns))["kind"], "day")
                 self.assertEqual(store_validate(day_manifest(wakes=turns))["kind"], "day")
@@ -190,8 +190,8 @@ class DayRunTests(unittest.TestCase):
 
     def test_api_accepts_any_wake_number_of_the_same_owner_only(self):
         self.assertTrue(_owner_wake("siren", "siren-r1"))
-        self.assertTrue(_owner_wake("siren", "siren-r96"))
-        for owner, wake in (("siren", "siren-r97"), ("siren", "siren-r0"), ("siren", "siren-r01"),
+        self.assertTrue(_owner_wake("siren", "siren-r120"))
+        for owner, wake in (("siren", "siren-r121"), ("siren", "siren-r1000"), ("siren", "siren-r0"), ("siren", "siren-r01"),
                             ("siren", "tempest-r1"), ("siren", "siren-r1x"), ("shadow", "shadow-r")):
             with self.subTest(wake=wake):
                 self.assertFalse(_owner_wake(owner, wake))

@@ -53,7 +53,7 @@ from .home import CARRIED_STATUSES, continue_home, read_home
 from .provider import ProviderError
 from .store import MAX_WAKES_PER_AGENT, OWNERS, RehearsalConflict, RehearsalError
 
-MAX_CHOICES_PER_WAKE = 4  # Moves in one wake; rest ends it early.
+MAX_CHOICES_PER_WAKE = 6  # Moves in one wake; rest ends it early.
 LEDGER = "heartbeat.sqlite3"
 PAUSE = "heartbeat.paused"
 LOCK = "heartbeat.lock"
@@ -81,7 +81,7 @@ class Schedule:
     max_wakes_per_tick: int
     models_file: str = None
     settings_dir: str = None   # The owner's Settings page (models, budget, key) wins when set.
-    choices_per_wake: int = 1  # Turns in one wake (1-4): choose, do it, then maybe choose again.
+    choices_per_wake: int = 1  # Turns in one wake (1-6): choose, do it, then maybe choose again.
 
     @classmethod
     def from_config(cls, raw):
