@@ -35,7 +35,7 @@ LIMIT_CEILINGS = {
 DAY_MAX_OUTPUT_TOKENS = 3000
 # Day runs carry the market window, feeds, calls and continuity beside the
 # fixed working prompt, so their page may be larger than a rehearsal's.
-DAY_MAX_INPUT_BYTES = 32000
+DAY_MAX_INPUT_BYTES = 48000
 DAY_MAX_WAKES_PER_AGENT = 96  # Matches store.MAX_WAKES_PER_AGENT (20 wakes x 4 moves fits).
 DAY_LIMIT_CEILINGS = {**LIMIT_CEILINGS, "wakes_per_agent": DAY_MAX_WAKES_PER_AGENT,
                       "max_requests": 2 * DAY_MAX_WAKES_PER_AGENT * 7,
