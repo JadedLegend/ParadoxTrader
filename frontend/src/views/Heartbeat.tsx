@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getHeartbeat, type HeartbeatView, type HeartbeatWake } from '../api'
+import { getHeartbeat, type HeartbeatCalls, type HeartbeatView, type HeartbeatWake } from '../api'
 import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
 
 // The heartbeat page (docs/specs/HEARTBEAT_PAGE.md): read-only. It never wakes,
@@ -49,6 +49,13 @@ function outcome(wake: HeartbeatWake) {
     return { tone: 'fail', text: wake.wake_status === 'uncertain' ? 'Unsure' : 'Failed' }
   }
   return { tone: wake.outcome === 'woke' ? 'ok' : 'warn', text: OUTCOME[wake.outcome] ?? wake.outcome }
+}
+
+function callsText(calls: HeartbeatCalls | null | undefined) {
+  if (!calls || calls.open + calls.settled === 0) return ''
+  const results = ([['right', calls.right], ['wrong', calls.wrong], ['flat', calls.flat], ['unsettled', calls.unsettled]] as const)
+    .filter(([, count]) => count > 0).map(([name, count]) => `${count} ${name}`)
+  return `${calls.open} open · ${calls.settled} settled${results.length ? ` (${results.join(', ')})` : ''}`
 }
 
 const choicesText = (wake: HeartbeatWake | null) => wake && wake.choices.length > 0 ? wake.choices.join(', ') : ''
@@ -131,7 +138,7 @@ export default function Heartbeat() {
         <h2 className="card-title" id="hb-agents">Each agent</h2>
         <div className="usage-table-wrap" tabIndex={0} role="region" aria-label="Each agent's last and next wake">
           <table className="usage-table heartbeat-table">
-            <thead><tr><th scope="col">Agent</th><th scope="col">Last wake</th><th scope="col">Chose</th><th scope="col">Next wake</th></tr></thead>
+            <thead><tr><th scope="col">Agent</th><th scope="col">Last wake</th><th scope="col">Chose</th><th scope="col">Next wake</th><th scope="col">Calls</th></tr></thead>
             <tbody>{(view.agents ?? []).map(agent => {
               const result = agent.last_wake ? outcome(agent.last_wake) : null
               return <tr key={agent.agent_id}>
@@ -140,6 +147,7 @@ export default function Heartbeat() {
                   : <span className="usage-meta">Not yet today</span>}</td>
                 <td>{choicesText(agent.last_wake) || <span className="usage-meta">None</span>}</td>
                 <td>{agent.next_wake ? clock(agent.next_wake) : <span className="usage-meta">Tomorrow</span>}</td>
+                <td>{callsText(agent.calls) || <span className="usage-meta">None yet</span>}</td>
               </tr>
             })}</tbody>
           </table>

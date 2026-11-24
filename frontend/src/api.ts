@@ -77,6 +77,8 @@ export interface HeartbeatWake {
   agent_id: string; scheduled_at: string; outcome: string; wake_status: string | null
   choices: string[]; model: string | null; note: string | null
 }
+// Counts only: a call's reason never reaches the page.
+export interface HeartbeatCalls { open: number; settled: number; right: number; wrong: number; flat: number; unsettled: number }
 export interface HeartbeatView {
   available: boolean; reason: string; paused?: boolean; dispatch?: string; local_time?: string
   choices_per_wake?: number
@@ -85,7 +87,7 @@ export interface HeartbeatView {
   next_wake_by_agent?: Record<string, string>
   problems?: { agent_id: string | null; scheduled_at: string; note: string | null }[]
   wakes?: HeartbeatWake[]
-  agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null }[]
+  agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null; calls?: HeartbeatCalls | null }[]
   window?: { lines: string[]; feeds: { feed: string; status: 'ok' | 'unavailable' | 'unchecked'; checked_at: string | null; detail: string | null }[] }
 }
 export const getHeartbeat = () => request<HeartbeatView>('GET', '/api/heartbeat')

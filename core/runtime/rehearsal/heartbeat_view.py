@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import sqlite3
 
+from .calls import NO_CALLS
 from .heartbeat import LEDGER
 from .store import OWNERS
 
@@ -118,11 +119,17 @@ def day_view(heartbeat, *, settings_dir=None):
                       "outcome": row["outcome"], "wake_status": row["wake_status"],
                       "choices": _choices(row, job), "model": (job or {}).get("requested_model"),
                       "note": None if not note or note.startswith("choices: ") else note})
+    try:  # Counts only: a call's reason never reaches this page.
+        calls_store = heartbeat._calls_store()
+        call_counts = calls_store.counts() if calls_store is not None else {}
+    except Exception:
+        call_counts = None
     agents = []
     for owner in OWNERS:
         last = next((w for w in reversed(wakes) if w["agent_id"] == owner and w["outcome"] == "woke"), None)
         agents.append({"agent_id": owner, "last_wake": last,
-                       "next_wake": (status.get("next_wake_by_agent") or {}).get(owner)})
+                       "next_wake": (status.get("next_wake_by_agent") or {}).get(owner),
+                       "calls": None if call_counts is None else call_counts.get(owner, dict(NO_CALLS))})
     view = dict(status)
     view["today"] = dict(status.get("today") or {}, spent_usd=format(spent, "f"), spent_complete=not unknown,
                          counted_usd=format(counted, "f"))

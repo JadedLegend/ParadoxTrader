@@ -22,7 +22,8 @@ const VIEW: api.HeartbeatView = {
       choices: [], model: 'z-ai/glm-5.3', note: 'oracle on z-ai/glm-5.3: output_truncated' },
   ],
   agents: [
-    { agent_id: 'siren', last_wake: null, next_wake: '2026-11-19T10:08:00-05:00' },
+    { agent_id: 'siren', last_wake: null, next_wake: '2026-11-19T10:08:00-05:00',
+      calls: { open: 1, settled: 3, right: 2, wrong: 1, flat: 0, unsettled: 0 } },
     { agent_id: 'tempest', last_wake: null, next_wake: null },
   ],
   window: {
@@ -48,6 +49,8 @@ describe('Heartbeat page', () => {
     expect(screen.getByText('library, rest')).toBeTruthy()
     expect(screen.getAllByText('Failed').length).toBeGreaterThan(0)
     expect(screen.getByText('Tomorrow')).toBeTruthy()
+    expect(screen.getByText('1 open · 3 settled (2 right, 1 wrong)')).toBeTruthy()
+    expect(screen.getByText('None yet')).toBeTruthy()
     expect(screen.getByText(/SPY 731\.12/)).toBeTruthy()
     expect(screen.getByText(/Market closed, last prices\./)).toBeTruthy()
     expect(screen.getByText('Not read yet.')).toBeTruthy()

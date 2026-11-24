@@ -1,7 +1,7 @@
 # Calls and settlement: write a call down, check it later, hand back the result
 
-Status: approved. Phase 1 is built (PR #53); phase 2 is built in `build/settle-calls`;
-phase 3 is not built yet.
+Status: approved. Phase 1 is built (PR #53), phase 2 (PR #59), and phase 3 in
+`build/hand-back-calls`.
 
 ## In plain words
 
@@ -117,6 +117,18 @@ Status: built in `build/settle-calls`. How it works:
   wrong. Counts only, no reason text.
 - Tests: the hand-back appears once settled and stops after 2 wakes; references
   resolve; the page shows counts and never the reason.
+
+Status: built in `build/hand-back-calls`. How it works:
+
+- The result is quoted on the choice page, above the open calls. It states
+  facts only (what was sealed, the close, the outcome) and asks for nothing.
+- A wake of several moves counts once, by its first move, so every move of
+  that wake sees the same result. A new `handbacks` table (append-only) in
+  `calls.sqlite3` notes each wake that was shown a result; it carries with the
+  home, so a new day does not show it again.
+- At most 5 results on one page, newest first. Only the owner sees its own.
+- The Heartbeat page's "Each agent" table has a Calls column, for example
+  "1 open · 3 settled (2 right, 1 wrong)". Counts only.
 
 ## Not in this plan
 

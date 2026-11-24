@@ -31,6 +31,7 @@ CALL_OPTIONS = {
     "symbols": "this wake's market window",
 }
 CALL_FIELDS = ("symbol", "direction", "horizon_days", "confidence", "reason")
+NO_CALLS = {"open": 0, "settled": 0, "right": 0, "wrong": 0, "flat": 0, "unsettled": 0}
 _SYMBOL = re.compile(r"[A-Z]{1,5}(?:[.][A-Z]{1,2})?")
 
 
@@ -79,6 +80,15 @@ CREATE TRIGGER IF NOT EXISTS settlements_no_update BEFORE UPDATE ON settlements
  BEGIN SELECT RAISE(ABORT, 'settlements are append-only'); END;
 CREATE TRIGGER IF NOT EXISTS settlements_no_delete BEFORE DELETE ON settlements
  BEGIN SELECT RAISE(ABORT, 'settlements are append-only'); END;
+CREATE TABLE IF NOT EXISTS handbacks (
+ call_id INTEGER NOT NULL REFERENCES settlements(call_id),
+ run_id TEXT NOT NULL, sitting TEXT NOT NULL, shown_at TEXT NOT NULL,
+ PRIMARY KEY (call_id, run_id, sitting)
+);
+CREATE TRIGGER IF NOT EXISTS handbacks_no_update BEFORE UPDATE ON handbacks
+ BEGIN SELECT RAISE(ABORT, 'handbacks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS handbacks_no_delete BEFORE DELETE ON handbacks
+ BEGIN SELECT RAISE(ABORT, 'handbacks are append-only'); END;
 """
 
 
@@ -195,6 +205,48 @@ class CallStore:
                 (call_id, now.astimezone(timezone.utc).isoformat(), json.dumps(detail, sort_keys=True)))
             return cursor.rowcount == 1
 
+    def hand_back(self, agent_id, *, run_id, sitting, now):
+        """This agent's settled calls still to show on this wake, newest first.
+
+        Each result shows on at most HANDBACK_WAKES wakes (a wake of several
+        moves counts once, by its first move), then drops out of routine
+        context; the settlement itself stays in the record. Asking again for
+        the same wake returns the same results."""
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = [dict(row) for row in connection.execute(
+                "SELECT c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price,"
+                " c.entry_session, s.detail FROM calls c JOIN settlements s USING (call_id)"
+                " WHERE c.agent_id=? AND (SELECT COUNT(*) FROM handbacks h WHERE h.call_id=c.call_id"
+                " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
+                (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS))]
+            for row in rows:
+                connection.execute("INSERT OR IGNORE INTO handbacks (call_id, run_id, sitting, shown_at)"
+                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting,
+                                                         now.astimezone(timezone.utc).isoformat()))
+                row["detail"] = json.loads(row["detail"])
+            return rows
+
+    def counts(self):
+        """Per agent: open, settled, and each outcome. Counts only, never a reason."""
+        if not self.path.exists():
+            return {}
+        result = {}
+        with closing(self._connect()) as connection:
+            for row in connection.execute("SELECT c.agent_id, s.detail FROM calls c LEFT JOIN settlements s"
+                                          " USING (call_id)"):
+                item = result.setdefault(row["agent_id"], dict(NO_CALLS))
+                if row["detail"] is None:
+                    item["open"] += 1
+                    continue
+                item["settled"] += 1
+                outcome = json.loads(row["detail"]).get("outcome")
+                if outcome in item:
+                    item[outcome] += 1
+        return result
+
     def settlements(self):
         if not self.path.exists():
             return []
@@ -290,6 +342,36 @@ def settle_open_calls(store, fetch, *, now, today, completed):
     if closes is None:
         summary["unavailable"] = (record or {}).get("reason") or "market data unavailable"
     return summary
+
+
+HANDBACK_WAKES = 2   # A result is shown on this many wakes, then stays only in the record.
+MAX_HANDBACKS = 5    # At most this many results on one page, newest first.
+
+
+def _signed(text):
+    return text if text.startswith("-") else "+" + text
+
+
+def call_results_line(results):
+    """Settled calls handed back to their agent as quoted data. Empty when none.
+
+    Facts only: what was sealed, what the close was, and the outcome. What to
+    make of it is the agent's own business; nothing here asks for a reply."""
+    if not results:
+        return ""
+    parts = []
+    for r in results:
+        d = r["detail"]
+        made = (f"call {r['call_id']}: {r['symbol']} {r['direction']} within {r['horizon_days']} trading days"
+                f" ({r['confidence']}), made {r['entry_session']} at {r['entry_price']}")
+        if d.get("outcome") == "unsettled":
+            parts.append(f"{made}. Could not be settled: {d.get('reason') or 'no closing price'}.")
+            continue
+        spy = f", SPY {_signed(d['spy_move_percent'])}%" if "spy_move_percent" in d else ", SPY unknown"
+        parts.append(f"{made}. Settled {d['exit_session']} at {d['exit_price']}: "
+                     f"{_signed(d['move_percent'])}%{spy}. {d['outcome'].capitalize()}.")
+    return ("Results of your calls (quoted record, settled by plain code from closing prices; "
+            f"each shows on {HANDBACK_WAKES} wakes, then stays in your record): " + " ".join(parts))
 
 
 def open_calls_line(calls):
