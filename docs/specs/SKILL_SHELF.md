@@ -9,7 +9,8 @@ results that calls phases 2 and 3 (settle, hand the result back) put on the page
 
 ## In plain words
 
-Every wake, an agent reads one page with a 24 KB limit. About 20 KB is already
+Every wake, an agent reads one page with a 24 KB limit (48 KB on the heartbeat's
+day runs since the owner raised it, kept within each model's context). About 20 KB is already
 printed before the market news and the agent's own notes arrive. Each skill
 printed in full takes room from those notes.
 

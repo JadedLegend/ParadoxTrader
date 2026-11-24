@@ -11,7 +11,7 @@ PRACTICAL_ORIENTATION = (ORIENTATION_DIR / "practical_inquiry.md").read_text(enc
 
 SKILLS_DIR = Path(__file__).with_name("skills")
 # The page carries one line per skill (see docs/specs/SKILL_SHELF.md), so these
-# bounds keep a growing shelf from refilling the agents' 24-32 KB page.
+# bounds keep a growing shelf from refilling the agents' 24-48 KB page.
 MAX_SKILLS, MAX_DESCRIPTION, MAX_ALWAYS, MAX_SKILL_BODY = 20, 200, 300, 6000
 
 
