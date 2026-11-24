@@ -29,7 +29,7 @@ from core.runtime.orientation import skill_text
 from core.trading.queue import ensure_private_db_file
 
 from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, CallRefused, CallStore,
-                    open_calls_line)
+                    call_results_line, open_calls_line)
 from .continuity import (clip_continuity, continuity_message, owner_continuity,
                          public_coverage)
 from .provider import AGENT_IDS, CAPABILITIES, ProviderError, bounded_input, validate_manifest
@@ -412,6 +412,8 @@ class RehearsalController:
         if private_context["include_continuity"]:
             content += "\n\n" + continuity_message(private_context["continuity"])["content"]
         content += "".join("\n\n" + message["content"] for message in _open_skill_messages(private_context))
+        if private_context.get("call_results"):
+            content += "\n\n" + private_context["call_results"]
         if private_context.get("open_calls"):
             content += "\n\n" + private_context["open_calls"]
         if private_context.get("market_line"):
@@ -433,6 +435,9 @@ class RehearsalController:
         opened = self._opened_this_wake(job)
         if opened:
             private["open_skills"] = opened
+        results = self._call_results(job)
+        if results:
+            private["call_results"] = results
         if self.market is not None:
             # Read once and committed with the context, so a resumed wake and its
             # inquiry see exactly what this choice saw.
@@ -513,6 +518,23 @@ class RehearsalController:
             if details is None:
                 raise RehearsalError("decision_context_unavailable")
         return details
+
+    def _call_results(self, job):
+        """Settled calls handed back to this owner, as one quoted line (or "").
+
+        Keyed by the wake's first move, so every move of one wake sees the same
+        results and the whole wake counts once toward HANDBACK_WAKES. Only day
+        runs keep calls; a rehearsal never has any."""
+        path = self.store.safe_run_file(self.run_id, CALLS_FILE)
+        if not path.exists():
+            return ""
+        step = getattr(self, "_step", None)
+        first = job["round"] - (step[0] - 1) if step else job["round"]
+        with self._memory_lock:
+            results = CallStore(path).hand_back(job["agent_id"], run_id=self.run_id,
+                                                sitting=f"{job['agent_id']}-r{first}",
+                                                now=datetime.now(timezone.utc))
+        return call_results_line(results)
 
     def _opened_this_wake(self, job):
         """Names of shelf skills this owner opened on earlier moves of this same wake.
