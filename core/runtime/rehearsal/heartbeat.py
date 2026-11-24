@@ -512,14 +512,19 @@ class Heartbeat:
         conn.commit()
 
     # ---- settling calls (code only: no model request, no cost) ------------
-    def _calls_store(self):
-        """The calls of the newest day run: the home's current copy. None when none."""
+    def _day_run_file(self, name):
+        """A carried file of the newest day run (the home's current copy), or None."""
         for run in self._runs():
             if self.store.get_run(run["run_id"]).get("kind") != "day":
                 continue
-            path = self.store.safe_run_file(run["run_id"], CALLS_FILE)
-            return CallStore(path) if path.exists() else None
+            path = self.store.safe_run_file(run["run_id"], name)
+            return path if path.exists() else None
         return None
+
+    def _calls_store(self):
+        """The calls of the newest day run: the home's current copy. None when none."""
+        path = self._day_run_file(CALLS_FILE)
+        return CallStore(path) if path is not None else None
 
     def _settle_calls(self):
         """Settle every open call whose horizon has passed. Never raises.

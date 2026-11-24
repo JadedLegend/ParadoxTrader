@@ -1,6 +1,6 @@
 # The notebook: a line to remember, on every page, composted when full
 
-Status: draft, waiting for the owner's OK. Nothing is built yet.
+Status: approved by the owner (both questions: yes). Phase 1 built in `build/notebook`.
 
 ## In plain words
 
@@ -51,8 +51,9 @@ When nearly full (5,000 or more): "Your notebook is nearly full. When it is full
 compost it to start a fresh one."
 
 When full, the page offers:
-`{"action":"journal","journal_mode":"compost_notebook"}`. This is mechanical, like
-witness: no second request. The notebook's lines become one compost note in the
+`{"action":"compost_notebook"}`, a choice of its own (like call and skill, so the
+frozen journal options and today's witness record stay unchanged). It is mechanical:
+no second request. The notebook's lines become one compost note in the
 journal, and the next page shows an empty notebook plus a one-line pointer to that
 note's id.
 
@@ -63,13 +64,15 @@ The choice field, on any action:
 
 - `remember` on every choice; the notebook store in the owner's memory file; the
   notebook printed on every page and every move; the nearly-full and full lines;
-  `compost_notebook`.
+  the `compost_notebook` choice.
+- With it, what an agent sees of its older records rises from 4 records and 4,000
+  characters (800 each) to 8 records and 8,000 characters (1,000 each).
 - The Heartbeat page shows each agent's notebook size (characters used), never its text.
 - Tests: free (no extra request); every move sees it; a retried move writes once; a
   line that does not fit is refused and quoted back; compost moves every line into one
   compost note and starts fresh; another agent never sees it; it carries to the next day.
 
-## Questions for the owner
+## Owner decisions (both answered yes)
 
 1. Is "the whole notebook becomes one compost note, then distill it later as usual"
    what you meant by composting it?

@@ -87,7 +87,9 @@ export interface HeartbeatView {
   next_wake_by_agent?: Record<string, string>
   problems?: { agent_id: string | null; scheduled_at: string; note: string | null }[]
   wakes?: HeartbeatWake[]
-  agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null; calls?: HeartbeatCalls | null }[]
+  agents?: { agent_id: string; last_wake: HeartbeatWake | null; next_wake: string | null; calls?: HeartbeatCalls | null
+    notebook_chars?: number | null }[]
+  notebook_capacity?: number
   window?: { lines: string[]; feeds: { feed: string; status: 'ok' | 'unavailable' | 'unchecked'; checked_at: string | null; detail: string | null }[] }
 }
 export const getHeartbeat = () => request<HeartbeatView>('GET', '/api/heartbeat')

@@ -30,6 +30,7 @@ from core.trading.queue import ensure_private_db_file
 
 from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, CallRefused, CallStore,
                     call_results_line, open_calls_line)
+from .notebook import NOTEBOOK_FILE, NOTEBOOK_INSTRUCTIONS, NotebookStore, notebook_text
 from .continuity import (clip_continuity, continuity_message, owner_continuity,
                          public_coverage)
 from .provider import AGENT_IDS, CAPABILITIES, ProviderError, bounded_input, validate_manifest
@@ -163,6 +164,8 @@ def metadata_menu(metadata, instructions=""):
         offered.append("skill")
     if "call_options" in metadata:
         offered.append("call")
+    if '"action":"compost_notebook"' in instructions:
+        offered.append("compost_notebook")
     ceilings = {}
     for cost in metadata["action_costs"]:
         key = (cost["reservation_ceiling_usd"], cost["max_requests"])
@@ -196,7 +199,7 @@ def _constant(value):
 
 def validate_choice(raw):
     """Strict whole JSON object; no fences, extraction, repair or guessed rest."""
-    if not isinstance(raw, str) or len(raw) > 1000:
+    if not isinstance(raw, str) or len(raw) > 1400:  # Room for a call reason plus a notebook line.
         raise ValueError("invalid_choice")
     try:
         choice = json.loads(raw, object_pairs_hook=_pairs, parse_constant=_constant)
@@ -441,6 +444,8 @@ class RehearsalController:
             # Contexts frozen before the menu keep the JSON, so a resumed wake sends the same text.
             content += "\nFrozen offered choices, catalog cost ceilings, limits and admission observation:\n" + json.dumps(
                 metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if private_context.get("notebook"):
+            content += "\n\n" + private_context["notebook"]
         if private_context["include_continuity"]:
             content += "\n\n" + continuity_message(private_context["continuity"])["content"]
         content += "".join("\n\n" + message["content"] for message in _open_skill_messages(private_context))
@@ -463,7 +468,8 @@ class RehearsalController:
             instructions += (f"\nThis wake allows up to {step[1]} choices; this is choice {step[0]} of {step[1]}. "
                              + ("Choosing rest ends the wake." if step[0] < step[1] else "It is the last one."))
         private = {"continuity": continuity, "include_metadata": True, "include_continuity": True,
-                   "choice_instructions": instructions, "metadata_format": "menu"}
+                   "choice_instructions": instructions + NOTEBOOK_INSTRUCTIONS, "metadata_format": "menu",
+                   "notebook": self._notebook_page(job)}
         opened = self._opened_this_wake(job)
         if opened:
             private["open_skills"] = opened
@@ -550,6 +556,37 @@ class RehearsalController:
             if details is None:
                 raise RehearsalError("decision_context_unavailable")
         return details
+
+    def _notebook(self):
+        return NotebookStore(self.store.safe_run_file(self.run_id, NOTEBOOK_FILE))
+
+    def _notebook_page(self, job):
+        """This owner's notebook as printed on the page, frozen with the move's context."""
+        with self._memory_lock:
+            return notebook_text(*self._notebook().page(job["agent_id"]))
+
+    def _remember(self, job, line):
+        """Keep this move's line. Once per move; a line that does not fit is kept
+        as "did not fit" and quoted back, never silently dropped."""
+        with self._memory_lock:
+            self._notebook().add(job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"], content=line)
+
+    def _compost_notebook(self, job):
+        """Move the notebook into one journal compost note, mechanically: no request."""
+        from core.memory.compost import CompostStore
+        scope = f"{self._key_scope}:" if self._key_scope else ""
+        key = f"rehearsal:{scope}{job['wake_id']}:compost_notebook"
+        path = self.store.safe_run_file(self.run_id, f"memory/{job['agent_id']}.sqlite3")
+
+        def write_note(content):
+            ensure_private_db_file(path)
+            return CompostStore(path, job["agent_id"]).append_note(
+                key, content, note_kind="compost", source_wake_id=job["wake_id"],
+                source_mode=self.manifest["mode"])["refs"]
+
+        with self._memory_lock:
+            return self._notebook().compost(job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
+                                            write_note=write_note)
 
     def _call_results(self, job):
         """Settled calls handed back to this owner, as one quoted line (or "").
@@ -837,6 +874,8 @@ class RehearsalController:
             else:
                 choice = validate_choice(json.dumps(choice))
             action = choice["action"]
+            if "remember" in choice and action != "compost_notebook":
+                self._remember(job, choice["remember"])  # Kept even if the activity below fails.
             refs = []
             if action == "rest":
                 pass  # No forced episode, journal or no-change record.
@@ -844,6 +883,8 @@ class RehearsalController:
                 refs = self._inquiry(job, details)
             elif action == "call":
                 refs = self._call(job, choice, details)
+            elif action == "compost_notebook":
+                refs = self._compost_notebook(job)
             elif action == "journal" and choice.get("journal_mode") == "witness":
                 refs = self._read_witness(job)
             elif action == "journal" and ("journal_mode" in choice or "channels" in choice):
@@ -882,6 +923,8 @@ class RehearsalController:
                     memory = ThresholdMemory(str(memory_path))
                     scoped = {"key_scope": self._key_scope} if self._key_scope else {}
                     refs = _memory_effect(memory, wake_id, action, output, library_refs, **scoped)
+            if "remember" in choice and action == "compost_notebook":
+                self._remember(job, choice["remember"])  # After composting, so it opens the fresh notebook.
             self.store.finish_job(self.run_id, wake_id, self._token, status="completed", action=action, record_refs=refs)
         except RehearsalStopped:
             if job is not None:
