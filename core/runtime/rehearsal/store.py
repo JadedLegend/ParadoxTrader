@@ -51,7 +51,7 @@ DEFAULT_LIMITS = {
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
 MAX_WAKES_PER_AGENT = 96
 DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
-DAY_MAX_INPUT_BYTES = 32000  # Day runs only, as above; matches provider.DAY_MAX_INPUT_BYTES.
+DAY_MAX_INPUT_BYTES = 48000  # Day runs only, as above; matches provider.DAY_MAX_INPUT_BYTES.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
               "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS,
               "max_input_bytes": DAY_MAX_INPUT_BYTES}
