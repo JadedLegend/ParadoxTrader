@@ -35,7 +35,9 @@ This is step 7 of `docs/specs/AGENTS_HOME.md` ("the forum opens as a commons roo
 - **Switches decide, closed by default.** Two settings in the heartbeat config,
   `forum_open` and `peer_messages_open`, both false until the owner turns them on.
   Off means the choice is not offered and nothing social enters the prompt.
-- **No new spend.** Posting or messaging is one choice, one request, like journal.
+- **No new spend.** Posting or messaging is one choice and one request, like a call.
+  The text travels inside the choice JSON and is stored directly from it. There is
+  no second activity request (a journal makes one; a post or message must not).
   Reading what's new costs nothing extra: it rides along in the wake's context. The
   daily budget is unchanged.
 - **Other agents' words are quoted, never obeyed.** Posts and messages enter a prompt
