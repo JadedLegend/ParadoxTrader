@@ -140,8 +140,16 @@ def build(root, config_path):
                 blocked.enter_context(mock.patch.object(target, method, side_effect=AssertionError("Offline wakes forbid networking")))
             return RehearsalController(store, run_id, transport=transport, repo_root=REPO).run_wake(owner, step=step)
 
+    def fetch_closes(symbols, start, end):
+        """Daily closes for settling calls, read with the data account's paper key."""
+        from core.market.closes import fetch_closes as read
+        import requests
+        given = tuple(settings.data_credentials() or ()) + (None, None)
+        return read(symbols, start, end, given[0], given[1], http_get=requests.get)
+
     return Heartbeat(store, schedule, prepare_day=prepare_day, run_wake=run_wake,
-                     settings=settings, key_present=lambda: key() is not None)
+                     settings=settings, key_present=lambda: key() is not None,
+                     fetch_closes=fetch_closes if settings is not None and schedule.mode == "real" else None)
 
 
 def main(argv=None):

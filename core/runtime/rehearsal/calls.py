@@ -18,6 +18,7 @@ with the rest of the home, so open calls stay open.
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+import json
 import re
 import sqlite3
 
@@ -175,6 +176,120 @@ class CallStore:
             return []
         with closing(self._connect()) as connection:
             return self._open(connection, agent_id)
+
+    def all_open(self):
+        """Every agent's open calls, oldest first, for settling."""
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT c.call_id, c.agent_id, c.symbol, c.direction, c.horizon_days, c.entry_price,"
+                " c.entry_session FROM calls c LEFT JOIN settlements s USING (call_id)"
+                " WHERE s.call_id IS NULL ORDER BY c.call_id")]
+
+    def settle(self, call_id, detail, *, now):
+        """Write one settlement. A call already settled is left as it was."""
+        with closing(self._connect()) as connection, connection:
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO settlements (call_id, settled_at, detail) VALUES (?,?,?)",
+                (call_id, now.astimezone(timezone.utc).isoformat(), json.dumps(detail, sort_keys=True)))
+            return cursor.rowcount == 1
+
+    def settlements(self):
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection:
+            return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
+                "SELECT call_id, settled_at, detail FROM settlements ORDER BY call_id")]
+
+
+# ---- Phase 2: settle (code only, no model, no cost) ----------------------
+FLAT_PERCENT = Decimal("0.1")   # A smaller move is "flat": neither right nor wrong.
+SETTLE_GRACE_SESSIONS = 5       # Trading days to wait for a missing close before "unsettled".
+NO_DATA_WEEKDAY_SLACK = 2       # With no calendar at all, weekdays also cover a holiday or two.
+YARDSTICK = "SPY"
+
+
+def _percent(start, end):
+    return ((end - start) / start * 100).quantize(Decimal("0.01"))
+
+
+def _weekdays_after(entry_session, today):
+    """Weekdays after the entry session up to and including ``today``."""
+    from datetime import date
+    day, count = date.fromisoformat(entry_session), 0
+    end = date.fromisoformat(today)
+    while day < end:
+        day += timedelta(days=1)
+        count += day.weekday() < 5
+    return count
+
+
+def settle_call(call, closes, sessions, today):
+    """Decide one open call. Pure: no clock, no network.
+
+    ``closes`` maps symbol -> {session: Decimal} (None when market data was
+    unavailable); ``sessions`` are the completed trading sessions those closes
+    cover. Returns ("open", None) when the horizon has not passed yet,
+    ("pending", reason) when it has but the close is missing, or
+    ("settled", detail) to write. Unknown is never 0: a missing figure is
+    a reason, and a missing yardstick is left out rather than guessed."""
+    entry = Decimal(call["entry_price"])
+    after = [s for s in sessions if s > call["entry_session"]]
+    if closes is None or not sessions:
+        # No calendar from the data: count weekdays so an outage still ends one day.
+        waited = _weekdays_after(call["entry_session"], today)
+        if waited >= call["horizon_days"] + SETTLE_GRACE_SESSIONS + NO_DATA_WEEKDAY_SLACK:
+            return "settled", {"outcome": "unsettled", "reason": "no market data reached the heartbeat"}
+        return ("pending", "market data unavailable") if waited >= call["horizon_days"] else ("open", None)
+    if len(after) < call["horizon_days"]:
+        return "open", None
+    exit_session = after[call["horizon_days"] - 1]
+    price = closes.get(call["symbol"], {}).get(exit_session)
+    if price is None:
+        reason = f"no {call['symbol']} close for {exit_session}"
+        if len(after) >= call["horizon_days"] + SETTLE_GRACE_SESSIONS:
+            return "settled", {"outcome": "unsettled", "reason": reason, "exit_session": exit_session}
+        return "pending", reason
+    move = _percent(entry, price)
+    if abs(move) < FLAT_PERCENT:
+        outcome = "flat"
+    else:
+        outcome = "right" if (move > 0) == (call["direction"] == "up") else "wrong"
+    detail = {"outcome": outcome, "exit_session": exit_session, "exit_price": format(price.normalize(), "f"),
+              "move_percent": format(move, "f")}
+    spy = closes.get(YARDSTICK, {})
+    if call["entry_session"] in spy and exit_session in spy:
+        detail["spy_move_percent"] = format(_percent(spy[call["entry_session"]], spy[exit_session]), "f")
+    return "settled", detail
+
+
+def settle_open_calls(store, fetch, *, now, today, completed):
+    """Settle every open call whose horizon has passed.
+
+    ``fetch(symbols, start, end)`` returns the fetch_closes record.
+    ``completed(session)`` says whether that session has closed, so today's
+    still-moving bar is never used. Returns a short summary for the heartbeat."""
+    calls = store.all_open()
+    if not calls:
+        return {"open": 0, "settled": 0, "pending": []}
+    symbols = sorted({c["symbol"] for c in calls} | {YARDSTICK})
+    record = fetch(symbols, min(c["entry_session"] for c in calls), today)
+    closes = record.get("closes") if isinstance(record, dict) and record.get("status") == "ok" else None
+    sessions = sorted({s for by_day in (closes or {}).values() for s in by_day if completed(s)})
+    if closes is not None:
+        closes = {symbol: {s: p for s, p in by_day.items() if completed(s)} for symbol, by_day in closes.items()}
+    settled, pending = 0, []
+    for call in calls:
+        state, value = settle_call(call, closes, sessions, today)
+        if state == "settled":
+            settled += store.settle(call["call_id"], value, now=now)
+        elif state == "pending":
+            pending.append(f"{call['agent_id']} call {call['call_id']}: {value}")
+    summary = {"open": len(calls) - settled, "settled": settled, "pending": pending}
+    if closes is None:
+        summary["unavailable"] = (record or {}).get("reason") or "market data unavailable"
+    return summary
 
 
 def open_calls_line(calls):

@@ -48,6 +48,7 @@ import re
 import sqlite3
 from zoneinfo import ZoneInfo
 
+from .calls import CALLS_FILE, CallStore, settle_open_calls
 from .home import CARRIED_STATUSES, continue_home, read_home
 from .provider import ProviderError
 from .store import MAX_WAKES_PER_AGENT, OWNERS, RehearsalConflict, RehearsalError
@@ -57,6 +58,8 @@ LEDGER = "heartbeat.sqlite3"
 PAUSE = "heartbeat.paused"
 LOCK = "heartbeat.lock"
 MIN_REMAINING_USD = Decimal("0.01")
+SETTLE_EVERY_MINUTES = 30  # One closing-price read at most this often, only while calls are due.
+MARKET_CLOSED_AFTER = (16, 30)  # US Eastern: a session's close is final after this.
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
 
@@ -178,11 +181,13 @@ def load_schedule(path):
 
 class Heartbeat:
     def __init__(self, store, schedule, *, prepare_day, run_wake, now=None, settings=None,
-                 key_present=lambda: True):
+                 key_present=lambda: True, fetch_closes=None):
         """``prepare_day(budget_usd, wakes_per_agent, models) -> run_id`` creates
         a prepared day run (no profiles yet); ``models`` is None to use the
         config. ``run_wake(run_id, owner) -> job`` adds and runs one wake.
-        ``now()`` returns an aware datetime. ``settings`` is an OwnerSettings."""
+        ``now()`` returns an aware datetime. ``settings`` is an OwnerSettings.
+        ``fetch_closes(symbols, start, end)`` reads daily closes for settling
+        calls (core.market.closes); None leaves calls unsettled."""
         self.store = store
         self.schedule = schedule
         self.settings = settings
@@ -190,6 +195,7 @@ class Heartbeat:
         self.prepare_day = prepare_day
         self.run_wake = run_wake
         self.now = now or (lambda: datetime.now(timezone.utc))
+        self.fetch_closes = fetch_closes
         self.root = store.root
 
     # ---- files, ledger, lock --------------------------------------------
@@ -217,6 +223,11 @@ class Heartbeat:
             conn.execute("""CREATE TABLE IF NOT EXISTS days (
                 local_date TEXT NOT NULL, run_id TEXT PRIMARY KEY, opened_at TEXT NOT NULL,
                 continued_from TEXT)""")
+            # Each time the heartbeat read closing prices to settle calls. Counts and
+            # short reasons only, never a call's reason text.
+            conn.execute("""CREATE TABLE IF NOT EXISTS settle_checks (
+                checked_at TEXT NOT NULL, settled INTEGER NOT NULL, still_open INTEGER NOT NULL,
+                note TEXT)""")
             yield conn
             conn.commit()
 
@@ -383,66 +394,76 @@ class Heartbeat:
         with self._exclusive() as acquired:
             if not acquired:
                 return {"outcome": "busy"}
-            local = self._local_now()
-            today = local.date().isoformat()
-            grace = timedelta(minutes=self.schedule.grace_minutes)
-            with self._ledger() as conn:
-                self._close_earlier_days(conn, today)
-                fresh = []
-                missed = 0
-                for slot in self._due(conn, local):
-                    if local - slot[0] > grace:
-                        self._record(conn, slot, "missed", note="grace window passed; never caught up")
-                        missed += 1
-                    else:
-                        fresh.append(slot)
-                if not fresh:
-                    return {"outcome": "quiet", "missed": missed}
-                if self.schedule.dispatch == "clock-only":
-                    for slot in fresh:
-                        self._record(conn, slot, "clock_only", note="clock-only mode: recorded, not dispatched")
-                    return {"outcome": "clock_only", "slots": len(fresh), "missed": missed}
-                if self.daily_budget() - self._reserved_today(conn, today) < MIN_REMAINING_USD:
-                    for slot in fresh:  # Spent before opening anything: no new day segment.
-                        self._record(conn, slot, "over_budget", note="today's budget is spent")
-                    return {"outcome": "over_budget", "slots": len(fresh), "missed": missed}
-                try:
-                    run_id, previous = self._today(conn, today)
-                except Exception as error:
-                    # Bounded codes only (manifest codes are fixed strings), never a body or a path.
-                    text = str(error)
-                    code = text if re.fullmatch(r"[a-z_]{3,60}", text) else type(error).__name__
-                    conn.execute("INSERT INTO day_errors(local_date,recorded_at,code) VALUES (?,?,?)",
-                                 (today, self.now().isoformat(), code))
-                    conn.commit()
-                    raise
-                conn.execute("DELETE FROM day_errors WHERE local_date=?", (today,))
+            try:
+                result = self._decide()
+            finally:
+                settled = self._settle_calls()  # After the wakes, so it never delays one.
+            if settled:
+                result["calls"] = settled
+            return result
+
+    def _decide(self):
+        """The wakes due this moment (tick's body, under the lock)."""
+        local = self._local_now()
+        today = local.date().isoformat()
+        grace = timedelta(minutes=self.schedule.grace_minutes)
+        with self._ledger() as conn:
+            self._close_earlier_days(conn, today)
+            fresh = []
+            missed = 0
+            for slot in self._due(conn, local):
+                if local - slot[0] > grace:
+                    self._record(conn, slot, "missed", note="grace window passed; never caught up")
+                    missed += 1
+                else:
+                    fresh.append(slot)
+            if not fresh:
+                return {"outcome": "quiet", "missed": missed}
+            if self.schedule.dispatch == "clock-only":
+                for slot in fresh:
+                    self._record(conn, slot, "clock_only", note="clock-only mode: recorded, not dispatched")
+                return {"outcome": "clock_only", "slots": len(fresh), "missed": missed}
+            if self.daily_budget() - self._reserved_today(conn, today) < MIN_REMAINING_USD:
+                for slot in fresh:  # Spent before opening anything: no new day segment.
+                    self._record(conn, slot, "over_budget", note="today's budget is spent")
+                return {"outcome": "over_budget", "slots": len(fresh), "missed": missed}
+            try:
+                run_id, previous = self._today(conn, today)
+            except Exception as error:
+                # Bounded codes only (manifest codes are fixed strings), never a body or a path.
+                text = str(error)
+                code = text if re.fullmatch(r"[a-z_]{3,60}", text) else type(error).__name__
+                conn.execute("INSERT INTO day_errors(local_date,recorded_at,code) VALUES (?,?,?)",
+                             (today, self.now().isoformat(), code))
                 conn.commit()
-                started = []
-                for slot in fresh[:self.schedule.max_wakes_per_tick]:
-                    _, owner, _ = slot
-                    if self.paused():
-                        break  # A stop or pause arrived; leave the rest unrecorded.
-                    run = self.store.get_run(run_id)
-                    if run["status"] not in ("prepared", "open"):
-                        self._record(conn, slot, "day_stopped", run_id=run_id, note=f"day is {run['status']}")
-                        continue
-                    remaining = self.daily_budget() - self._reserved_today(conn, today)
-                    if remaining < MIN_REMAINING_USD:
-                        self._record(conn, slot, "over_budget", run_id=run_id,
-                                     note=f"{remaining} USD left of today's budget")
-                        continue
-                    try:
-                        job = self._wake(conn, today, run_id, slot)
-                    except RehearsalConflict as error:
-                        self._record(conn, slot, "blocked", run_id=run_id, note=str(error))
-                        continue
-                    except RehearsalError as error:
-                        self._record(conn, slot, "not_started", run_id=run_id, note=str(error))
-                        continue
-                    started.append({"agent_id": owner, "wake_id": job["wake_id"], "status": job["status"]})
-            return {"outcome": "woke" if started else "nothing_started", "run_id": run_id,
-                    "continued_from": previous, "wakes": started, "missed": missed}
+                raise
+            conn.execute("DELETE FROM day_errors WHERE local_date=?", (today,))
+            conn.commit()
+            started = []
+            for slot in fresh[:self.schedule.max_wakes_per_tick]:
+                _, owner, _ = slot
+                if self.paused():
+                    break  # A stop or pause arrived; leave the rest unrecorded.
+                run = self.store.get_run(run_id)
+                if run["status"] not in ("prepared", "open"):
+                    self._record(conn, slot, "day_stopped", run_id=run_id, note=f"day is {run['status']}")
+                    continue
+                remaining = self.daily_budget() - self._reserved_today(conn, today)
+                if remaining < MIN_REMAINING_USD:
+                    self._record(conn, slot, "over_budget", run_id=run_id,
+                                 note=f"{remaining} USD left of today's budget")
+                    continue
+                try:
+                    job = self._wake(conn, today, run_id, slot)
+                except RehearsalConflict as error:
+                    self._record(conn, slot, "blocked", run_id=run_id, note=str(error))
+                    continue
+                except RehearsalError as error:
+                    self._record(conn, slot, "not_started", run_id=run_id, note=str(error))
+                    continue
+                started.append({"agent_id": owner, "wake_id": job["wake_id"], "status": job["status"]})
+        return {"outcome": "woke" if started else "nothing_started", "run_id": run_id,
+                "continued_from": previous, "wakes": started, "missed": missed}
 
     @staticmethod
     def _slot_note(owner, job, actions):
@@ -490,6 +511,58 @@ class Heartbeat:
                       self.now().isoformat(), self._key(slot)))
         conn.commit()
 
+    # ---- settling calls (code only: no model request, no cost) ------------
+    def _calls_store(self):
+        """The calls of the newest day run: the home's current copy. None when none."""
+        for run in self._runs():
+            if self.store.get_run(run["run_id"]).get("kind") != "day":
+                continue
+            path = self.store.safe_run_file(run["run_id"], CALLS_FILE)
+            return CallStore(path) if path.exists() else None
+        return None
+
+    def _settle_calls(self):
+        """Settle every open call whose horizon has passed. Never raises.
+
+        Reads closing prices at most every SETTLE_EVERY_MINUTES, and only while
+        some call is open, so a quiet home makes no market-data request. A
+        problem becomes a short note on the heartbeat page, never a failed tick."""
+        if self.fetch_closes is None:
+            return None
+        try:
+            calls = self._calls_store()
+            if calls is None or not calls.all_open():
+                return None
+            now = self.now()
+            with self._ledger() as conn:
+                last = conn.execute("SELECT checked_at FROM settle_checks ORDER BY checked_at DESC LIMIT 1").fetchone()
+            if last is not None and now - datetime.fromisoformat(last[0]) < timedelta(minutes=SETTLE_EVERY_MINUTES):
+                return None
+            eastern = now.astimezone(ZoneInfo("America/New_York"))
+            today = eastern.date().isoformat()
+            closed_today = (eastern.hour, eastern.minute) >= MARKET_CLOSED_AFTER
+
+            def completed(session):
+                return session < today or (session == today and closed_today)
+
+            summary = settle_open_calls(calls, self.fetch_closes, now=now, today=today, completed=completed)
+        except Exception as error:  # A type name only, never a path or a response body.
+            summary = {"settled": 0, "open": None, "pending": [], "error": type(error).__name__}
+        parts = []
+        if summary.get("unavailable"):
+            parts.append("market data unavailable: " + summary["unavailable"])
+        if summary.get("error"):
+            parts.append("settling calls failed (" + summary["error"] + ")")
+        parts.extend(summary.get("pending") or [])
+        try:
+            with self._ledger() as conn:
+                conn.execute("INSERT INTO settle_checks(checked_at,settled,still_open,note) VALUES (?,?,?,?)",
+                             (self.now().isoformat(), summary.get("settled") or 0, summary.get("open") or 0,
+                              "; ".join(parts)[:500] or None))
+        except Exception:
+            pass
+        return summary
+
     # ---- status -----------------------------------------------------------
     def status(self):
         """What the heartbeat is doing, and in plain terms why nothing is."""
@@ -504,6 +577,8 @@ class Heartbeat:
             reserved = self._reserved_today(conn, today)
             day_error = conn.execute("SELECT recorded_at,code FROM day_errors WHERE local_date=? "
                                      "ORDER BY recorded_at DESC LIMIT 1", (today,)).fetchone()
+            settle_note = conn.execute("SELECT checked_at,note FROM settle_checks ORDER BY checked_at DESC "
+                                       "LIMIT 1").fetchone()
         run = self.store.get_run(day["run_id"]) if day else None
         upcoming = [slot for slot in self.schedule.slots(local.date()) if slot[0] > local]
         next_wakes = {}
@@ -533,6 +608,9 @@ class Heartbeat:
         if day_error is not None:
             problems.insert(0, {"agent_id": None, "scheduled_at": day_error["recorded_at"],
                                 "note": "today's day could not open: " + day_error["code"]})
+        if settle_note is not None and settle_note["note"]:
+            problems.append({"agent_id": None, "scheduled_at": settle_note["checked_at"],
+                             "note": "calls not settled yet: " + settle_note["note"]})
         return {"reason": reason, "paused": self.paused(), "dispatch": self.schedule.dispatch,
                 "mode": self.schedule.mode, "local_time": local.isoformat(),
                 "today": {"run_id": run["run_id"] if run else None,
