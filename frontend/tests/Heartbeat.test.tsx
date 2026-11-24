@@ -10,7 +10,7 @@ vi.mock('../src/api', async importOriginal => ({
 
 const VIEW: api.HeartbeatView = {
   available: true, reason: 'running: next wake 2026-11-19T10:08:00-05:00', paused: false, dispatch: 'live',
-  choices_per_wake: 2,
+  choices_per_wake: 2, notebook_capacity: 6000,
   today: { run_id: 'r1', status: 'open', counted_usd: '0.3653', spent_usd: '0.0933', spent_complete: true,
     daily_budget_usd: '3.00', slot_outcomes: { woke: 2, missed: 1 } },
   next_wake_by_agent: { siren: '2026-11-19T10:08:00-05:00', tempest: '2026-11-19T10:30:00-05:00' },
@@ -23,7 +23,7 @@ const VIEW: api.HeartbeatView = {
   ],
   agents: [
     { agent_id: 'siren', last_wake: null, next_wake: '2026-11-19T10:08:00-05:00',
-      calls: { open: 1, settled: 3, right: 2, wrong: 1, flat: 0, unsettled: 0 } },
+      calls: { open: 1, settled: 3, right: 2, wrong: 1, flat: 0, unsettled: 0 }, notebook_chars: 2140 },
     { agent_id: 'tempest', last_wake: null, next_wake: null },
   ],
   window: {
@@ -51,6 +51,8 @@ describe('Heartbeat page', () => {
     expect(screen.getByText('Tomorrow')).toBeTruthy()
     expect(screen.getByText('1 open · 3 settled (2 right, 1 wrong)')).toBeTruthy()
     expect(screen.getByText('None yet')).toBeTruthy()
+    expect(screen.getByText('2,140 of 6,000 characters')).toBeTruthy()
+    expect(screen.getByText('Empty')).toBeTruthy()
     expect(screen.getByText(/SPY 731\.12/)).toBeTruthy()
     expect(screen.getByText(/Market closed, last prices\./)).toBeTruthy()
     expect(screen.getByText('Not read yet.')).toBeTruthy()

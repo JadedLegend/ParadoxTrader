@@ -23,6 +23,7 @@ from core.usage.pricing import (decimal_add as _decimal_add, decimal_text as _de
                                 decimal_value, validate_model)
 
 from .calls import CALL_FIELDS, CALL_OPTIONS, validate_call_fields
+from .notebook import validate_line
 
 AGENT_IDS = OWNERS = (
     "tempest", "siren", "alchemist", "weaver", "oracle", "shadow", "paradox_hunter",
@@ -30,7 +31,8 @@ AGENT_IDS = OWNERS = (
 CAPABILITIES = ("rest", "journal", "inquire", "library", "roam")
 # A call (docs/specs/CALLS_AND_SETTLEMENT.md) is offered beside the five, only on
 # wakes with a market window, so it is a valid choice but not one of the frozen offers.
-CHOICE_ACTIONS = (*CAPABILITIES, "call", "skill")  # skill: open one shelf skill (SKILL_SHELF.md).
+CHOICE_ACTIONS = (*CAPABILITIES, "call", "skill", "compost_notebook")  # skill: open one shelf skill
+# (SKILL_SHELF.md); compost_notebook: move the notebook into one journal compost note (NOTEBOOK.md).
 # The library's rooms (docs/specs/LIBRARY_ROOMS.md). A library choice may name one.
 LIBRARY_ROOMS = ("writings", "research")
 
@@ -65,7 +67,8 @@ _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter", "
 # Keep the provider's conservative bounded_input accounting without importing it.
 _INPUT_PROTOCOL_BYTES, _INPUT_MESSAGE_BYTES = 2048, 128
 _RUN_FILES = frozenset({
-    "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "calls.sqlite3", "library.sqlite3",
+    "control.sqlite3", "usage.sqlite3", "trade_queue.sqlite3", "calls.sqlite3", "notebook.sqlite3",
+    "library.sqlite3",
     "witness.sqlite3", "library_corpus.json", "library_research_corpus.json", "library_research.sqlite3",
     "profiles/snapshot.json", "home.json",
     *(f"profiles/{owner}_{kind}.json" for owner in OWNERS for kind in ("soul", "living")),
@@ -378,7 +381,8 @@ def _validate_manifest(raw):
 
 
 def _choice(value):
-    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release", "name", *CALL_FIELDS}
+    allowed = {"action", "query", "room", "journal_mode", "channels", "source_ids", "release", "name",
+               "remember", *CALL_FIELDS}
     if (not isinstance(value, dict) or set(value) - allowed
             or not isinstance(value.get("action"), str) or value["action"] not in CHOICE_ACTIONS):
         raise RehearsalError("invalid choice")
@@ -386,6 +390,11 @@ def _choice(value):
         validate_call_fields(value)
     except ValueError:
         raise RehearsalError("invalid call") from None
+    if "remember" in value:
+        try:
+            validate_line(value["remember"])
+        except ValueError:
+            raise RehearsalError("invalid notebook line") from None
     name = value.get("name")
     if (value["action"] == "skill") != ("name" in value) or ("name" in value and (
             not isinstance(name, str) or not 1 <= len(name) <= 64

@@ -138,7 +138,7 @@ export default function Heartbeat() {
         <h2 className="card-title" id="hb-agents">Each agent</h2>
         <div className="usage-table-wrap" tabIndex={0} role="region" aria-label="Each agent's last and next wake">
           <table className="usage-table heartbeat-table">
-            <thead><tr><th scope="col">Agent</th><th scope="col">Last wake</th><th scope="col">Chose</th><th scope="col">Next wake</th><th scope="col">Calls</th></tr></thead>
+            <thead><tr><th scope="col">Agent</th><th scope="col">Last wake</th><th scope="col">Chose</th><th scope="col">Next wake</th><th scope="col">Calls</th><th scope="col">Notebook</th></tr></thead>
             <tbody>{(view.agents ?? []).map(agent => {
               const result = agent.last_wake ? outcome(agent.last_wake) : null
               return <tr key={agent.agent_id}>
@@ -148,6 +148,9 @@ export default function Heartbeat() {
                 <td>{choicesText(agent.last_wake) || <span className="usage-meta">None</span>}</td>
                 <td>{agent.next_wake ? clock(agent.next_wake) : <span className="usage-meta">Tomorrow</span>}</td>
                 <td>{callsText(agent.calls) || <span className="usage-meta">None yet</span>}</td>
+                <td>{typeof agent.notebook_chars === 'number' && agent.notebook_chars > 0 && view.notebook_capacity
+                  ? `${agent.notebook_chars.toLocaleString()} of ${view.notebook_capacity.toLocaleString()} characters`
+                  : <span className="usage-meta">Empty</span>}</td>
               </tr>
             })}</tbody>
           </table>

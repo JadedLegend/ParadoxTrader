@@ -11,6 +11,7 @@ from pathlib import Path
 import sqlite3
 
 from .calls import NO_CALLS
+from .notebook import CAPACITY as NOTEBOOK_CAPACITY, NOTEBOOK_FILE, NotebookStore
 from .heartbeat import LEDGER
 from .store import OWNERS
 
@@ -124,15 +125,22 @@ def day_view(heartbeat, *, settings_dir=None):
         call_counts = calls_store.counts() if calls_store is not None else {}
     except Exception:
         call_counts = None
+    try:  # Characters used only: a notebook's text never reaches this page.
+        notebook = heartbeat._day_run_file(NOTEBOOK_FILE)
+        notebook_sizes = NotebookStore(notebook).sizes() if notebook is not None else {}
+    except Exception:
+        notebook_sizes = None
     agents = []
     for owner in OWNERS:
         last = next((w for w in reversed(wakes) if w["agent_id"] == owner and w["outcome"] == "woke"), None)
         agents.append({"agent_id": owner, "last_wake": last,
                        "next_wake": (status.get("next_wake_by_agent") or {}).get(owner),
-                       "calls": None if call_counts is None else call_counts.get(owner, dict(NO_CALLS))})
+                       "calls": None if call_counts is None else call_counts.get(owner, dict(NO_CALLS)),
+                       "notebook_chars": None if notebook_sizes is None else notebook_sizes.get(owner, 0)})
     view = dict(status)
     view["today"] = dict(status.get("today") or {}, spent_usd=format(spent, "f"), spent_complete=not unknown,
                          counted_usd=format(counted, "f"))
     view.update(choices_per_wake=heartbeat.schedule.choices_per_wake, wakes=wakes, agents=agents,
+                notebook_capacity=NOTEBOOK_CAPACITY,
                 window=_feeds(settings_dir) if settings_dir else {"lines": [], "feeds": []})
     return view

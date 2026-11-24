@@ -10,9 +10,9 @@ import sqlite3
 
 from .store import OWNERS, RehearsalError
 
-MAX_REFS = 4
-MAX_CHARS = 4000
-MAX_EXCERPT_CHARS = 800
+MAX_REFS = 8  # Raised from 4 / 4,000 / 800 with the 48 KB day page (owner, NOTEBOOK.md).
+MAX_CHARS = 8000
+MAX_EXCERPT_CHARS = 1000
 
 
 def _read(store, run_id, relative, query, values):

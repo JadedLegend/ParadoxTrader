@@ -312,11 +312,11 @@ class DecisionControllerTests(unittest.TestCase):
         self.assertEqual(context["refs"], [])
         self.assertFalse((self.path / "memory" / "siren.sqlite3").exists())
 
-    def test_four_refs_and_4000_chars_with_accurate_clipped_refs_and_unchanged_source(self):
+    def test_refs_and_chars_are_capped_with_accurate_clipped_refs_and_unchanged_source(self):
         memory_path = self.path / "memory" / "siren.sqlite3"
         memory = ThresholdMemory(str(memory_path))
         refs = []
-        for index in range(6):
+        for index in range(MAX_REFS + 2):  # More records than fit (8 records, 8,000 characters).
             refs.extend(_memory_effect(memory, "source-" + str(index), "journal", "界" * 2000))
         original = hashlib.sha256(memory_path.read_bytes()).hexdigest()
         rows = [{"agent_id": "siren", "round": 1, "wake_id": "siren-r1", "record_refs": refs},
@@ -385,11 +385,11 @@ class DecisionControllerTests(unittest.TestCase):
                 self.assertTrue(private["include_metadata"])
                 if with_market:
                     self.assertEqual(metadata["call_options"], CALL_OPTIONS)
-                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill, call.",
+                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill, call, compost_notebook.",
                                   messages[0]["content"])
                 else:
                     self.assertNotIn("call_options", metadata)
-                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill.",
+                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill, compost_notebook.",
                                   messages[0]["content"])
                 # The agent reads a short menu; the full metadata stays frozen for the record.
                 self.assertNotIn('"action_costs"', messages[0]["content"])
