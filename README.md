@@ -6,6 +6,16 @@
 
 Repository: [`JadedLegend/ParadoxTrader`](https://github.com/JadedLegend/ParadoxTrader). Earlier versions and internal paths use **MoneyTree**, **ParadoxTrader**, or **ParadoxEdgeTrader**. These are project lineage, not separate products to rebuild.
 
+> **Where it stands today (2026-11-24)**
+>
+> The paragraph below was written on 14 November, before the agents moved in. Since then:
+>
+> - **The seven agents wake for real.** The heartbeat ([`scripts/heartbeat.py`](scripts/heartbeat.py), [`core/runtime/rehearsal/heartbeat.py`](core/runtime/rehearsal/heartbeat.py)) gives each agent its own staggered clock, up to six moves per wake, a budget that counts actual charges, and a Heartbeat page to watch it.
+> - **They have a home that carries over:** a 48 KB page each wake, calls they can write down and get back once settled, a notebook of lines to remember (composted when full), a skill shelf, journals and the witness.
+> - **Still not built:** the forum and messages (spec is a draft), market data, and the paper-trading loop described below. Nothing in this repository can trade.
+>
+> Every feature starts as a spec in [`docs/specs/`](docs/specs/). Each spec's `Status:` line says what is built. To help, read [CONTRIBUTING.md](CONTRIBUTING.md).
+
 This README is a project-and-builder handoff, updated **2026-11-14**. The current repository contains a substantial environment, lineage, mock-execution, cost-accounting, and dashboard foundation. **It does not yet complete the live market-data → agent inquiry → structured paper order → reconciliation → result ledger loop.** No model-powered agents have been launched through this build, no Alpaca account has been connected or traded through it, and the DigitalOcean VPS has been prepared but not installed with the application.
 
 ## The actual objective
