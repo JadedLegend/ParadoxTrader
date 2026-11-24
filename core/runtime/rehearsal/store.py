@@ -49,7 +49,7 @@ DEFAULT_LIMITS = {
 }
 # A "day" run (one continuing day in the agents' home) adds each agent's wakes
 # as they happen, up to MAX_WAKES_PER_AGENT, instead of a fixed two rounds.
-MAX_WAKES_PER_AGENT = 96
+MAX_WAKES_PER_AGENT = 120
 DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
 DAY_MAX_INPUT_BYTES = 32000  # Day runs only, as above; matches provider.DAY_MAX_INPUT_BYTES.
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
