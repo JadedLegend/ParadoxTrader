@@ -346,6 +346,19 @@ class DecisionControllerTests(unittest.TestCase):
         self.assertTrue(context["unavailable"])
         self.assertEqual([r["id"] for r in context["refs"]], [refs[0]["id"]])
 
+    def test_a_context_frozen_before_the_menu_resumes_with_the_same_json(self):
+        controller = self.controller(lambda _url, **kwargs: Response(model=kwargs["json"]["model"]))
+        controller.prepare_profiles()
+        job = next(j for j in self.store.list_jobs(self.run_id) if j["wake_id"] == "siren-r1")
+        metadata, private = controller._new_decision_context(job)
+        menu = controller._choice_messages(metadata, private)[0]["content"]
+        older = {key: value for key, value in private.items() if key != "metadata_format"}
+        legacy = controller._choice_messages(metadata, older)[0]["content"]
+        self.assertIn("Frozen offered choices, catalog cost ceilings, limits and admission observation:\n"
+                      + json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":")), legacy)
+        self.assertNotIn("Frozen offered choices", menu)
+        self.assertLess(len(menu.encode()), len(legacy.encode()) - 800)  # The room handed back to notes.
+
     def test_choice_fits_with_mandatory_metadata_and_marks_context_before_commit(self):
         controller = self.controller(lambda _url, **kwargs: Response(model=kwargs["json"]["model"]))
         controller.prepare_profiles()
@@ -372,10 +385,16 @@ class DecisionControllerTests(unittest.TestCase):
                 self.assertTrue(private["include_metadata"])
                 if with_market:
                     self.assertEqual(metadata["call_options"], CALL_OPTIONS)
-                    self.assertIn('"call_options":' + json.dumps(CALL_OPTIONS, sort_keys=True, separators=(",", ":")),
+                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill, call.",
                                   messages[0]["content"])
                 else:
                     self.assertNotIn("call_options", metadata)
+                    self.assertIn("OFFERED THIS WAKE: rest, journal, inquire, library, roam, skill.",
+                                  messages[0]["content"])
+                # The agent reads a short menu; the full metadata stays frozen for the record.
+                self.assertNotIn('"action_costs"', messages[0]["content"])
+                self.assertIn(f"{metadata['admission_snapshot']['remaining_requests']} of "
+                              f"{metadata['constraints']['max_requests']} requests left", messages[0]["content"])
                 self.assertEqual(metadata["continuity"], public_coverage(private["continuity"]))
                 self.assertLessEqual(controller._input_size(job, messages), cap)
                 self.assertTrue(metadata["continuity"]["truncated"])

@@ -152,6 +152,35 @@ def decision_metadata(manifest, job, snapshot, continuity):
             "journal_options": deepcopy(JOURNAL_OPTIONS)}
 
 
+def metadata_menu(metadata, instructions=""):
+    """The frozen offers and limits as a few plain lines for the choice page.
+
+    The full metadata stays frozen and stored unchanged (the witness, the API
+    and the dashboard read it); only what the agent reads gets shorter, so more
+    of its own notes fit on the page."""
+    offered = list(metadata["offered_actions"])
+    if '"action":"skill"' in instructions:
+        offered.append("skill")
+    if "call_options" in metadata:
+        offered.append("call")
+    ceilings = {}
+    for cost in metadata["action_costs"]:
+        key = (cost["reservation_ceiling_usd"], cost["max_requests"])
+        ceilings.setdefault(key, []).append(cost["action"])
+    worst = "; ".join(f"{', '.join(actions)} up to ${usd} ({count} request{'s' if count != 1 else ''})"
+                      for (usd, count), actions in ceilings.items())
+    snapshot, limits, notes = metadata["admission_snapshot"], metadata["constraints"], metadata["continuity"]
+    cut = ", cut to fit this page" if notes["truncated"] else ""
+    return (f"OFFERED THIS WAKE: {', '.join(offered)}.\n"
+            f"Worst-case cost (a ceiling, not a charge): {worst}.\n"
+            f"Today's room, as observed now (not a reservation; admission may still fail): "
+            f"${snapshot['remaining_budget_usd']} of ${limits['budget_usd']} left, "
+            f"{snapshot['remaining_requests']} of {limits['max_requests']} requests left. "
+            f"Your reply may be up to {limits['max_output_tokens']} tokens.\n"
+            f"Your notes on this page: {len(notes['refs'])} record{'s' if len(notes['refs']) != 1 else ''}, "
+            f"{notes['chars']} characters{cut}.")
+
+
 def _pairs(pairs):
     result = {}
     for key, value in pairs:
@@ -406,7 +435,10 @@ class RehearsalController:
         # Everything here comes from the same committed context on first send
         # and resume. Quoted text is user-role data BELOW final instructions.
         content = private_context.get("choice_instructions", LEGACY_CHOICE_INSTRUCTIONS)
-        if private_context["include_metadata"]:
+        if private_context["include_metadata"] and private_context.get("metadata_format") == "menu":
+            content += "\n" + metadata_menu(metadata, content)
+        elif private_context["include_metadata"]:
+            # Contexts frozen before the menu keep the JSON, so a resumed wake sends the same text.
             content += "\nFrozen offered choices, catalog cost ceilings, limits and admission observation:\n" + json.dumps(
                 metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         if private_context["include_continuity"]:
@@ -431,7 +463,7 @@ class RehearsalController:
             instructions += (f"\nThis wake allows up to {step[1]} choices; this is choice {step[0]} of {step[1]}. "
                              + ("Choosing rest ends the wake." if step[0] < step[1] else "It is the last one."))
         private = {"continuity": continuity, "include_metadata": True, "include_continuity": True,
-                   "choice_instructions": instructions}
+                   "choice_instructions": instructions, "metadata_format": "menu"}
         opened = self._opened_this_wake(job)
         if opened:
             private["open_skills"] = opened
