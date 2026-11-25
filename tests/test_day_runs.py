@@ -7,6 +7,7 @@ import socket
 import tempfile
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
 from api.rehearsal import _owner_wake, _witness_account
 from core.runtime.rehearsal.continuity import owner_continuity
@@ -188,6 +189,37 @@ class DayRunTests(unittest.TestCase):
         served = _witness_account(WitnessStore(self.store.safe_run_file(day, "witness.sqlite3")).record(
             snapshot, scope="steward", operation_key="whole-day"), "steward")
         self.assertIn("Wake outcomes: completed=21.", served["content"])
+
+    def test_the_steward_account_of_a_full_seven_agent_day_is_served(self):
+        # Built directly: 7 x 120 moves through the controller would take far too long.
+        # Each move has its two requests and a journal or call record, as real moves do.
+        run_id = str(uuid4())
+        jobs, requests = [], []
+        for owner in OWNERS:
+            for number in range(1, MAX_WAKES_PER_AGENT + 1):
+                wake = f"{owner}-r{number}"
+                record = {"kind": "call", "id": str(uuid4())} if number % 2 else {"kind": "journal", "id": len(jobs) + 1}
+                jobs.append({"wake_id": wake, "agent_id": owner, "round": number, "status": "completed", "action": "journal",
+                             "failure_code": None, "request_count": 2, "record_refs": [record],
+                             "decision_context": None, "choice_committed": True})
+                requests += [{"request_id": str(uuid4()), "wake_id": wake, "agent_id": owner, "activity": "choice",
+                              "dispatched": 1, "outcome": "success", "failure_code": None} for _ in range(2)]
+        snapshot = {"schema_version": 1, "owner": None, "jobs": jobs, "requests": requests,
+                    "run": {"run_id": run_id, "mode": "offline", "status": "completed", "created_at": None,
+                            "started_at": None, "ended_at": None, "prepared_owners": list(OWNERS)}}
+        witness = WitnessStore(Path(self.temp.name) / "steward" / "witness.sqlite3")
+        account = witness.record(snapshot, scope="steward", operation_key="full-day")
+        self.assertGreater(len(account["source_refs"]), 2521)  # 1 run + 840 wakes + 1,680 requests, then records.
+        served = _witness_account(account, "steward")
+        self.assertEqual(len(served["source_refs"]), len(account["source_refs"]))
+        self.assertIn("Wake outcomes: completed=840.", served["content"])
+
+    def test_an_agents_account_with_a_call_is_served(self):
+        call = {"kind": "call", "id": str(uuid4()), "agent_id": "oracle"}
+        account = {"id": str(uuid4()), "scope": "oracle", "author": "witness", "method": "mechanical",
+                   "content": "oracle-r3: selected call; outcome: completed.", "created_at": "2026-11-25T10:00:00+00:00",
+                   "source_digest": "a" * 64, "source_refs": [{"kind": "wake", "id": "oracle-r3", "agent_id": "oracle"}, call]}
+        self.assertEqual(_witness_account(account, "oracle")["source_refs"][1], call)
 
     def test_rehearsals_are_unchanged_and_the_kinds_do_not_mix(self):
         rehearsal = self.store.prepare(manifest())["run_id"]

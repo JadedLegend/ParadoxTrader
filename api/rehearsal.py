@@ -193,6 +193,9 @@ MAX_WAKES_PER_AGENT = 120
 # request refs and a handful of record refs (library sections, witness reads).
 WITNESS_MAX_CHARS = 48000
 WITNESS_MAX_REFS = 2048
+# The steward account covers the whole run: all seven owners' moves (7 x 120
+# wake refs, up to 1,680 request refs) plus their record refs.
+WITNESS_MAX_STEWARD_REFS = 16384
 
 
 def _owner_wake(owner, wake):
@@ -450,11 +453,12 @@ def _witness_account(value, scope):
             or not UUID.fullmatch(value['id']) or not isinstance(value.get('content'), str)
             or len(value['content']) > WITNESS_MAX_CHARS or not isinstance(value.get('created_at'), str)
             or not isinstance(value.get('source_digest'), str) or len(value['source_digest']) > 256
-            or not isinstance(value.get('source_refs'), list) or len(value['source_refs']) > WITNESS_MAX_REFS):
+            or not isinstance(value.get('source_refs'), list) or len(value['source_refs']) > (WITNESS_MAX_STEWARD_REFS if scope == 'steward' else WITNESS_MAX_REFS)):
         _error(503, 'rehearsal_unavailable')
     refs = []
     for ref in value['source_refs']:
-        if (not isinstance(ref, dict) or ref.get('kind') not in ('run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness')
+        # 'call': a call move's record ref (core.runtime.rehearsal.calls), carried into the account.
+        if (not isinstance(ref, dict) or ref.get('kind') not in ('run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness', 'call')
                 or not (isinstance(ref.get('id'), str) and len(ref['id']) <= 128 or type(ref.get('id')) is int and 1 <= ref['id'] <= 2**63 - 1)
                 or 'agent_id' in ref and (ref['agent_id'] not in AGENTS or scope != 'steward' and ref['agent_id'] != scope)
                 or 'wake_id' in ref and not any(_owner_wake(owner, ref['wake_id']) for owner in (AGENTS if scope == 'steward' else (scope,)))):

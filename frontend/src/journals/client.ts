@@ -12,6 +12,8 @@ const ownerIds = REHEARSAL_AGENTS.map(agent => agent.id as string)
 // one owner's account after a full day of moves.
 const WITNESS_MAX_CHARS = 48000
 const WITNESS_MAX_REFS = 2048
+// The steward account covers the whole run: all seven owners' moves and requests.
+const WITNESS_MAX_STEWARD_REFS = 16384
 
 function literalPrefix(content: string, maxChars: number, maxBytes = Number.MAX_SAFE_INTEGER): string {
   const encoder = new TextEncoder()
@@ -54,9 +56,9 @@ export function projectWitnessAccount(value: unknown, scope: WitnessScope): Witn
   if (!object(value) || value.scope !== scope || value.author !== 'witness' || value.method !== 'mechanical' ||
       typeof value.id !== 'string' || !UUID.test(value.id) || typeof value.content !== 'string' || value.content.length > WITNESS_MAX_CHARS ||
       typeof value.created_at !== 'string' || typeof value.source_digest !== 'string' || value.source_digest.length > 256 ||
-      !Array.isArray(value.source_refs) || value.source_refs.length > WITNESS_MAX_REFS) throw invalid()
+      !Array.isArray(value.source_refs) || value.source_refs.length > (scope === 'steward' ? WITNESS_MAX_STEWARD_REFS : WITNESS_MAX_REFS)) throw invalid()
   const refs = value.source_refs.map((ref: unknown): WitnessSourceRef => {
-    if (!object(ref) || !['run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness'].includes(ref.kind as string) ||
+    if (!object(ref) || !['run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness', 'call'].includes(ref.kind as string) ||
         !(typeof ref.id === 'string' && ref.id.length <= 128 || integer(ref.id, Number.MAX_SAFE_INTEGER)) ||
         own(ref, 'agent_id') && (!ownerIds.includes(ref.agent_id as string) || scope !== 'steward' && ref.agent_id !== scope) ||
         own(ref, 'wake_id') && !(scope === 'steward' ? ownerIds : [scope]).some(owner => isOwnerWake(owner, ref.wake_id)) ||
