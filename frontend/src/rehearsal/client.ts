@@ -1,4 +1,4 @@
-import { REHEARSAL_AGENTS } from './contracts'
+import { REHEARSAL_AGENTS, isOwnerWake } from './contracts'
 import type { RehearsalDecisionMetadata, RehearsalFixture, RehearsalJob, RehearsalPrivateJSON, RehearsalRecordResponse, RehearsalRequest, RehearsalRun } from './contracts'
 import { projectWitnessAccount } from '../journals/client'
 
@@ -50,7 +50,7 @@ function privateContext(value: unknown, owner: string, depth = 0): RehearsalPriv
   if (Array.isArray(value)) return value.map(item => privateContext(item, owner, depth + 1))
   if (!object(value)) throw invalid()
   if (Object.hasOwn(value, 'agent_id') && value.agent_id !== owner) throw invalid()
-  if (Object.hasOwn(value, 'wake_id') && ![`${owner}-r1`, `${owner}-r2`].includes(value.wake_id as string)) throw invalid()
+  if (Object.hasOwn(value, 'wake_id') && !isOwnerWake(owner, value.wake_id)) throw invalid()
   if (value.kind === 'innermost') throw invalid()
   return Object.fromEntries(Object.entries(value).filter(([key]) => privateFields.has(key)).map(([key, item]) => [key, privateContext(item, owner, depth + 1)]))
 }
@@ -118,7 +118,7 @@ export async function readRehearsalFixture(path: string): Promise<unknown> {
   const kind = url.searchParams.get('kind')
   const id = url.searchParams.get('id')
   const wake = url.searchParams.get('wake_id')
-  if (route === 'decisions' && (!agentId || !wake || ![`${agentId}-r1`, `${agentId}-r2`].includes(wake))) throw invalid()
+  if (route === 'decisions' && (!agentId || !wake || !isOwnerWake(agentId, wake))) throw invalid()
   if (route === 'records') {
     if (!agentId || !kind || !id || !['journal', 'episode', 'inquiry', 'library', 'witness'].includes(kind)) throw invalid()
     if (kind === 'inquiry' || kind === 'witness' ? !UUID.test(id) : kind === 'library' ? !/^doc-[0-9a-f]{12}-s[0-9]{5}$/.test(id) : !/^[1-9][0-9]{0,9}$/.test(id) || Number(id) > 2 ** 31 - 1) throw invalid()
@@ -147,7 +147,7 @@ export async function readRehearsalFixture(path: string): Promise<unknown> {
     if (value.run_id !== runId || value.agent_id !== agentId || value.wake_id !== wake || !object(value.decision)) throw invalid()
     const metadata = projectDecisionMetadata(value.decision.metadata)
     if (!metadata || !Array.isArray(value.decision.requests)) throw invalid()
-    if (metadata.continuity.refs.some(ref => ref.agent_id && ref.agent_id !== agentId || ref.wake_id && ![`${agentId}-r1`, `${agentId}-r2`].includes(ref.wake_id))) throw invalid()
+    if (metadata.continuity.refs.some(ref => ref.agent_id && ref.agent_id !== agentId || ref.wake_id && !isOwnerWake(agentId, ref.wake_id))) throw invalid()
     const events = value.decision.requests.map(event => {
       if (!object(event) || event.agent_id !== agentId || event.wake_id !== wake) throw invalid()
       const result = { ...operationalRequest(event as unknown as RehearsalRequest), ...pick(event, ['input_sha256', 'input_coverage', 'input_status', 'context_status', 'messages']) }

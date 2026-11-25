@@ -158,7 +158,7 @@ describe('local decision context owner boundary', () => {
       expect(JSON.stringify(await readRehearsalFixture(`/api/rehearsals/${id}/jobs`))).not.toContain('UNEXPECTED')
     } finally { vi.doUnmock('../src/rehearsal/fixture.json'); vi.resetModules() }
   })
-  it.each(['agent_id=siren&wake_id=tempest-r1', 'agent_id=tempest&wake_id=tempest-r3', 'agent_id=tempest&wake_id=tempest-r1&wake_id=tempest-r2', 'agent_id=tempest', 'wake_id=tempest-r1'])('rejects invalid owner/wake parameters %s', async query => {
+  it.each(['agent_id=siren&wake_id=tempest-r1', 'agent_id=tempest&wake_id=tempest-r0', 'agent_id=tempest&wake_id=tempest-r121', 'agent_id=tempest&wake_id=tempest-r01', 'agent_id=tempest&wake_id=tempest-r1&wake_id=tempest-r2', 'agent_id=tempest', 'wake_id=tempest-r1'])('rejects invalid owner/wake parameters %s', async query => {
     const run = await firstRun()
     await expect(readRehearsalFixture(`/api/rehearsals/${run.run_id}/decisions?${query}`)).rejects.toThrow()
   })
