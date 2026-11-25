@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IS_PREVIEW, IS_PRIVATE_HOST, getRehearsalRuns, getRehearsalRun, getRehearsalJobs, getRehearsalRequests, getRehearsalRecord, getRehearsalDecision } from '../api'
-import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
+import { REHEARSAL_AGENTS, isOwnerWake } from '../rehearsal/contracts'
 import { projectDecisionMetadata } from '../rehearsal/client'
 import { dollars, elapsed, label, text } from '../rehearsal/format'
 import type { RehearsalAgentId, RehearsalDecisionResponse, RehearsalJob, RehearsalRecordRef, RehearsalRecordResponse, RehearsalRequestsResponse, RehearsalRun, RehearsalRunsResponse } from '../rehearsal/contracts'
@@ -101,7 +101,7 @@ export default function Rehearsal() {
         if (!value || typeof value !== 'object') return
         if (Array.isArray(value)) { value.forEach(check); return }
         const item = value as Record<string, unknown>
-        if ('agent_id' in item && item.agent_id !== agentId || 'wake_id' in item && ![`${agentId}-r1`, `${agentId}-r2`].includes(item.wake_id as string) || item.kind === 'innermost') throw new Error('Private owner mismatch')
+        if ('agent_id' in item && item.agent_id !== agentId || 'wake_id' in item && !isOwnerWake(agentId, item.wake_id) || item.kind === 'innermost') throw new Error('Private owner mismatch')
         Object.values(item).forEach(check)
       }
       check(metadata.continuity.refs); check(data.decision.private_context)

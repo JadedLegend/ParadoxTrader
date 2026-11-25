@@ -188,6 +188,11 @@ def _integer(params, key, default, minimum, maximum):
 
 
 MAX_WAKES_PER_AGENT = 120
+# One owner's witness account after a full day: a line per move (at most about
+# 300 characters each) and a run ref, plus per move a wake ref, up to two
+# request refs and a handful of record refs (library sections, witness reads).
+WITNESS_MAX_CHARS = 48000
+WITNESS_MAX_REFS = 2048
 
 
 def _owner_wake(owner, wake):
@@ -443,16 +448,16 @@ def _witness_account(value, scope):
     if (not isinstance(value, dict) or value.get('scope') != scope or value.get('author') != 'witness'
             or value.get('method') != 'mechanical' or not isinstance(value.get('id'), str)
             or not UUID.fullmatch(value['id']) or not isinstance(value.get('content'), str)
-            or len(value['content']) > 24000 or not isinstance(value.get('created_at'), str)
+            or len(value['content']) > WITNESS_MAX_CHARS or not isinstance(value.get('created_at'), str)
             or not isinstance(value.get('source_digest'), str) or len(value['source_digest']) > 256
-            or not isinstance(value.get('source_refs'), list) or len(value['source_refs']) > 256):
+            or not isinstance(value.get('source_refs'), list) or len(value['source_refs']) > WITNESS_MAX_REFS):
         _error(503, 'rehearsal_unavailable')
     refs = []
     for ref in value['source_refs']:
         if (not isinstance(ref, dict) or ref.get('kind') not in ('run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness')
                 or not (isinstance(ref.get('id'), str) and len(ref['id']) <= 128 or type(ref.get('id')) is int and 1 <= ref['id'] <= 2**63 - 1)
                 or 'agent_id' in ref and (ref['agent_id'] not in AGENTS or scope != 'steward' and ref['agent_id'] != scope)
-                or 'wake_id' in ref and (not isinstance(ref['wake_id'], str) or ref['wake_id'] not in tuple(f'{owner}-r{round}' for owner in (AGENTS if scope == 'steward' else (scope,)) for round in (1, 2)))):
+                or 'wake_id' in ref and not any(_owner_wake(owner, ref['wake_id']) for owner in (AGENTS if scope == 'steward' else (scope,)))):
             _error(503, 'rehearsal_unavailable')
         if scope != 'steward' and ref['kind'] in ('wake', 'job') and not _owner_wake(scope, ref['id']):
             _error(503, 'rehearsal_unavailable')

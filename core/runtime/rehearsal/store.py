@@ -57,6 +57,9 @@ DAY_MAX_INPUT_BYTES = 48000  # Day runs only, as above; matches provider.DAY_MAX
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
               "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS,
               "max_input_bytes": DAY_MAX_INPUT_BYTES}
+# The witness snapshot holds a whole run: every owner's rounds and every request.
+# These match the bounds core.runtime.rehearsal.witness checks a snapshot against.
+WITNESS_MAX_JOBS = len(OWNERS) * MAX_WAKES_PER_AGENT
 RUN_KINDS = ("rehearsal", "day")
 _SAFE = re.compile(r"[a-zA-Z0-9_.:-]{1,128}\Z")
 _LABEL = re.compile(r"[a-zA-Z0-9_.:/+@ -]{1,128}\Z")
@@ -913,11 +916,13 @@ class RehearsalStore:
                 + context + ",json_extract(choice,'$.journal_mode') AS journal_mode,"
                 "json_extract(choice,'$.channels') AS channels,"
                 "CASE WHEN choice IS NULL THEN 0 ELSE 1 END AS choice_committed "
-                "FROM jobs" + where + " ORDER BY round,rowid LIMIT 14", args).fetchall()
+                "FROM jobs" + where + " ORDER BY round,rowid LIMIT ?", (*args, WITNESS_MAX_JOBS)).fetchall()
             jobs = []
             for item in rows:
+                # A day run stores each move as its own round, up to MAX_WAKES_PER_AGENT;
+                # a two-round rehearsal is the small case of the same bound.
                 if (item["agent_id"] not in OWNERS or type(item["round"]) is not int
-                        or item["round"] not in (0, 1, 2)
+                        or not 0 <= item["round"] <= MAX_WAKES_PER_AGENT
                         or item["wake_id"] != f"{item['agent_id']}-r{item['round']}"):
                     raise RehearsalConflict("job owner linkage is invalid")
                 job = {field: item[field] for field in ("wake_id", "agent_id", "round", "status", "action", "failure_code", "request_count")}
@@ -931,7 +936,7 @@ class RehearsalStore:
                 jobs.append(job)
             requests = [dict(item) for item in connection.execute(
                 "SELECT request_id,wake_id,agent_id,activity,dispatched,outcome,failure_code "
-                "FROM requests" + where + " ORDER BY rowid LIMIT 28", args)]
+                "FROM requests" + where + " ORDER BY rowid LIMIT ?", (*args, LIMIT_CAPS["max_requests"]))]
             return {"schema_version": 1, "owner": owner, "run": run,
                     "jobs": jobs, "requests": requests}
 

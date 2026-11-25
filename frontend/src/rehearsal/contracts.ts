@@ -7,6 +7,14 @@ export const REHEARSAL_AGENTS = [
   { id: 'paradox_hunter', name: 'ParadoxHunter' },
 ] as const
 export type RehearsalAgentId = typeof REHEARSAL_AGENTS[number]['id']
+/** A day run stores each move as its own round; matches the server's MAX_WAKES_PER_AGENT. */
+export const MAX_WAKES_PER_AGENT = 120
+/** True when `wake` is one of `owner`'s wake IDs: `<owner>-r<n>`, 1 <= n <= 120 (as api/rehearsal.py _owner_wake). */
+export function isOwnerWake(owner: string, wake: unknown): boolean {
+  if (typeof wake !== 'string' || !wake.startsWith(`${owner}-r`)) return false
+  const number = wake.slice(owner.length + 2)
+  return /^[1-9][0-9]{0,2}$/.test(number) && Number(number) <= MAX_WAKES_PER_AGENT
+}
 export type RehearsalStatus = 'prepared' | 'open' | 'running' | 'completed' | 'partial' | 'stopped' | 'uncertain'
 export type RehearsalJobStatus = 'pending' | 'running' | 'claimed' | 'completed' | 'failed' | 'stopped' | 'uncertain'
 export type RehearsalAction = 'rest' | 'journal' | 'inquire' | 'library' | 'roam'

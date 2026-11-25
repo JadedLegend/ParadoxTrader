@@ -8,13 +8,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from api.rehearsal import _owner_wake
+from api.rehearsal import _owner_wake, _witness_account
 from core.runtime.rehearsal.continuity import owner_continuity
 from core.runtime.rehearsal.controller import RehearsalController
 from core.runtime.rehearsal.examples import ScriptedHTTP
 from core.runtime.rehearsal.home import continue_home, previous_run_ids
 from core.runtime.rehearsal.provider import OpenRouterTransport, validate_manifest
-from core.runtime.rehearsal.store import RehearsalConflict, RehearsalError, RehearsalStore
+from core.runtime.rehearsal.store import MAX_WAKES_PER_AGENT, RehearsalConflict, RehearsalError, RehearsalStore
 from core.runtime.rehearsal.witness import WitnessStore
 from tests.test_rehearsal_provider import manifest
 
@@ -156,6 +156,38 @@ class DayRunTests(unittest.TestCase):
         carried = owner_continuity(self.store, second, job)
         self.assertEqual(carried["status"], "available")
         self.assertTrue(all(item.get("earlier_run_id") == first for item in carried["excerpts"]))
+
+    def test_the_witness_keeps_writing_through_a_full_day_of_moves(self):
+        # A day stores each move as its own round, up to MAX_WAKES_PER_AGENT.
+        # The witness was written for two rounds and went silent from round 3.
+        day = self.store.prepare(day_manifest(wakes=MAX_WAKES_PER_AGENT, budget="100.00"))["run_id"]
+        for number in range(1, MAX_WAKES_PER_AGENT + 1):
+            controller = self.controller(day)
+            self.assertEqual(controller.run_wake("oracle")["status"], "completed")
+            self.assertEqual(controller.witness_errors, [], f"oracle-r{number}")
+        witness = WitnessStore(self.store.safe_run_file(day, "witness.sqlite3"))
+        accounts = witness.list_accounts("oracle", limit=20)
+        self.assertEqual(accounts["total"], MAX_WAKES_PER_AGENT)
+        latest = accounts["accounts"][0]
+        self.assertIn(f"oracle-r{MAX_WAKES_PER_AGENT}: selected", latest["content"])
+        # The dashboard's witness page serves the account for the day's last move.
+        served = _witness_account(latest, "oracle")
+        self.assertEqual(served["content"], latest["content"])
+        self.assertEqual(len(served["source_refs"]), len(latest["source_refs"]))
+
+    def test_the_whole_day_snapshot_holds_every_wake_and_request(self):
+        day = self.store.prepare(day_manifest())["run_id"]
+        for _ in range(3):  # 21 wakes and their requests: more than one two-round rehearsal.
+            for owner in OWNERS:
+                self.controller(day).run_wake(owner)
+        self.assertEqual(self.store.close_day(day)["status"], "completed")
+        snapshot = self.store.get_witness_snapshot(day)
+        self.assertEqual(len(snapshot["jobs"]), 21)
+        self.assertEqual(len(snapshot["requests"]), self.store.list_requests(day)["total"])
+        self.assertGreater(len(snapshot["requests"]), 28)
+        served = _witness_account(WitnessStore(self.store.safe_run_file(day, "witness.sqlite3")).record(
+            snapshot, scope="steward", operation_key="whole-day"), "steward")
+        self.assertIn("Wake outcomes: completed=21.", served["content"])
 
     def test_rehearsals_are_unchanged_and_the_kinds_do_not_mix(self):
         rehearsal = self.store.prepare(manifest())["run_id"]

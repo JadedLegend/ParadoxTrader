@@ -1,5 +1,5 @@
 import { JOURNAL_CHANNELS } from './contracts'
-import { REHEARSAL_AGENTS } from '../rehearsal/contracts'
+import { REHEARSAL_AGENTS, isOwnerWake } from '../rehearsal/contracts'
 import type { JournalChannel, JournalFixture, JournalNote, JournalOwner, JournalResponse, JournalSourceHeader, JournalState, WitnessAccount, WitnessResponse, WitnessScope, WitnessSourceRef } from './contracts'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -8,7 +8,10 @@ const integer = (value: unknown, max = 2 ** 31 - 1): value is number => typeof v
 const invalid = () => new Error('Invalid local journal request or source scope. No backend fallback was attempted.')
 const own = (value: object, key: string) => Object.hasOwn(value, key)
 const ownerIds = REHEARSAL_AGENTS.map(agent => agent.id as string)
-const wakes = (owner: string) => [`${owner}-r1`, `${owner}-r2`]
+// Same bounds as the server (api/rehearsal.py WITNESS_MAX_CHARS / WITNESS_MAX_REFS):
+// one owner's account after a full day of moves.
+const WITNESS_MAX_CHARS = 48000
+const WITNESS_MAX_REFS = 2048
 
 function literalPrefix(content: string, maxChars: number, maxBytes = Number.MAX_SAFE_INTEGER): string {
   const encoder = new TextEncoder()
@@ -30,7 +33,7 @@ export function projectJournalNote(value: unknown, owner: JournalOwner): Journal
       value.channels.includes('unclassified') && (value.channels.length !== 1 || value.channels[0] !== 'unclassified') ||
       !['note', 'compost', 'distillation'].includes(value.note_kind as string) || !['active', 'released'].includes(value.state as string) ||
       !['real', 'offline', null].includes(value.source_mode as string | null) ||
-      value.source_wake_id !== null && !wakes(owner).includes(value.source_wake_id as string) ||
+      value.source_wake_id !== null && !isOwnerWake(owner, value.source_wake_id) ||
       !Array.isArray(value.source_ids) || value.source_ids.length > 20 || value.source_ids.some(id => !integer(id)) ||
       new Set(value.source_ids).size !== value.source_ids.length) throw invalid()
   const content = literalPrefix(value.content, 12000)
@@ -49,15 +52,15 @@ export function projectSourceHeader(value: unknown, owner: JournalOwner): Journa
 }
 export function projectWitnessAccount(value: unknown, scope: WitnessScope): WitnessAccount {
   if (!object(value) || value.scope !== scope || value.author !== 'witness' || value.method !== 'mechanical' ||
-      typeof value.id !== 'string' || !UUID.test(value.id) || typeof value.content !== 'string' || value.content.length > 24000 ||
+      typeof value.id !== 'string' || !UUID.test(value.id) || typeof value.content !== 'string' || value.content.length > WITNESS_MAX_CHARS ||
       typeof value.created_at !== 'string' || typeof value.source_digest !== 'string' || value.source_digest.length > 256 ||
-      !Array.isArray(value.source_refs) || value.source_refs.length > 256) throw invalid()
+      !Array.isArray(value.source_refs) || value.source_refs.length > WITNESS_MAX_REFS) throw invalid()
   const refs = value.source_refs.map((ref: unknown): WitnessSourceRef => {
     if (!object(ref) || !['run', 'wake', 'job', 'request', 'journal', 'episode', 'inquiry', 'library', 'witness'].includes(ref.kind as string) ||
         !(typeof ref.id === 'string' && ref.id.length <= 128 || integer(ref.id, Number.MAX_SAFE_INTEGER)) ||
         own(ref, 'agent_id') && (!ownerIds.includes(ref.agent_id as string) || scope !== 'steward' && ref.agent_id !== scope) ||
-        own(ref, 'wake_id') && !(scope === 'steward' ? ownerIds.flatMap(wakes) : wakes(scope)).includes(ref.wake_id as string) ||
-        scope !== 'steward' && ['wake', 'job'].includes(ref.kind as string) && !wakes(scope).includes(ref.id as string)) throw invalid()
+        own(ref, 'wake_id') && !(scope === 'steward' ? ownerIds : [scope]).some(owner => isOwnerWake(owner, ref.wake_id)) ||
+        scope !== 'steward' && ['wake', 'job'].includes(ref.kind as string) && !isOwnerWake(scope, ref.id)) throw invalid()
     return { kind: ref.kind as string, id: ref.id as string | number,
       ...(own(ref, 'agent_id') ? { agent_id: ref.agent_id as JournalOwner } : {}),
       ...(own(ref, 'wake_id') ? { wake_id: ref.wake_id as string } : {}) }
