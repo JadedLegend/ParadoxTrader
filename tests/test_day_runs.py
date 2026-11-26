@@ -260,6 +260,19 @@ class DayRunTests(unittest.TestCase):
             with self.subTest(wake=wake):
                 self.assertFalse(_owner_wake(owner, wake))
 
+    def test_day_runs_use_day_rules_and_rehearsals_keep_session_rules(self):
+        from core.runtime.rehearsal.controller import DAY_RULES, SESSION_RULES, snapshot_profiles
+        rehearsal_id = self.store.prepare(manifest())["run_id"]
+        day_id = self.store.prepare(day_manifest())["run_id"]
+        snapshot_profiles(self.store, rehearsal_id)
+        snapshot_profiles(self.store, day_id)
+        rehearsal_prompt = (self.store.run_path(rehearsal_id) / "profiles" / "tempest_prompt.txt").read_text(encoding="utf-8")
+        day_prompt = (self.store.run_path(day_id) / "profiles" / "tempest_prompt.txt").read_text(encoding="utf-8")
+        self.assertIn(SESSION_RULES, rehearsal_prompt)
+        self.assertIn(DAY_RULES, day_prompt)
+        self.assertNotIn("no\nportfolio, paper portfolio, broker/account access, market/news/feed evidence", day_prompt)
+        self.assertNotIn("market/news/feed evidence", day_prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

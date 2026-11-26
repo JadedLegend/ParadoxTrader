@@ -124,6 +124,9 @@ def _job(value):
                     or not isinstance(ref.get('id'), str) or not UUID.fullmatch(ref['id'])
                     or ref.get('agent_id', value['agent_id']) != value['agent_id']):
                 continue
+        elif ref.get('kind') == 'call':
+            if type(ref.get('id')) is not int or not 1 <= ref['id'] <= 2**31 - 1:
+                continue
         elif ref.get('kind') not in ('journal', 'episode', 'inquiry', 'library'):
             continue
         result['record_refs'].append(_project(ref, ('kind', 'id')))
