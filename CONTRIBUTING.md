@@ -1,6 +1,6 @@
 # Contributing to Paradox Edge Trader
 
-Thank you for helping. This project is a trading application with a home for seven AI agents inside it. The home is real and running; the trading loop is not built yet. Start with the "Where it stands today" box at the top of the [README](README.md).
+Thank you for helping. This project is a trading application with a home for seven AI agents inside it. The home is real and running; the trading loop is not built yet. Start with the "Where it stands today" box at the top of the [README](README.md). AI coding agents should read [AGENTS.md](AGENTS.md) first: it gives the shortest route through the repository.
 
 ## How work moves here
 

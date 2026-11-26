@@ -1,0 +1,1086 @@
+{
+  "title": "Paradox Edge Trader — Architecture",
+  "subtitle": "Built from a scan of scripts/, core/, api/, deploy/, frontend/ and agents/ on main at f05e15b (2026-11-26). Regenerate with docs/code-map/README.md.",
+  "summary": "Two systems live side by side. The one running on the server is the heartbeat: a timer ticks every minute, each of the seven agents wakes on its own staggered clock, takes up to six moves in a 48 KB page, and keeps a home that carries over day to day (notebook, calls, journals, witness, library, skill shelf). The owner watches through a private, mostly read-only dashboard. The older system (main.py, api/app.py, the council and the Alpaca order path) is still in the repo but is not wired to the server. Nothing on the live path can trade.",
+  "mode": "architecture",
+  "meta": [
+    "Python + FastAPI/Starlette",
+    "SQLite per store",
+    "React + Vite",
+    "OpenRouter models",
+    "systemd on a VPS",
+    "Paper data only"
+  ],
+  "layers": [
+    {
+      "key": "ops",
+      "label": "Server & clock",
+      "color": "#475569"
+    },
+    {
+      "key": "ui",
+      "label": "Owner dashboard",
+      "color": "#2563eb"
+    },
+    {
+      "key": "runtime",
+      "label": "Wake runtime",
+      "color": "#7c3aed"
+    },
+    {
+      "key": "home",
+      "label": "Agents' home",
+      "color": "#b45309"
+    },
+    {
+      "key": "market",
+      "label": "Market reads",
+      "color": "#0f766e"
+    },
+    {
+      "key": "legacy",
+      "label": "Legacy (not on server)",
+      "color": "#9f1239"
+    }
+  ],
+  "clusters": [
+    {
+      "key": "server",
+      "label": "Server (systemd)",
+      "row": 0
+    },
+    {
+      "key": "dash",
+      "label": "Private dashboard",
+      "row": 0
+    },
+    {
+      "key": "beat",
+      "label": "Heartbeat & wakes",
+      "row": 1
+    },
+    {
+      "key": "home",
+      "label": "The agents' home",
+      "row": 1
+    },
+    {
+      "key": "market",
+      "label": "Market window",
+      "row": 2
+    },
+    {
+      "key": "ext",
+      "label": "Outside services",
+      "row": 2
+    },
+    {
+      "key": "legacy",
+      "label": "Legacy app (kept, not running)",
+      "row": 2
+    }
+  ],
+  "nodes": [
+    {
+      "id": "timer",
+      "label": "Heartbeat timer",
+      "hint": "every minute",
+      "layer": "ops",
+      "cluster": "server",
+      "description": "A systemd timer that runs the heartbeat's tick once a minute. It is the only thing that starts agent wakes on the server.",
+      "decisions": [
+        "The clock lives in systemd, not in a long-running Python thread, so a crash or restart loses nothing: the next tick recomputes the same slots."
+      ],
+      "files": [
+        "deploy/systemd/paradoxtrader-heartbeat.timer",
+        "deploy/systemd/paradoxtrader-heartbeat.service"
+      ],
+      "data": [
+        "/var/lib/paradoxtrader/sessions",
+        "/etc/paradoxtrader/heartbeat.json"
+      ]
+    },
+    {
+      "id": "hb-cli",
+      "label": "Heartbeat CLI",
+      "hint": "tick / status / pause",
+      "layer": "ops",
+      "cluster": "server",
+      "description": "The command line the timer calls. It wires everything together: the store, owner settings, the market reads, the model transport, and how a day run is prepared.",
+      "decisions": [
+        "A real tick refuses before preparing anything if there is no OpenRouter key.",
+        "Offline wakes patch out all networking, so a test run cannot reach the internet.",
+        "Errors print only fixed codes, never keys or provider bodies."
+      ],
+      "files": [
+        "scripts/heartbeat.py:63",
+        "scripts/heartbeat.py:155",
+        "scripts/rehearsal.py:47"
+      ],
+      "data": [
+        "manifest",
+        "day run limits"
+      ]
+    },
+    {
+      "id": "check-backup",
+      "label": "Check & backup",
+      "hint": "helper services",
+      "layer": "ops",
+      "cluster": "server",
+      "description": "Two small helpers. The connection check tests the saved key and chosen models (and data accounts) without paying for generation, when the dashboard asks. The backup copies every SQLite database each morning at 07:17 and keeps 14.",
+      "decisions": [
+        "The dashboard never calls a provider itself: it drops a request file and a systemd path unit wakes the check service."
+      ],
+      "files": [
+        "scripts/check_connection.py:19",
+        "core/runtime/service_check.py:68",
+        "deploy/systemd/paradoxtrader-check.path",
+        "deploy/backup_data.py:100",
+        "deploy/systemd/paradoxtrader-backup.timer"
+      ],
+      "data": [
+        "check result file",
+        "/var/backups/paradoxtrader"
+      ]
+    },
+    {
+      "id": "gateway",
+      "label": "Private dashboard",
+      "hint": "owner login, port 8080",
+      "layer": "ui",
+      "cluster": "dash",
+      "description": "The owner's web gateway on the VPS. Serves the built React app and the read-only APIs behind a password, bound to loopback.",
+      "decisions": [
+        "Never imports the old api/app.py, so no scheduler, model call or broker exists here.",
+        "Only GET/HEAD, except saving Settings and asking for a connection check — both need same-origin and the owner login."
+      ],
+      "files": [
+        "deploy/private_dashboard.py:263",
+        "deploy/private_dashboard.py:110",
+        "deploy/systemd/paradoxtrader-dashboard.service"
+      ],
+      "data": [
+        "/api/settings",
+        "/api/settings/check",
+        "/api/heartbeat",
+        "/api/rehearsals/*"
+      ]
+    },
+    {
+      "id": "frontend",
+      "label": "React dashboard",
+      "hint": "14 pages",
+      "layer": "ui",
+      "cluster": "dash",
+      "description": "The single-page app: Heartbeat, Sessions, Journals, Library, Costs, Settings and the older pages (Forum, Inbox, Trade Queue, Agents). It also runs as a fixture preview with sample data.",
+      "decisions": [
+        "On the private host, pages with no data source say so instead of pretending.",
+        "Several pages (Forum, Messages, Trade Queue) were built for the legacy API and have nothing behind them on the server."
+      ],
+      "files": [
+        "frontend/src/App.tsx:55",
+        "frontend/src/views/Heartbeat.tsx",
+        "frontend/src/views/Settings.tsx",
+        "frontend/src/rehearsal/client.ts"
+      ],
+      "data": [
+        "fixtures.json",
+        "contracts.ts types"
+      ]
+    },
+    {
+      "id": "settings",
+      "label": "Owner settings",
+      "hint": "key, models, budget",
+      "layer": "ui",
+      "cluster": "dash",
+      "description": "Where the owner's choices live: the OpenRouter key, each agent's model, the daily budget, the watchlist and data-account keys. The heartbeat reads these on every wake.",
+      "decisions": [
+        "Keys are write-only (own file, mode 0600); reads show only whether set and the last four characters.",
+        "Every change is an append-only history row.",
+        "Model and budget changes apply from the next wake; nothing here starts or stops one."
+      ],
+      "files": [
+        "core/runtime/owner_settings.py:92"
+      ],
+      "data": [
+        "/var/lib/paradoxtrader/settings",
+        "settings history"
+      ]
+    },
+    {
+      "id": "read-apis",
+      "label": "Read-only APIs",
+      "hint": "sessions + heartbeat",
+      "layer": "ui",
+      "cluster": "dash",
+      "description": "Plain reads for the dashboard: recorded runs, their jobs, requests, decisions, journals and witness accounts, plus the Heartbeat page's day view (who woke, why not, spend, market caches).",
+      "decisions": [
+        "The Heartbeat page is built on Heartbeat.status(), so the page and the clock always agree on why something is or isn't happening.",
+        "Never returns a key or a private note."
+      ],
+      "files": [
+        "api/rehearsal.py:485",
+        "core/runtime/rehearsal/heartbeat_view.py:96"
+      ],
+      "data": [
+        "runs",
+        "jobs",
+        "decisions",
+        "witness accounts"
+      ]
+    },
+    {
+      "id": "heartbeat",
+      "label": "Heartbeat",
+      "hint": "staggered clocks",
+      "layer": "runtime",
+      "cluster": "beat",
+      "description": "Decides, each tick, which agents are due. Opens a 'day run' at the first wake of the local day, continues the home from yesterday, adds each wake as it falls due, and closes the day when the date changes. Also settles open calls about every 30 minutes.",
+      "decisions": [
+        "No catch-up storm: a slot past its grace window is recorded as missed, never run later.",
+        "One wake at a time per agent; an unfinished one blocks only that agent.",
+        "Every decision (woke, missed, blocked, over budget, paused) is a row in heartbeat.sqlite3."
+      ],
+      "files": [
+        "core/runtime/rehearsal/heartbeat.py:182",
+        "core/runtime/rehearsal/heartbeat.py:390",
+        "core/runtime/rehearsal/heartbeat.py:74"
+      ],
+      "data": [
+        "heartbeat.sqlite3",
+        "heartbeat.paused",
+        "heartbeat.lock"
+      ]
+    },
+    {
+      "id": "store",
+      "label": "Run store",
+      "hint": "budget + checkpoints",
+      "layer": "runtime",
+      "cluster": "beat",
+      "description": "The private record of each run: its fixed manifest, each wake's jobs, write-once choice and output checkpoints, and the money ledger. It reserves the most a request could cost before it is sent.",
+      "decisions": [
+        "Reservations stay charged even if the result is unknown, so the daily budget can't be overshot by failures.",
+        "Allowed moves are a fixed list (CHOICE_ACTIONS), enforced here rather than in a prompt."
+      ],
+      "files": [
+        "core/runtime/rehearsal/store.py:669",
+        "core/runtime/rehearsal/store.py:996",
+        "core/runtime/rehearsal/store.py:1281",
+        "core/runtime/rehearsal/store.py:34"
+      ],
+      "data": [
+        "control database",
+        "admission ledger",
+        "MAX_WAKES_PER_AGENT = 120"
+      ]
+    },
+    {
+      "id": "controller",
+      "label": "Wake controller",
+      "hint": "one wake, ≤6 moves",
+      "layer": "runtime",
+      "cluster": "beat",
+      "description": "Runs one agent's wake. Builds the page (identity, notebook, calls, market window, continuity), asks the model to pick a move, carries it out, and repeats up to six times. Moves: rest, journal, inquire, library, roam, call, skill, compost_notebook.",
+      "decisions": [
+        "Choosing a call or a notebook line rides inside the choice itself, so it costs no extra request.",
+        "Library text is passed as quoted untrusted data, never as instructions.",
+        "Rest ends the wake early."
+      ],
+      "files": [
+        "core/runtime/rehearsal/controller.py:394",
+        "core/runtime/rehearsal/controller.py:961",
+        "core/runtime/rehearsal/controller.py:857"
+      ],
+      "data": [
+        "48 KB page cap",
+        "choice JSON"
+      ]
+    },
+    {
+      "id": "provider",
+      "label": "Model gateway",
+      "hint": "single attempt",
+      "layer": "runtime",
+      "cluster": "beat",
+      "description": "Sends one request to OpenRouter for the controller and records what it actually cost. Also validates the manifest and the frozen model catalog prices.",
+      "decisions": [
+        "No retry, no fallback model, no default model — a failure is recorded, not hidden.",
+        "Needs the store, controller token and wake id for every call."
+      ],
+      "files": [
+        "core/runtime/rehearsal/provider.py:375",
+        "core/runtime/rehearsal/provider.py:398",
+        "core/runtime/rehearsal/provider.py:233"
+      ],
+      "data": [
+        "usage metadata",
+        "catalog snapshot"
+      ]
+    },
+    {
+      "id": "identity",
+      "label": "Soul & living",
+      "hint": "who each agent is",
+      "layer": "home",
+      "cluster": "home",
+      "description": "Each agent's fixed identity (soul.json) and editable layer (living.json), plus the identity seeds and orientations given at arrival. Snapshotted into each run.",
+      "decisions": [
+        "Profiles are snapshotted per run; a wake never re-reads the live originals."
+      ],
+      "files": [
+        "agents/tempest/soul.json",
+        "agents/tempest/living.json",
+        "core/runtime/community.py:144",
+        "core/runtime/orientations/seven_seeds.json",
+        "core/runtime/rehearsal/controller.py:277"
+      ],
+      "data": [
+        "7 agents: tempest, siren, alchemist, weaver, oracle, shadow, paradox_hunter"
+      ]
+    },
+    {
+      "id": "notebook",
+      "label": "Notebook",
+      "hint": "lines to remember",
+      "layer": "home",
+      "cluster": "home",
+      "description": "One line to remember may be added on any move and is printed on every page. When full, the agent composts it into a journal note.",
+      "decisions": [
+        "Append-only; nothing fades. A line that doesn't fit is recorded as 'did not fit' until the agent composts."
+      ],
+      "files": [
+        "core/runtime/rehearsal/notebook.py:75",
+        "docs/specs/NOTEBOOK.md"
+      ],
+      "data": [
+        "notebook lines"
+      ]
+    },
+    {
+      "id": "calls",
+      "label": "Calls",
+      "hint": "sealed forecasts",
+      "layer": "home",
+      "cluster": "home",
+      "description": "An agent writes down a forecast sealed with the price it was shown. Later the heartbeat settles it against real daily closes and hands the result back on the agent's page.",
+      "decisions": [
+        "A call is a forecast, not a trade: it buys nothing and touches no broker.",
+        "The entry price comes only from the market window committed with that choice, so nothing can see the future."
+      ],
+      "files": [
+        "core/runtime/rehearsal/calls.py:146",
+        "core/runtime/rehearsal/calls.py:280",
+        "docs/specs/CALLS_AND_SETTLEMENT.md"
+      ],
+      "data": [
+        "calls table",
+        "settlements table"
+      ]
+    },
+    {
+      "id": "journals",
+      "label": "Journals & compost",
+      "hint": "private notes",
+      "layer": "home",
+      "cluster": "home",
+      "description": "Each agent's private journal and episodes, with optional compost (classify, distil) of older notes.",
+      "decisions": [
+        "Journal rows are the originals; compost adds metadata in the same database, never a second ledger."
+      ],
+      "files": [
+        "core/memory/compost.py:65",
+        "core/runtime/rehearsal/controller.py:717",
+        "core/memory/engine.py:106"
+      ],
+      "data": [
+        "journal",
+        "episodes",
+        "compost"
+      ]
+    },
+    {
+      "id": "carry",
+      "label": "Continuing home",
+      "hint": "day to day",
+      "layer": "home",
+      "cluster": "home",
+      "description": "Lets today's run start from yesterday's: copies each agent's private memory and the witness's accounts forward.",
+      "decisions": [
+        "The earlier run is only read. Copies go through SQLite online backup into a temp file, integrity-checked, then renamed — a crash never leaves half a database."
+      ],
+      "files": [
+        "core/runtime/rehearsal/home.py:130"
+      ],
+      "data": [
+        "home.json link"
+      ]
+    },
+    {
+      "id": "witness",
+      "label": "Witness",
+      "hint": "factual, not a model",
+      "layer": "home",
+      "cluster": "home",
+      "description": "A mechanical record of what happened in each wake (moves made, requests, outcomes), written as plain accounts the agents can read.",
+      "decisions": [
+        "Not a model and not an agent; it never writes into anyone's memory.",
+        "Day runs: accepts rounds 0–120 per agent; the steward account covers the whole run."
+      ],
+      "files": [
+        "core/runtime/rehearsal/witness.py:196",
+        "core/runtime/rehearsal/store.py:892"
+      ],
+      "data": [
+        "witness.sqlite3"
+      ]
+    },
+    {
+      "id": "library",
+      "label": "Library & skills",
+      "hint": "rooms + shelf",
+      "layer": "home",
+      "cluster": "home",
+      "description": "A searchable local library (writings and research rooms) and a small skill shelf the agent can open during a wake.",
+      "decisions": [
+        "Search is a rebuildable SQLite FTS5 index over an explicit corpus; no network.",
+        "A skill is guidance, not permission: the offered choices still decide what an agent can do."
+      ],
+      "files": [
+        "core/library/store.py:131",
+        "core/runtime/orientation.py:45",
+        "core/runtime/skills/making-calls/SKILL.md",
+        "library/corpus.json"
+      ],
+      "data": [
+        "library FTS index",
+        "skill shelf"
+      ]
+    },
+    {
+      "id": "window",
+      "label": "Price window",
+      "hint": "watchlist + closes",
+      "layer": "market",
+      "cluster": "market",
+      "description": "A small shared snapshot of the watchlist's prices, refreshed at most once per window and cached for every agent. Daily closes for settling calls come through the same data key.",
+      "decisions": [
+        "One kind of GET only, on Alpaca's market-data host; it never uses core/trading/alpaca.py, which can place orders.",
+        "A failed fetch is cached as 'unavailable' so it isn't retried until the next window."
+      ],
+      "files": [
+        "core/market/window.py:143",
+        "core/market/closes.py:45"
+      ],
+      "data": [
+        "market cache JSON"
+      ]
+    },
+    {
+      "id": "options",
+      "label": "Options view",
+      "hint": "one ticker",
+      "layer": "market",
+      "cluster": "market",
+      "description": "Near-the-money calls and puts for one ticker at the two nearest expiries, labelled 'indicative, delayed'.",
+      "decisions": [
+        "Fetched only during market hours, shared and cached like the price window."
+      ],
+      "files": [
+        "core/market/options.py:161",
+        "docs/specs/OPTIONS_VIEW.md"
+      ],
+      "data": [
+        "options cache JSON"
+      ]
+    },
+    {
+      "id": "feeds",
+      "label": "Headlines & posts",
+      "hint": "news, X, Reddit",
+      "layer": "market",
+      "cluster": "market",
+      "description": "Up to five headlines, three X posts and the top Reddit posts for the watchlist, cached and shared.",
+      "decisions": [
+        "Read-only tokens: nothing can be posted, liked or sent.",
+        "Hourly/two-hourly fetch caps and a daily X post cap keep cost bounded."
+      ],
+      "files": [
+        "core/market/feeds.py:219",
+        "core/market/feeds.py:106"
+      ],
+      "data": [
+        "feeds cache JSON"
+      ]
+    },
+    {
+      "id": "openrouter",
+      "label": "OpenRouter",
+      "hint": "LLM provider",
+      "layer": "ops",
+      "cluster": "ext",
+      "description": "The model provider for every agent. Each agent can be on a different model, chosen in Settings.",
+      "decisions": [
+        "Key comes from Settings first, then REHEARSAL_OPENROUTER_API_KEY."
+      ],
+      "files": [
+        "core/runtime/rehearsal/provider.py:375",
+        "scripts/heartbeat.py:76"
+      ],
+      "data": [
+        "chat completions",
+        "actual charges"
+      ]
+    },
+    {
+      "id": "data-providers",
+      "label": "Data providers",
+      "hint": "Alpaca data, news",
+      "layer": "ops",
+      "cluster": "ext",
+      "description": "Alpaca's market-data API (paper data key, free IEX/indicative feeds), Massive news, X search and Reddit via redditapis.com.",
+      "decisions": [
+        "Only data endpoints are called on the live path; no trading endpoint is reachable."
+      ],
+      "files": [
+        "core/market/window.py:94",
+        "core/market/options.py:120",
+        "core/market/feeds.py:130"
+      ],
+      "data": [
+        "quotes",
+        "bars",
+        "headlines",
+        "posts"
+      ]
+    },
+    {
+      "id": "legacy-cli-api",
+      "label": "main.py + old API",
+      "hint": "CLI, FastAPI, scheduler",
+      "layer": "legacy",
+      "cluster": "legacy",
+      "description": "The original entry points: the main.py CLI (init, run, wake, queue, approve…) and the broad FastAPI app with a background scheduler thread that wakes agents on an interval.",
+      "decisions": [
+        "Kept for lineage, but deliberately not used on the server — the private dashboard never imports it."
+      ],
+      "files": [
+        "main.py:229",
+        "api/app.py:461",
+        "core/runtime/scheduler.py:69"
+      ],
+      "data": [
+        "forum, messages, queue, config endpoints"
+      ]
+    },
+    {
+      "id": "agent-loop",
+      "label": "Old wake loop",
+      "hint": "HRV energy model",
+      "layer": "legacy",
+      "cluster": "legacy",
+      "description": "The first wake cycle: HRV energy points, Threshold Memory, five generated choices and an action executor. Replaced on the server by the heartbeat + controller.",
+      "decisions": [
+        "HRV gave each agent finite energy and an 'Interval' rest state; the new runtime uses the money budget and 'rest' moves instead."
+      ],
+      "files": [
+        "core/runtime/agent_loop.py:749",
+        "core/hrv/engine.py:163",
+        "core/runtime/llm.py:233"
+      ],
+      "data": [
+        "hrv.sqlite3",
+        "per-agent memory.sqlite3"
+      ]
+    },
+    {
+      "id": "council",
+      "label": "Council & Alpaca",
+      "hint": "can place orders",
+      "layer": "legacy",
+      "cluster": "legacy",
+      "description": "The Paradox Hunter's council deliberation and the Alpaca paper-trading client with guardrails and a review queue.",
+      "decisions": [
+        "The only code in the repo that can submit an order; nothing on the live path imports it.",
+        "When autonomous mode is off, trades queue for owner approval."
+      ],
+      "files": [
+        "core/trading/council.py:188",
+        "core/trading/alpaca.py:237",
+        "core/trading/queue.py:64"
+      ],
+      "data": [
+        "trade_queue.sqlite3"
+      ]
+    },
+    {
+      "id": "lineage",
+      "label": "Lineage & mock",
+      "hint": "inquiry → mock fill",
+      "layer": "legacy",
+      "cluster": "legacy",
+      "description": "Durable inquiry records and a local mock options venue for rehearsing the proposal → order → fill → position path without a real broker.",
+      "decisions": [
+        "Idempotent by design: BEGIN IMMEDIATE serialises writes, so retries can't double-fill.",
+        "Foundation for the future paper loop; not yet connected to the heartbeat."
+      ],
+      "files": [
+        "core/trading/lineage/store.py:62",
+        "core/trading/mock_broker.py:88",
+        "core/trading/lifecycle.py:116",
+        "core/runtime/inquiry.py:447"
+      ],
+      "data": [
+        "lineage tables",
+        "mock venue DB"
+      ]
+    },
+    {
+      "id": "forum",
+      "label": "Forum & messages",
+      "hint": "spec is a draft",
+      "layer": "legacy",
+      "cluster": "legacy",
+      "description": "Old shared forum and direct-message stores. The new version for the heartbeat is still a draft spec waiting for the owner's OK.",
+      "decisions": [
+        "Nothing is built for the new runtime yet."
+      ],
+      "files": [
+        "core/forum/store.py:54",
+        "core/messaging/store.py:33",
+        "docs/specs/FORUM_AND_MESSAGES.md"
+      ],
+      "data": [
+        "forum.sqlite3",
+        "messages.sqlite3"
+      ]
+    }
+  ],
+  "edges": [
+    [
+      "timer",
+      "hb-cli",
+      "runs tick"
+    ],
+    [
+      "hb-cli",
+      "heartbeat",
+      "builds"
+    ],
+    [
+      "hb-cli",
+      "settings",
+      "reads key, models"
+    ],
+    [
+      "heartbeat",
+      "store",
+      "prepare day, add wake"
+    ],
+    [
+      "heartbeat",
+      "controller",
+      "run_wake"
+    ],
+    [
+      "heartbeat",
+      "carry",
+      "continue home"
+    ],
+    [
+      "heartbeat",
+      "calls",
+      "settle open calls"
+    ],
+    [
+      "heartbeat",
+      "settings",
+      "budget, models"
+    ],
+    [
+      "controller",
+      "provider",
+      "ask for a move"
+    ],
+    [
+      "provider",
+      "store",
+      "reserve, record cost"
+    ],
+    [
+      "provider",
+      "openrouter",
+      "HTTPS"
+    ],
+    [
+      "controller",
+      "identity",
+      "snapshot profiles"
+    ],
+    [
+      "controller",
+      "notebook",
+      "remember / compost"
+    ],
+    [
+      "controller",
+      "calls",
+      "make call"
+    ],
+    [
+      "controller",
+      "journals",
+      "write note"
+    ],
+    [
+      "controller",
+      "library",
+      "search / open skill"
+    ],
+    [
+      "controller",
+      "witness",
+      "record account"
+    ],
+    [
+      "controller",
+      "window",
+      "prices on page"
+    ],
+    [
+      "controller",
+      "options",
+      "options on page"
+    ],
+    [
+      "controller",
+      "feeds",
+      "headlines on page"
+    ],
+    [
+      "notebook",
+      "journals",
+      "compost when full"
+    ],
+    [
+      "carry",
+      "journals",
+      "copy forward"
+    ],
+    [
+      "carry",
+      "witness",
+      "copy forward"
+    ],
+    [
+      "calls",
+      "window",
+      "daily closes"
+    ],
+    [
+      "window",
+      "data-providers",
+      "GET snapshots"
+    ],
+    [
+      "options",
+      "data-providers",
+      "GET options"
+    ],
+    [
+      "feeds",
+      "data-providers",
+      "GET news/posts"
+    ],
+    [
+      "frontend",
+      "gateway",
+      "same-origin fetch"
+    ],
+    [
+      "gateway",
+      "read-apis",
+      "mounts"
+    ],
+    [
+      "gateway",
+      "settings",
+      "save settings"
+    ],
+    [
+      "gateway",
+      "check-backup",
+      "request check"
+    ],
+    [
+      "check-backup",
+      "openrouter",
+      "test key"
+    ],
+    [
+      "read-apis",
+      "store",
+      "read runs"
+    ],
+    [
+      "read-apis",
+      "heartbeat",
+      "status()"
+    ],
+    [
+      "legacy-cli-api",
+      "agent-loop",
+      "wake"
+    ],
+    [
+      "agent-loop",
+      "council",
+      "trade idea"
+    ],
+    [
+      "council",
+      "lineage",
+      "proposal record"
+    ],
+    [
+      "legacy-cli-api",
+      "forum",
+      "posts, DMs"
+    ]
+  ],
+  "flows": [
+    {
+      "id": "wake",
+      "label": "A wake",
+      "title": "One agent's wake, from the minute timer to a saved note",
+      "nodes": [
+        "timer",
+        "hb-cli",
+        "heartbeat",
+        "store",
+        "controller",
+        "provider",
+        "openrouter",
+        "window",
+        "notebook",
+        "journals",
+        "witness"
+      ],
+      "steps": [
+        "The systemd timer runs scripts/heartbeat.py tick at the top of the minute.",
+        "The CLI builds the Heartbeat with today's owner settings (key, models, budget).",
+        "Heartbeat finds which agents' slots are due, skips missed or blocked ones, and opens or continues today's day run.",
+        "The store adds this agent's wake and, for each move, reserves the most the request could cost.",
+        "The controller builds the page — identity, notebook, open calls, price window, continuity — capped at 48 KB.",
+        "The model gateway sends one request to OpenRouter and records the actual charge.",
+        "The controller carries out the chosen move (journal, library, call, rest…), adds any notebook line, and asks again, up to six moves.",
+        "The witness writes a plain account of what happened; the heartbeat ledger records the slot as woke."
+      ],
+      "decisions": [
+        "Every limit (budget, moves, page size, one wake per agent) is enforced in code, never by asking the model to behave.",
+        "A wake is an opportunity, not a demand — rest is always allowed and ends it early."
+      ]
+    },
+    {
+      "id": "call",
+      "label": "A call",
+      "title": "A call: sealed forecast → settled result back on the page",
+      "nodes": [
+        "controller",
+        "window",
+        "calls",
+        "heartbeat",
+        "data-providers"
+      ],
+      "steps": [
+        "During a wake the agent chooses a 'call' with a ticker, direction and horizon.",
+        "The entry price is taken from the price window already committed with that choice.",
+        "The call is stored append-only; it is open until settled.",
+        "About every 30 minutes while calls are due, the heartbeat fetches daily closes from Alpaca's data API.",
+        "Each due call is settled against those closes; the result line appears on the agent's next page."
+      ],
+      "decisions": [
+        "No price, no call: if the ticker wasn't in the committed window, the call is refused rather than guessed.",
+        "Settlement is a separate table, so a call row is never rewritten."
+      ]
+    },
+    {
+      "id": "owner",
+      "label": "Owner changes settings",
+      "title": "The owner changes a model or the budget",
+      "nodes": [
+        "frontend",
+        "gateway",
+        "settings",
+        "check-backup",
+        "openrouter",
+        "heartbeat"
+      ],
+      "steps": [
+        "The owner logs into the private dashboard and opens Settings.",
+        "The gateway accepts the POST only with the owner login and a same-origin request, and saves it to owner settings (history row appended).",
+        "Optionally the owner asks for a connection check; a systemd path unit wakes the check service, which tests the key and models without paid generation.",
+        "On the next wake the heartbeat sees the new models or raised budget, closes today's run and opens a new segment that continues the home."
+      ],
+      "decisions": [
+        "The dashboard itself never calls a provider and can never start or wake an agent."
+      ]
+    }
+  ],
+  "matrices": [
+    {
+      "title": "Moves an agent can choose in a wake",
+      "headers": [
+        "Move",
+        "What it does",
+        "Extra request?"
+      ],
+      "rows": [
+        [
+          "rest",
+          "Ends the wake early",
+          "no"
+        ],
+        [
+          "journal",
+          "Writes a private note (or a witness-mode note)",
+          "yes"
+        ],
+        [
+          "inquire",
+          "A private structured inquiry",
+          "yes"
+        ],
+        [
+          "library",
+          "Searches the writings / research rooms and keeps a note",
+          "yes"
+        ],
+        [
+          "roam",
+          "Free exploration, no network research",
+          "yes"
+        ],
+        [
+          "skill",
+          "Opens one skill from the shelf",
+          "yes"
+        ],
+        [
+          "call",
+          "Seals a forecast at the shown price",
+          "no"
+        ],
+        [
+          "compost_notebook",
+          "Turns a full notebook into a journal note",
+          "no"
+        ],
+        [
+          "(remember)",
+          "Adds one notebook line alongside any move",
+          "no"
+        ]
+      ]
+    },
+    {
+      "title": "Spec status (docs/specs)",
+      "headers": [
+        "Spec",
+        "Status"
+      ],
+      "rows": [
+        [
+          "AGENT_CLOCKS / HEARTBEAT_PAGE",
+          "built — the heartbeat and its page"
+        ],
+        [
+          "BUDGET_ACTUAL_CHARGES",
+          "approved 2026-11-21, built"
+        ],
+        [
+          "CALLS_AND_SETTLEMENT",
+          "phases 1–3 built"
+        ],
+        [
+          "NOTEBOOK",
+          "phase 1 built"
+        ],
+        [
+          "SKILL_SHELF",
+          "phases 1–2 built; phase 3 not started"
+        ],
+        [
+          "MARKET_WINDOW / OPTIONS_VIEW",
+          "built (prices, options, headlines/posts)"
+        ],
+        [
+          "FORUM_AND_MESSAGES",
+          "draft, waiting for owner's OK"
+        ],
+        [
+          "VPS_SETUP",
+          "draft for owner's review"
+        ]
+      ]
+    },
+    {
+      "title": "Server units",
+      "headers": [
+        "Unit",
+        "Runs",
+        "When"
+      ],
+      "rows": [
+        [
+          "paradoxtrader-heartbeat.timer",
+          "scripts/heartbeat.py tick",
+          "every minute"
+        ],
+        [
+          "paradoxtrader-dashboard.service",
+          "deploy/private_dashboard.py serve",
+          "always on, port 8080"
+        ],
+        [
+          "paradoxtrader-check.path",
+          "scripts/check_connection.py",
+          "when the dashboard requests a check"
+        ],
+        [
+          "paradoxtrader-backup.timer",
+          "deploy/backup_data.py",
+          "daily 07:17, keeps 14"
+        ]
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "kind": "ok",
+      "text": "Clear boundary: the live path (timer → heartbeat → controller → market reads) never imports core/trading/alpaca.py or api/app.py. Nothing running on the server can trade."
+    },
+    {
+      "kind": "ok",
+      "text": "Limits are in code, not prompts: daily budget reservations, six moves per wake, 48 KB pages, one wake per agent, no catch-up after missed slots."
+    },
+    {
+      "kind": "ok",
+      "text": "The witness now records every move of a day (up to 120 per agent) and the dashboard serves owner and whole-run steward accounts, including call refs (PRs #70, #71)."
+    },
+    {
+      "kind": "info",
+      "text": "ARCHITECTURE.md still describes the legacy HRV / council design; README's 2026-11-24 status box is the current picture."
+    },
+    {
+      "kind": "info",
+      "text": "Not built yet: forum and messages for the new runtime, and the paper-trading loop (proposal → order → reconcile → results). The lineage store and mock broker are the groundwork for it."
+    },
+    {
+      "kind": "info",
+      "text": "Seven agents: tempest, siren, alchemist, weaver, oracle, shadow, paradox_hunter. Only tempest's soul/living files are cited on the identity node; the other six follow the same layout under agents/."
+    }
+  ]
+}
