@@ -352,16 +352,14 @@ def _vol_entry(market, options, symbol, expiry, now):
             strike = Decimal(str(row["strike"]))
         except (KeyError, TypeError, ValueError, InvalidOperation):
             continue
-        if not strike.is_finite() or strike <= 0:
+        if not strike.is_finite() or strike <= 0 or row.get("type") not in ("call", "put"):
             continue
         by_strike.setdefault(strike, []).append(row)
     if not by_strike:
         raise CallRefused("call_contract_not_shown")
-    paired = [s for s, rows in by_strike.items() if {r.get("type") for r in rows} >= {"call", "put"}]
-    pool = paired or list(by_strike)
-    atm_strike = min(pool, key=lambda s: (abs(s - price_dec), s))
+    atm_strike = min(by_strike, key=lambda strike: (abs(strike - price_dec), strike))
     atm_rows = by_strike[atm_strike]
-    quote_times, ivs = [], []
+    quote_times, ivs = [], {}
     for row in atm_rows:
         quote_times.append(_parse_quote_time(row, now))
         if row.get("iv") is not None and not isinstance(row.get("iv"), bool):
@@ -370,10 +368,10 @@ def _vol_entry(market, options, symbol, expiry, now):
             except (ValueError, InvalidOperation):
                 iv = None
             if iv is not None and iv.is_finite() and iv > 0:
-                ivs.append(iv)
+                ivs.setdefault(row["type"], iv)
     if not ivs:
         raise CallRefused("call_no_iv")
-    entry_iv = (sum(ivs) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
+    entry_iv = (sum(ivs.values()) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
     implied_move_pct = (entry_iv * Decimal(str(math.sqrt(trading_days / 252))) * Decimal("100")).quantize(Decimal("0.01"))
     if implied_move_pct <= 0:
         raise CallRefused("call_no_iv")
@@ -463,6 +461,17 @@ class CallStore:
         connection.row_factory = sqlite3.Row
         connection.executescript(_SCHEMA)
         return connection
+
+    def _reader(self):
+        connection = sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    @staticmethod
+    def _has_table(connection, table):
+        return connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone() is not None
 
     @staticmethod
     def _next_call_id(connection):
@@ -566,26 +575,34 @@ class CallStore:
     def open_calls(self, agent_id):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "calls"):
+                return []
             return self._open(connection, agent_id)
 
     def open_vol_calls(self, agent_id):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_calls"):
+                return []
             return self._open_vol(connection, agent_id)
 
     def open_option_calls(self, agent_id):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "option_calls"):
+                return []
             return self._open_option(connection, agent_id)
 
     def all_open(self):
         """Every agent's open stock calls, oldest first, for settling."""
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "calls"):
+                return []
             return [dict(row) for row in connection.execute(
                 "SELECT c.call_id, c.agent_id, c.symbol, c.direction, c.horizon_days, c.entry_price,"
                 " c.entry_session FROM calls c LEFT JOIN settlements s USING (call_id)"
@@ -595,7 +612,9 @@ class CallStore:
         """Every agent's open volatility calls, oldest first, for settling."""
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_calls"):
+                return []
             return [dict(row) for row in connection.execute(
                 "SELECT v.call_id, v.agent_id, v.symbol, v.expiry, v.iv_view, v.entry_price,"
                 " v.entry_iv, v.implied_move_pct, v.entry_session FROM vol_calls v"
@@ -605,7 +624,9 @@ class CallStore:
         """Every agent's open option calls, oldest first, for settling."""
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "option_calls"):
+                return []
             return [dict(row) for row in connection.execute(
                 "SELECT o.call_id, o.agent_id, o.contract, o.symbol, o.expiry, o.option_type, o.strike,"
                 " o.entry_ask, o.spread_pct, o.entry_underlying_price, o.entry_session FROM option_calls o"
@@ -667,9 +688,11 @@ class CallStore:
         if not self.path.exists():
             return {}
         result = {}
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
             for table, settle_table in (("calls", "settlements"), ("vol_calls", "vol_settlements"),
                                         ("option_calls", "option_settlements")):
+                if not self._has_table(connection, table):
+                    continue
                 for row in connection.execute(f"SELECT c.agent_id, s.detail FROM {table} c LEFT JOIN {settle_table} s"
                                               " USING (call_id)"):
                     item = result.setdefault(row["agent_id"], dict(NO_CALLS))
@@ -685,21 +708,27 @@ class CallStore:
     def settlements(self):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "settlements"):
+                return []
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM settlements ORDER BY call_id")]
 
     def vol_settlements(self):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_settlements"):
+                return []
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM vol_settlements ORDER BY call_id")]
 
     def option_settlements(self):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "option_settlements"):
+                return []
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM option_settlements ORDER BY call_id")]
 
