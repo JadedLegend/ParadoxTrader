@@ -15,4 +15,4 @@ Treat the generator's shared spine as untrusted until every clause is checked ag
 - Drop clauses that reference fields or lists the prompt does not define (archetype, function, shadow fields, distortion tag list), or rewrite them in terms of the agent's lens.
 - Approval-workflow clauses apply only to agents that have tools to execute with.
 - Resolve register conflicts: "zero metaphor" against poetic ritual phrases and rhythm labels. Rhythm labels stay internal and never appear in output.
-- Ready-to-paste local clauses for all seven agents are in references/local-clauses-draft.md.
+- Draft local clauses for all seven agents are in references/local-clauses-draft.md. They are incomplete: each agent's numeric trigger is a `{{SET ...}}` placeholder that the creator must fill before pasting.

@@ -64,7 +64,7 @@ New work goes on the live path unless a spec says otherwise. The name `rehearsal
 | Command | Touches | Notes |
 |---|---|---|
 | `python -m pytest -q -p no:cacheprovider tests` | nothing outside temp dirs | Run on Linux or WSL. Native Windows gives false failures (`os.O_NOFOLLOW`, `fcntl`). See the `paradox-trader-python-tests` skill. |
-| `cd frontend && npm ci && npm run typecheck && npm run lint && npm test` | `frontend/node_modules` | This is what CI runs (Node 22). |
+| `cd frontend && npm ci && npm run typecheck && npm run lint && npm test && npm run build` | `frontend/node_modules`, `frontend/dist` | This is what CI runs (Node 22). |
 | `cd frontend && npm run dev` | nothing | Fixture preview with sample data and no backend. See `paradox-trader-dashboard-preview`. |
 | `python scripts/build_<name>_fixture.py --check` | nothing (with `--check`) | Without `--check` it rewrites the checked-in sample data. Run it after changing that output on purpose. |
 | `python scripts/heartbeat.py --root R --config C status` | its ledger under `R` (created if missing) | `tick` starts real wakes and spends model credit. Use it only with an offline config, or on the server when asked. |
