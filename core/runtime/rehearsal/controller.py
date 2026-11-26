@@ -645,7 +645,7 @@ class RehearsalController:
             if details is not None:
                 return details["private_context"].get("call_results", "")
         path = self.store.safe_run_file(self.run_id, CALLS_FILE)
-        if not path.exists():
+        if not path.exists() and (self.manifest.get("kind") != "day" or self.market is None):
             return ""
         with self._memory_lock:
             results = CallStore(path).hand_back(job["agent_id"], run_id=self.run_id,

@@ -58,22 +58,35 @@ class HandBackStoreTests(Blocked):
         self.assertEqual(self.shown("tempest-r2", run="run-c"), [self.call_id])
         self.assertEqual(self.shown("tempest-r3", run="run-c"), [])
 
-    def test_the_five_shown_results_stay_fixed_when_a_newer_call_settles(self):
-        self.calls.settle(self.call_id, RIGHT, now=NOW)
-        settled = [self.call_id]
-        for number in range(2, 8):
-            call_id = self.calls.record(agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{number}",
-                                        choice=CALL, market=MARKET, now=NOW)
-            if number < 7:
-                self.calls.settle(call_id, RIGHT, now=NOW)
-                settled.append(call_id)
-        first = settled[:0:-1]
-        self.assertEqual(self.shown("tempest-r1"), first)
-        self.calls.settle(call_id, RIGHT, now=NOW)
-        self.assertEqual(self.shown("tempest-r1"), first)
-        self.assertEqual(self.shown("tempest-r2"), [call_id, *first[:4]])
-        self.assertEqual(self.shown("tempest-r3"), [call_id, first[-1], self.call_id])
-        self.assertEqual(self.shown("tempest-r4"), [self.call_id])
+    def test_first_empty_selection_is_kept_even_if_the_database_did_not_exist(self):
+        path = Path(self.temp.name) / "fresh.sqlite3"
+        wake = {"run_id": "run-b", "sitting": "tempest-r1", "now": NOW}
+        self.assertEqual(CallStore(path).hand_back("tempest", **wake), [])
+
+        calls = CallStore(path)
+        call_id = calls.record(agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
+                               choice=CALL, market=MARKET, now=NOW)
+        calls.settle(call_id, RIGHT, now=NOW)
+        self.assertEqual(calls.hand_back("tempest", **wake), [])
+        for sitting in ("tempest-r2", "tempest-r3"):
+            self.assertEqual([row["call_id"] for row in calls.hand_back(
+                "tempest", **{**wake, "sitting": sitting})], [call_id])
+
+    def test_first_five_results_survive_later_settlements_and_other_wakes(self):
+        ids = [self.call_id]
+        for i in range(2, 8):
+            ids.append(self.calls.record(agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{i}",
+                                         choice=CALL, market=MARKET, now=NOW))
+            self.calls.settle(ids[-2], RIGHT, now=NOW)
+
+        selected = ids[-2:-7:-1]
+        self.assertEqual(self.shown("tempest-r1"), selected)
+        self.calls.settle(ids[-1], RIGHT, now=NOW)
+        self.assertEqual(self.shown("tempest-r1"), selected)
+        self.assertEqual(self.shown("tempest-r2"), ids[-1:-6:-1])
+        # The oldest result was eligible before but was never shown.
+        self.assertEqual(self.shown("tempest-r3"), [ids[-1], ids[1], ids[0]])
+        self.assertEqual(self.shown("tempest-r1"), selected)
 
     def test_a_result_shows_on_two_wakes_then_stays_only_in_the_record(self):
         self.calls.settle(self.call_id, RIGHT, now=NOW)
