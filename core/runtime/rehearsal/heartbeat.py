@@ -536,7 +536,7 @@ class Heartbeat:
             return None
         try:
             calls = self._calls_store()
-            if calls is None or not calls.all_open():
+            if calls is None or not calls.has_open():
                 return None
             now = self.now()
             with self._ledger() as conn:

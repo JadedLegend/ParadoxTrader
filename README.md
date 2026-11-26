@@ -6,13 +6,14 @@
 
 Repository: [`JadedLegend/ParadoxTrader`](https://github.com/JadedLegend/ParadoxTrader). Earlier versions and internal paths use **MoneyTree**, **ParadoxTrader**, or **ParadoxEdgeTrader**. These are project lineage, not separate products to rebuild.
 
-> **Where it stands today (2026-11-24)**
+> **Where it stands today (2026-11-26)**
 >
 > The paragraph below was written on 14 November, before the agents moved in. Since then:
 >
 > - **The seven agents wake for real.** The heartbeat ([`scripts/heartbeat.py`](scripts/heartbeat.py), [`core/runtime/rehearsal/heartbeat.py`](core/runtime/rehearsal/heartbeat.py)) gives each agent its own staggered clock, up to six moves per wake, a budget that counts actual charges, and a Heartbeat page to watch it.
 > - **They have a home that carries over:** a 48 KB page each wake, calls they can write down and get back once settled, a notebook of lines to remember (composted when full), a skill shelf, journals and the witness.
-> - **Still not built:** the forum and messages (spec is a draft), market data, and the paper-trading loop described below. Nothing in this repository can trade.
+> - **Read-only market data is wired into day runs:** price snapshots ([`core/market/window.py`](core/market/window.py)), indicative options view ([`core/market/options.py`](core/market/options.py)), headlines/X/Reddit ([`core/market/feeds.py`](core/market/feeds.py)), and daily closes for settling calls ([`core/market/closes.py`](core/market/closes.py)).
+> - **Still not built:** the forum and messages (spec is a draft), agent-proposed tickers (Phase 2 of [`MARKET_WINDOW.md`](docs/specs/MARKET_WINDOW.md)), structured trade proposals, and the Alpaca paper-trading loop described below. Nothing in this repository can trade.
 >
 > Every feature starts as a spec in [`docs/specs/`](docs/specs/). Each spec's `Status:` line says what is built. To help, read [CONTRIBUTING.md](CONTRIBUTING.md).
 

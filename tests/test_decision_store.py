@@ -14,7 +14,7 @@ from unittest import mock
 from uuid import uuid4
 
 from core.runtime.rehearsal.store import (
-    AGENT_IDS, CAPABILITIES, DEFAULT_LIMITS, RehearsalStore,
+    AGENT_IDS, CAPABILITIES, DEFAULT_LIMITS, MAX_PRIVATE_CONTEXT_CHARS, RehearsalStore,
     RehearsalError, RehearsalConflict, RehearsalBudgetExceeded, RehearsalStopped,
 )
 
@@ -169,10 +169,26 @@ class DecisionStoreTests(unittest.TestCase):
                     self.commit(metadata=meta)
         self.assertIsNone(self.store.get_decision_details(self.run, self.wake))
 
+    def test_notes_and_frozen_options_survive_context_commit(self):
+        private = self.private()
+        private["notebook"] = "n" * 2708
+        private["market_line"] = "m" * 4000
+        private["choice_instructions"] = "i" * 5400
+        private["options_snapshot"] = {"contracts": [
+            {"symbol": f"SPY261127C{strike:08d}", "strike": strike, "type": "call",
+             "expiration": "2026-11-27", "quote_time": "2026-11-19T14:59:30Z",
+             "bid": 2.1, "ask": 2.2, "stale": False, "iv": 0.142} for strike in range(590, 600)
+        ]}
+        private["options"] = {"contracts": private["options_snapshot"]["contracts"]}
+        private["open_calls"] = "c" * 1800
+        self.assertGreater(len(json.dumps(private, separators=(",", ":"))), 16000)
+        self.commit(private=private)
+        self.assertEqual(self.store.get_decision_details(self.run, self.wake)["private_context"], private)
+
     def test_private_strict_json_size_and_disallowed_fields(self):
         cyclic = {}
         cyclic["self"] = cyclic
-        for private in (["not a dict"], {"text": "x" * 16000}, {"n": float("nan")},
+        for private in (["not a dict"], {"text": "x" * MAX_PRIVATE_CONTEXT_CHARS}, {"n": float("nan")},
                         {"n": float("inf")}, {1: "key"}, {"tuple": (1, 2)},
                         {"bad": "\ud800"}, cyclic, {"headers": {"Authorization": "secret"}},
                         {"reasoning": "hidden"}, {"innermost": "hidden"}):

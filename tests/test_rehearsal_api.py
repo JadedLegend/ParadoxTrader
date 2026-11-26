@@ -251,6 +251,33 @@ class RehearsalReadAPI(unittest.TestCase):
         self.store.list_runs.side_effect = RuntimeError('/private/path SECRET_KEY RAW_PRIVATE')
         self.assertEqual(self.request()[:2], (503, {'detail': 'rehearsal_unavailable'}))
 
+    def test_day_run_call_refs_and_later_round_witness_refs_are_projected(self):
+        self.job['action'] = 'call'
+        self.job['record_refs'] = [{'kind': 'call', 'id': 7}, {'kind': 'call', 'id': 'bad'}]
+        status, body, _ = self.request(f'/api/rehearsals/{ID}/jobs')
+        self.assertEqual(status, 200)
+        self.assertEqual(body['jobs'][0]['action'], 'call')
+        self.assertEqual(body['jobs'][0]['record_refs'], [{'kind': 'call', 'id': 7}])
+
+        from core.runtime.rehearsal.witness import WitnessStore
+        run = Path(self.temp) / ID
+        run.mkdir()
+        witness = WitnessStore(run / 'witness.sqlite3')
+        witness.record({
+            'schema_version': 1, 'owner': 'tempest',
+            'run': {'run_id': ID, 'mode': 'offline', 'status': 'running', 'prepared_owners': ['tempest']},
+            'jobs': [{'wake_id': 'tempest-r3', 'agent_id': 'tempest', 'round': 3, 'status': 'completed',
+                      'action': 'call', 'choice_committed': True, 'record_refs': [{'kind': 'call', 'id': 7}]}],
+            'requests': [],
+        }, scope='tempest', operation_key='day-r3-call')
+        self.store.run_path.return_value = run
+        self.store.safe_run_file.return_value = run / 'witness.sqlite3'
+        status, body, _ = self.request(f'/api/rehearsals/{ID}/witness?agent_id=tempest')
+        self.assertEqual(status, 200)
+        kinds = [(ref['kind'], ref['id']) for ref in body['accounts'][0]['source_refs']]
+        self.assertIn(('call', 7), kinds)
+        self.assertIn(('wake', 'tempest-r3'), kinds)
+
 
 class RehearsalActualStoreAPI(unittest.TestCase):
     def test_idle_actual_store_reads_never_import_provider_or_scheduler(self):
