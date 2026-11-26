@@ -7,7 +7,6 @@ permission:
   edit:
     "**/*": ask
     "*": ask
-    "**/*": ask
     "**/*.md": ask
     "frontend/*.ts": allow
     "frontend/*.tsx": allow
