@@ -593,9 +593,10 @@ class OptionCallShapeAndStoreTests(Blocked):
                 validate_choice(json.dumps(broken))
 
     def test_seals_at_ask_and_shares_open_cap(self):
+        snapshot = {**options_snapshot(), "underlying_price": 594}
         call_id = self.calls.record(
             agent_id="alchemist", run_id="run-a", wake_id="alchemist-r1",
-            choice=OPTION_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+            choice=OPTION_CALL, market=MARKET, options=snapshot, now=OPEN,
         )
         self.assertEqual(
             self.calls.record(
@@ -630,13 +631,14 @@ class OptionCallShapeAndStoreTests(Blocked):
     def test_commit_time_quote_age_and_retries(self):
         at_threshold = OPEN.replace(minute=29, second=30)
         too_late = at_threshold.replace(second=31)
+        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "as_of": (OPEN - timedelta(seconds=30)).isoformat()}]}
         for kind, choice, read in (
             ("option", OPTION_CALL, self.calls.open_option_calls),
             ("vol", VOL_CALL, self.calls.open_vol_calls),
         ):
             with self.subTest(kind=kind):
                 entry = dict(agent_id="siren", run_id=kind, wake_id="siren-r1",
-                             choice=choice, market=MARKET, options=options_snapshot())
+                             choice=choice, market=market, options=options_snapshot())
                 for rejected_at in (too_late, OPEN - timedelta(minutes=1)):
                     with self.assertRaises(CallRefused) as refused:
                         self.calls.record(**{**entry, "wake_id": "siren-r2"}, now=rejected_at)
@@ -647,6 +649,22 @@ class OptionCallShapeAndStoreTests(Blocked):
                 original = read("siren")
                 self.assertEqual(self.calls.record(**entry, now=too_late), call_id)
                 self.assertEqual(read("siren"), original)
+
+    def test_market_underlying_must_be_fresh_and_from_the_same_eastern_session(self):
+        midnight = OPEN.replace(hour=5)
+        for idx, (now, as_of) in enumerate((
+            (OPEN, OPEN - timedelta(minutes=30, seconds=1)),
+            (OPEN, OPEN + timedelta(seconds=1)),
+            (midnight + timedelta(minutes=5), midnight - timedelta(minutes=5)),
+        ), start=1):
+            with self.subTest(now=now, as_of=as_of):
+                market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "as_of": as_of.isoformat()}]}
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(agent_id="siren", run_id="run-a", wake_id=f"siren-r{idx}",
+                                      choice=OPTION_CALL, market=market,
+                                      options=options_snapshot(checked_at=now, quote_time=now.isoformat()), now=now)
+                self.assertEqual(refused.exception.code, "call_options_stale")
+        self.assertEqual(self.calls.open_option_calls("siren"), [])
 
     def test_option_refusals(self):
         bad_quote = options_snapshot()

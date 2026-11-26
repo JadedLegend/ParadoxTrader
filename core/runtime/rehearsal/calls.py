@@ -283,10 +283,13 @@ def _option_underlying(market, options, symbol, now):
     if isinstance(market, dict) and market.get("status") in ("ok", "closed"):
         try:
             price_text, moment, _ = _entry(market, symbol)
-            return Decimal(price_text), price_text, moment
         except CallRefused as error:
             if error.code == "call_no_price":
                 pass
+        else:
+            if not 0 <= (now - moment).total_seconds() <= STALE_QUOTE_SECONDS or _session(moment) != _session(now):
+                raise CallRefused("call_options_stale")
+            return Decimal(price_text), price_text, moment
     return _snapshot_underlying(options, now)
 
 
