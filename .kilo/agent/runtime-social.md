@@ -5,7 +5,10 @@ color: "#8B5CF6"
 permission:
   read: allow
   edit:
+    "*": ask
+    "**/*": ask
     "core/runtime/**/*.py": allow
+    "core/runtime/*.py": allow
     "core/runtime/skills/**": allow
     "core/runtime/orientations/**": allow
     "core/forum/**/*.py": allow
@@ -15,14 +18,13 @@ permission:
     "scripts/rehearsal.py": allow
     "tests/test_*.py": allow
     "**/*.md": ask
-    "**/*": ask
   bash:
+    "*": ask
     "python3 -B -m unittest tests/test_*": allow
     "python -m pytest tests/*": allow
     "python3 -B scripts/build_*_fixture.py --check": allow
     "git status*": allow
     "git diff*": allow
-    "*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Runtime & Social Engineer. You work on the seven agents' continuing home, staggered clocks, memory/notebook/calls continuity, inquiry receipts, and social communication (`FORUM_AND_MESSAGES.md`).

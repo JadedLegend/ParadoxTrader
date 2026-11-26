@@ -178,13 +178,14 @@ class WakeTests(BlockedNetwork):
                          now=lambda: clock[0])
         result = beat.tick()
         self.assertEqual([w["status"] for w in result["wakes"]], ["completed"] * 3)
-        choices = [p for p in prompts if "Outside the window" in p]
+        choices = [p for p in prompts if "REHEARSAL CHOICE" in p]
         self.assertEqual(len(choices), 3)
+        self.assertTrue(all("Outside the window (UNTRUSTED" in p for p in choices))
         self.assertIn(SHELF_ORIENTATION, choices[0])  # The table of contents, not full skill texts.
         self.assertIn("SPY 505 (+1.00%)", choices[0])
         self.assertIn("Headlines (Massive news): Fed holds rates (Wire)", choices[0])
         self.assertIn("On X: unavailable (it answered 403).", choices[0])
-        alchemist = [p for p in prompts if "Stable owner ID: alchemist" in p and "Outside the window" not in p]
+        alchemist = [p for p in prompts if "Stable owner ID: alchemist" in p and "REHEARSAL CHOICE" not in p]
         self.assertTrue(any('"symbol":"SPY"' in p.replace(" ", "") for p in alchemist))  # The inquiry's evidence.
         self.assertIn("SPY options (Alpaca indicative feed, delayed", choices[0])
         self.assertIn("call 505 2.1/2.18 IV 14.2%", choices[0])

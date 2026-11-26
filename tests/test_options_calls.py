@@ -2,7 +2,7 @@
 
 Scripted offline data and controller tests; the network is blocked."""
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -150,13 +150,13 @@ class VolCallStoreTests(Blocked):
         [row] = self.calls.open_vol_calls("tempest")
         self.assertEqual(row["call_id"], call_id)
         self.assertEqual(row["entry_iv"], "0.142")
-        self.assertEqual(row["trading_days"], 6)
-        self.assertEqual(row["implied_move_pct"], "2.19")
+        self.assertEqual(row["trading_days"], 5)
+        self.assertEqual(row["implied_move_pct"], "2.00")
         self.assertEqual(row["atm_strike"], "593")
         self.assertEqual(row["entry_session"], "2026-11-19")
         line = open_calls_line([], [row])
         self.assertIn("vol call", line)
-        self.assertIn("SPY 2026-11-27 IV high (priced +/-2.19%, medium)", line)
+        self.assertIn("SPY 2026-11-27 IV high (priced +/-2.00%, medium)", line)
 
         # Shared cap of 5 across stock and vol calls.
         for idx in range(2, CALL_OPTIONS["max_open_per_agent"] + 1):
@@ -176,6 +176,19 @@ class VolCallStoreTests(Blocked):
             for stmt in ("UPDATE vol_calls SET entry_iv='0.5'", "DELETE FROM vol_calls"):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
+
+    def test_thanksgiving_leaves_only_one_session_until_expiry(self):
+        market = {**MARKET, "quotes": [
+            {**MARKET["quotes"][0], "as_of": "2026-11-25T14:58:00+00:00"},
+        ]}
+        options = options_snapshot(quote_time="2026-11-25T14:59:30+00:00")
+        with self.assertRaises(CallRefused) as refused:
+            self.calls.record(
+                agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
+                choice=VOL_CALL, market=market, options=options, now=OPEN.replace(day=25),
+            )
+        self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
 
     def test_vol_refusals(self):
         cases = [
@@ -286,7 +299,9 @@ class VolControllerTests(Blocked):
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
             market=lambda: MARKET, options=lambda: options_snapshot(),
         )
-        job = controller.run_wake("tempest")
+        with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
+            clock.now.return_value = OPEN
+            job = controller.run_wake("tempest")
         self.assertEqual((job["status"], job["action"]), ("completed", "call"))
         self.assertIn("VOLATILITY CALL", prompts[0])
         self.assertIn("Options expiries: 2026-11-27.", prompts[0])
@@ -354,6 +369,22 @@ class OptionCallShapeAndStoreTests(Blocked):
             for stmt in ("UPDATE option_calls SET entry_ask='1'", "DELETE FROM option_calls"):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
+
+    def test_cached_quotes_age_at_commit_without_changing_sealed_entries(self):
+        snapshot = options_snapshot(quote_time=(OPEN - timedelta(minutes=30)).isoformat())
+        late = OPEN + timedelta(seconds=1)
+        for idx, choice in enumerate((OPTION_CALL, VOL_CALL), start=1):
+            with self.subTest(kind=choice["kind"]):
+                args = dict(agent_id="alchemist", run_id="run-a", choice=choice,
+                            market=MARKET, options=snapshot)
+                wake = f"alchemist-r{idx}"
+                call_id = self.calls.record(**args, wake_id=wake, now=OPEN)
+                self.assertEqual(self.calls.record(**args, wake_id=wake, now=late), call_id)
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(**args, wake_id=f"alchemist-r{idx + 2}", now=late)
+                self.assertEqual(refused.exception.code, "call_options_stale")
+        self.assertEqual(len(self.calls.open_vol_calls("alchemist")), 1)
+        self.assertEqual(len(self.calls.open_option_calls("alchemist")), 1)
 
     def test_option_refusals(self):
         bad_quote = options_snapshot()
@@ -435,6 +466,7 @@ class OptionSettleAndControllerTests(Blocked):
             text = "\n".join(str(m.get("content", "")) for m in kwargs["json"]["messages"])
             prompts.append(text)
             if "Stable owner ID: alchemist" in text and "REHEARSAL CHOICE" in text and len(prompts) == 1:
+                clock.now.return_value = OPEN + timedelta(hours=1)
                 scripted.calls += 1
                 return ScriptedResponse({
                     "id": "opt-1", "model": kwargs["json"].get("model"), "provider": "scripted-offline",
@@ -447,7 +479,9 @@ class OptionSettleAndControllerTests(Blocked):
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
             market=lambda: MARKET, options=lambda: options_snapshot(),
         )
-        job = controller.run_wake("alchemist")
+        with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
+            clock.now.return_value = OPEN
+            job = controller.run_wake("alchemist")
         self.assertEqual((job["status"], job["action"]), ("completed", "call"))
         self.assertIn("OPTION CALL", prompts[0])
 
