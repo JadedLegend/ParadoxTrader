@@ -19,12 +19,9 @@ permission:
     "npm test": allow
     "npm run build": allow
     "git status*": allow
-    "git diff*": allow
-    "git diff*--output=*": ask
-    "git diff*--output *": ask
-    "git diff*--output\t*": ask
-    "git diff*--output\"*": ask
-    "git diff*--output'*": ask
+    "git diff": allow
+    "git diff --stat": allow
+    "git diff --check": allow
     "git log*": allow
   skill: "ask"
 ---

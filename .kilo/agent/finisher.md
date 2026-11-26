@@ -12,21 +12,9 @@ permission:
   bash:
     "*": ask
     "git status*": allow
-    "git diff*": allow
-    "git diff*--output=*": ask
-    "git diff*--output *": ask
-    "git diff*--output\t*": ask
-    "git diff*--output\"*": ask
-    "git diff*--output'*": ask
-    # Match the --out + quoted put form without catching --output-indicator.
-    "git diff*--out\"put\"=*": ask
-    "git diff*--out\"put\" *": ask
-    "git diff*--out\"put\"\t*": ask
-    "git diff*--out\"put=*": ask
-    "git diff*--out'put'=*": ask
-    "git diff*--out'put' *": ask
-    "git diff*--out'put'\t*": ask
-    "git diff*--out'put=*": ask
+    "git diff": allow
+    "git diff --stat": allow
+    "git diff --check": allow
     "git log*": allow
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow
