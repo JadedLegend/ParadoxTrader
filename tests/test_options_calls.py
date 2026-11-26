@@ -32,7 +32,7 @@ MARKET = {"status": "ok", "source": "alpaca-iex", "quotes": [
 
 
 def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.142,
-                     stale=False, quote_time="2026-11-19T14:59:30+00:00"):
+                     stale=False, quote_time="2026-11-19T14:59:30+00:00", checked_at=OPEN):
     contracts = []
     for option_type, strike in (("call", 593.0), ("put", 593.0), ("call", 596.0), ("put", 590.0)):
         item = {
@@ -54,7 +54,7 @@ def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.1
         "symbol": symbol,
         "feed": "indicative",
         "source": "alpaca-options",
-        "checked_at": "2026-11-19T15:00:00+00:00",
+        "checked_at": checked_at.isoformat(),
         "underlying_price": 593.50,
         "contracts": contracts,
     }
@@ -204,17 +204,30 @@ class VolCallStoreTests(Blocked):
                     conn.execute(stmt)
 
     def test_refuses_vol_entry_with_only_one_session_after_thanksgiving(self):
-        market = {**MARKET, "quotes": [
-            {**MARKET["quotes"][0], "as_of": "2026-11-25T14:58:00+00:00"},
-        ]}
+        # The older market quote would incorrectly make the horizon long enough.
         with self.assertRaises(CallRefused) as refused:
             self.calls.record(
                 agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
-                choice=VOL_CALL, market=market,
-                options=options_snapshot(quote_time="2026-11-25T14:59:30+00:00"),
+                choice=VOL_CALL, market=MARKET,
+                options=options_snapshot(quote_time="2026-11-25T14:59:30+00:00", checked_at=OPEN.replace(day=25)),
                 now=OPEN.replace(day=25),
             )
         self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+
+    def test_refuses_missing_or_stale_snapshot_underlying(self):
+        missing = options_snapshot()
+        del missing["underlying_price"]
+        for snapshot, expected in (
+            (missing, "call_no_price"),
+            (options_snapshot(checked_at=OPEN - timedelta(minutes=31)), "call_options_stale"),
+        ):
+            with self.subTest(expected=expected), self.assertRaises(CallRefused) as refused:
+                self.calls.record(
+                    agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
+                    choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN,
+                )
+            self.assertEqual(refused.exception.code, expected)
         self.assertEqual(self.calls.open_vol_calls("tempest"), [])
 
     def test_vol_refusals(self):
@@ -238,8 +251,7 @@ class VolCallStoreTests(Blocked):
 
 
     def test_iv_comes_from_the_nearest_strike_with_one_or_both_sides(self):
-        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "last": 596}]}
-        snapshot = options_snapshot()
+        snapshot = {**options_snapshot(), "underlying_price": 596}
         [atm_call] = [row for row in snapshot["contracts"] if row["strike"] == 596]
         atm_call["iv"] = 0.30
         for wake, put_iv, expected_iv, expected_move in (
@@ -253,9 +265,15 @@ class VolCallStoreTests(Blocked):
                                       "symbol": atm_call["symbol"].replace("27C", "27P")})
                 self.calls.record(
                     agent_id="tempest", run_id="run-a", wake_id=wake, choice=VOL_CALL,
-                    market=market, options={**snapshot, "contracts": contracts}, now=OPEN,
+                    market=MARKET, options={**snapshot, "contracts": contracts}, now=OPEN,
                 )
                 row = self.calls.open_vol_calls("tempest")[-1]
+                self.assertEqual(row["entry_price"], "596")
+                with closing(sqlite3.connect(self.root / CALLS_FILE)) as connection:
+                    [price_as_of] = connection.execute(
+                        "SELECT price_as_of FROM vol_calls WHERE wake_id = ?", (wake,),
+                    ).fetchone()
+                self.assertEqual(price_as_of, OPEN.isoformat())
                 self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
                                  ("596", expected_iv, expected_move))
                 closes = {"SPY": {"2026-11-19": Decimal("596"), "2026-11-27": Decimal("615")}}
@@ -265,13 +283,11 @@ class VolCallStoreTests(Blocked):
 
     def test_thanksgiving_counts_only_the_sessions_that_trade(self):
         def record_as_of(day):
-            market = {**MARKET, "quotes": [
-                {**MARKET["quotes"][0], "as_of": f"2026-11-{day}T14:58:00+00:00"},
-            ]}
             return self.calls.record(
                 agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{day}",
-                choice=VOL_CALL, market=market, now=OPEN.replace(day=day),
-                options=options_snapshot(quote_time=f"2026-11-{day}T14:59:30+00:00"),
+                choice=VOL_CALL, market=MARKET, now=OPEN.replace(day=day),
+                options=options_snapshot(quote_time=f"2026-11-{day}T14:59:30+00:00",
+                                         checked_at=OPEN.replace(day=day)),
             )
 
         with self.assertRaises(CallRefused) as refused:
@@ -367,6 +383,47 @@ class VolSettleTests(Blocked):
                          {"open": 0, "settled": 1, "right": 1, "wrong": 0, "flat": 0, "unsettled": 0})
         self.assertFalse(calls.has_open())
         self.assertEqual(calls.vol_settlements()[0]["detail"]["actual_move_percent"], "0.00")
+
+    def test_settlement_uses_official_entry_close_instead_of_sealed_price(self):
+        call = self._vol(implied="2", entry="100")
+        closes = self._closes({"2026-11-19": 102, "2026-11-27": 103})
+        state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+        self.assertEqual((state, detail["outcome"], detail["actual_move_percent"]), ("settled", "right", "0.98"))
+        self.assertEqual((call["entry_price"], detail["entry_close"]), ("100", "102"))
+
+    def test_missing_entry_close_waits_through_the_same_grace_as_missing_expiry(self):
+        call = self._vol()
+        for missing, available in (("2026-11-19", "2026-11-27"), ("2026-11-27", "2026-11-19")):
+            with self.subTest(missing=missing):
+                closes = self._closes({available: 500})
+                reason = f"no SPY close for {missing}"
+                self.assertEqual(settle_vol_call(call, closes, self.SESSIONS[:-1], "2026-12-03"),
+                                 ("pending", reason))
+                state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+                self.assertEqual((state, detail["outcome"], detail["reason"]), ("settled", "unsettled", reason))
+
+    def test_grace_with_truncated_data_skips_holiday_and_unfinished_session(self):
+        call = {**self._vol(), "expiry": "2026-11-25"}
+        for closes, sessions in ((self._closes({"2026-11-19": 500}), self.SESSIONS[:4]), (None, [])):
+            with self.subTest(market_data=closes is not None):
+                # Dec 2 is only the fourth session after expiry because of Thanksgiving.
+                self.assertEqual(settle_vol_call(call, closes, sessions, "2026-12-02")[0], "pending")
+                state, detail = settle_vol_call(call, closes, sessions, "2026-12-03")
+                self.assertEqual((state, detail["outcome"]), ("settled", "unsettled"))
+                self.assertEqual(settle_vol_call(call, closes, sessions, "2026-12-03", completed_today=False)[0],
+                                 "pending")
+
+    def test_deadband_compares_unrounded_move_and_includes_exact_boundaries(self):
+        call = self._vol(implied="2", entry="600")
+        for close, outcome, display in (
+            ("613.51", "wrong", "2.25"), ("613.50", "flat", "2.25"),
+            ("612", "flat", "2.00"), ("610.50", "flat", "1.75"), ("610.49", "right", "1.75"),
+        ):
+            with self.subTest(close=close):
+                closes = self._closes({"2026-11-19": 600, "2026-11-27": close})
+                state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+                self.assertEqual((state, detail["outcome"], detail["actual_move_percent"]),
+                                 ("settled", outcome, display))
 
 
 class VolControllerTests(Blocked):

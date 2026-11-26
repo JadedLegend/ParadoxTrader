@@ -278,7 +278,7 @@ def _entry(market, symbol):
     return format(price.normalize(), "f"), moment.astimezone(timezone.utc), market["status"]
 
 
-def _vol_underlying(market, options, symbol):
+def _option_underlying(market, options, symbol):
     """Entry underlying price + timestamp from committed market or options snapshot."""
     if isinstance(market, dict) and market.get("status") in ("ok", "closed"):
         try:
@@ -287,6 +287,11 @@ def _vol_underlying(market, options, symbol):
         except CallRefused as error:
             if error.code == "call_no_price":
                 pass
+    return _snapshot_underlying(options)
+
+
+def _snapshot_underlying(options):
+    """Read the underlying price and time sealed with the options snapshot."""
     try:
         price = Decimal(str(options["underlying_price"]))
         moment = datetime.fromisoformat(str(options["checked_at"]).replace("Z", "+00:00"))
@@ -329,7 +334,7 @@ def _exchange_sessions_after(entry_session, expiry):
         raise CallRefused("call_calendar_unavailable") from None
 
 
-def _vol_entry(market, options, symbol, expiry, now):
+def _vol_entry(options, symbol, expiry, now):
     """Seal ATM implied volatility and expected move from committed options snapshot."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
         raise CallRefused("call_options_unavailable")
@@ -342,7 +347,9 @@ def _vol_entry(market, options, symbol, expiry, now):
     ]
     if not contracts:
         raise CallRefused("call_contract_not_shown")
-    price_dec, price_text, price_moment = _vol_underlying(market, options, symbol)
+    price_dec, price_text, price_moment = _snapshot_underlying(options)
+    if not 0 <= (now - price_moment).total_seconds() <= STALE_QUOTE_SECONDS:
+        raise CallRefused("call_options_stale")
     entry_session = _session(price_moment)
     trading_days = _exchange_sessions_after(entry_session, expiry)
     if trading_days < 2:
@@ -432,7 +439,7 @@ def _option_entry(market, options, symbol, expiry, option_type, strike, now):
     if (isinstance(matched.get("bid"), bool) or isinstance(matched.get("ask"), bool)
             or not bid.is_finite() or not ask.is_finite() or bid < 0 or ask <= 0 or ask < bid):
         raise CallRefused("call_bad_option_quote")
-    _, price_text, price_moment = _vol_underlying(market, options, symbol)
+    _, price_text, price_moment = _option_underlying(market, options, symbol)
     entry_session = _session(price_moment)
     if expiry <= entry_session:
         raise CallRefused("call_horizon_too_short")
@@ -503,7 +510,7 @@ class CallStore:
                           + len(self._open_option(connection, agent_id)))
             if open_count >= CALL_OPTIONS["max_open_per_agent"]:
                 if kind == "vol":
-                    _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
+                    _vol_entry(options, choice["symbol"], choice["expiry"], stamp)
                 elif kind == "option":
                     _option_entry(market, options, choice["symbol"], choice["expiry"],
                                   choice["option_type"], choice["strike"], stamp)
@@ -512,7 +519,7 @@ class CallStore:
                 raise CallRefused("call_too_many_open")
             call_id = self._next_call_id(connection)
             if kind == "vol":
-                sealed = _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
+                sealed = _vol_entry(options, choice["symbol"], choice["expiry"], stamp)
                 connection.execute(
                     "INSERT INTO vol_calls (call_id, agent_id, run_id, wake_id, symbol, expiry, iv_view,"
                     " confidence, reason, entry_price, price_as_of, entry_iv, implied_move_pct,"
@@ -839,19 +846,37 @@ def _expiry_settlement_price(kind, symbol, expiry, closes, sessions, today):
     return price, None
 
 
-def settle_vol_call(call, closes, sessions, today):
-    """Compare official entry and expiry closes, with the same grace for either missing close."""
-    symbol, entry_session, expiry = call["symbol"], call["entry_session"], call["expiry"]
-    price, early = _expiry_settlement_price("vol", symbol, expiry, closes, sessions, today)
-    if early is not None:
-        return early
-    entry = closes[symbol].get(entry_session)
-    if entry is None:
-        reason = f"no {symbol} close for {entry_session}"
-        if sum(s > expiry for s in sessions) >= SETTLE_GRACE_SESSIONS:
+def settle_vol_call(call, closes, sessions, today, *, completed_today=True):
+    """Grade a volatility call using official closes and completed sessions."""
+    entry_session = call["entry_session"]
+    expiry = call["expiry"]
+    reached_expiry = any(s >= expiry for s in sessions)
+    if today < expiry or (today == expiry and not reached_expiry
+                          and (sessions or not completed_today)):
+        return "open", None
+    symbol = call["symbol"]
+    symbol_closes = (closes or {}).get(symbol, {})
+    entry = symbol_closes.get(entry_session)
+    price = symbol_closes.get(expiry)
+    if closes is None or not sessions or entry is None or price is None:
+        if closes is None or not sessions:
+            reason = "market data unavailable"
+        else:
+            missing = [s for s, close in ((entry_session, entry), (expiry, price)) if close is None]
+            reason = f"no {symbol} close for " + " or ".join(missing)
+        waited = sum(s > expiry for s in sessions)
+        if waited < SETTLE_GRACE_SESSIONS:
+            # Returned bars can have gaps or stop before expiry. Use the calendar,
+            # excluding today's session while its closing bar is still forming.
+            through = today if completed_today else (date.fromisoformat(today) - timedelta(days=1)).isoformat()
+            try:
+                waited = _exchange_sessions_after(expiry, through)
+            except CallRefused:
+                pass  # Outside the calendar's coverage; keep waiting for observed sessions.
+        if waited >= SETTLE_GRACE_SESSIONS:
             return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
         return "pending", reason
-    signed_move = _percent(entry, price)
+    signed_move = (price - entry) * 100 / entry
     actual_move = abs(signed_move)
     implied_move = Decimal(call["implied_move_pct"])
     diff = actual_move - implied_move
@@ -865,9 +890,10 @@ def settle_vol_call(call, closes, sessions, today):
         "kind": "vol",
         "outcome": outcome,
         "exit_session": expiry,
+        "entry_close": format(entry.normalize(), "f"),
         "exit_price": format(price.normalize(), "f"),
-        "signed_move_percent": format(signed_move, "f"),
-        "actual_move_percent": format(actual_move, "f"),
+        "signed_move_percent": format(signed_move, ".2f"),
+        "actual_move_percent": format(actual_move, ".2f"),
         "implied_move_percent": call["implied_move_pct"],
         "entry_iv": call["entry_iv"],
     }
@@ -938,7 +964,7 @@ def settle_open_calls(store, fetch, *, now, today, completed):
         elif state == "pending":
             pending.append(f"{call['agent_id']} call {call['call_id']}: {value}")
     for call in vol_calls:
-        state, value = settle_vol_call(call, closes, sessions, today)
+        state, value = settle_vol_call(call, closes, sessions, today, completed_today=completed(today))
         if state == "settled":
             settled += store.settle_vol(call["call_id"], value, now=now)
         elif state == "pending":
