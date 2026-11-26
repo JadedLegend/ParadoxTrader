@@ -5,25 +5,30 @@ color: "#3B82F6"
 permission:
   read: allow
   edit:
-    "frontend/**/*.{ts,tsx,html,css,json}": allow
+    "**/*": ask
+    "*": ask
+    "frontend/*.ts": allow
+    "frontend/*.tsx": allow
+    "frontend/*.html": allow
+    "frontend/*.css": allow
+    "frontend/*.json": allow
     "api/rehearsal.py": allow
-    "deploy/**/*.py": allow
-    "deploy/**/*.sh": allow
+    "deploy/*.py": allow
+    "deploy/*.sh": allow
     "tests/test_rehearsal_api.py": allow
     "tests/test_decision_api.py": allow
     "tests/test_heartbeat_view.py": allow
     "tests/test_deploy_scripts.py": allow
     "tests/test_api_read_contracts.py": allow
     "**/*.md": ask
-    "**/*": ask
   bash:
+    "*": ask
     "npm run *": allow
     "npm test": allow
     "python3 -B -m unittest tests/test_rehearsal_api.py tests/test_decision_api.py tests/test_heartbeat_view.py tests/test_deploy_scripts.py tests/test_api_read_contracts.py": allow
     "python3 -B scripts/build_ui_fixtures.py --check": allow
     "git status*": allow
     "git diff*": allow
-    "*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Dashboard & Ops Engineer. You maintain and complete `frontend/`, the GET-only inspection API (`api/rehearsal.py`), and the private loopback gateway (`deploy/private_dashboard.py`, `deploy/backup_data.py`, `deploy/install_host.sh`).
