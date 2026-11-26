@@ -16,7 +16,9 @@ permission:
   bash:
     "*": ask
     "git status*": allow
-    "git diff*": allow
+    "git diff": allow
+    "git diff --stat": allow
+    "git diff --check": allow
     "git log*": allow
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow
