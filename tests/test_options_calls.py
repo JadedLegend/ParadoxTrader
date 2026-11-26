@@ -152,6 +152,18 @@ class VolCallStoreTests(Blocked):
                 self.assertEqual(refused.exception.code, code)
         self.assertEqual(self.calls.all_open_vol(), [])
 
+    def test_snapshot_underlying_must_be_from_the_same_eastern_session(self):
+        # Cross midnight Eastern without exceeding the age limit or changing UTC dates.
+        now = OPEN.replace(hour=5, minute=5)
+        snapshot = options_snapshot(checked_at=now, quote_time=now.isoformat())
+        snapshot["underlying_as_of"] = (now - timedelta(minutes=10)).isoformat()
+        for choice in (VOL_CALL, OPTION_CALL):
+            with self.subTest(kind=choice["kind"]):
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(agent_id="siren", run_id=choice["kind"], wake_id="siren-r1",
+                                      choice=choice, market=None, options=snapshot, now=now)
+                self.assertEqual(refused.exception.code, "call_options_stale")
+
     def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
         self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
                           choice=STOCK_CALL, market=MARKET, now=OPEN)
@@ -177,9 +189,11 @@ class VolCallStoreTests(Blocked):
         self.assertEqual(self.calls.counts()["tempest"]["open"], 2)
 
     def test_seals_atm_iv_implied_move_and_shared_cap(self):
+        snapshot = options_snapshot()
+        snapshot["underlying_as_of"] = (OPEN - timedelta(minutes=2)).isoformat()
         call_id = self.calls.record(
             agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
-            choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+            choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN,
         )
         self.assertEqual(
             self.calls.record(
@@ -190,6 +204,9 @@ class VolCallStoreTests(Blocked):
         )
         [row] = self.calls.open_vol_calls("tempest")
         self.assertEqual(row["call_id"], call_id)
+        with closing(sqlite3.connect(self.root / CALLS_FILE)) as db:
+            stored_time = db.execute("SELECT price_as_of FROM vol_calls WHERE call_id=?", (call_id,)).fetchone()
+        self.assertEqual(stored_time, (snapshot["underlying_as_of"],))
         self.assertEqual(row["entry_iv"], "0.142")
         self.assertEqual(row["trading_days"], 5)
         self.assertEqual(row["implied_move_pct"], "2.00")

@@ -278,7 +278,7 @@ def _entry(market, symbol):
     return format(price.normalize(), "f"), moment.astimezone(timezone.utc), market["status"]
 
 
-def _option_underlying(market, options, symbol):
+def _option_underlying(market, options, symbol, now):
     """Entry underlying price + timestamp from committed market or options snapshot."""
     if isinstance(market, dict) and market.get("status") in ("ok", "closed"):
         try:
@@ -287,11 +287,11 @@ def _option_underlying(market, options, symbol):
         except CallRefused as error:
             if error.code == "call_no_price":
                 pass
-    return _snapshot_underlying(options)
+    return _snapshot_underlying(options, now)
 
 
-def _snapshot_underlying(options):
-    """Read the underlying price and time sealed with the options snapshot."""
+def _snapshot_underlying(options, now):
+    """Read a fresh underlying quote from the committed options snapshot."""
     try:
         price = Decimal(str(options["underlying_price"]))
         moment = datetime.fromisoformat(str(options["underlying_as_of"]).replace("Z", "+00:00"))
@@ -299,6 +299,8 @@ def _snapshot_underlying(options):
         raise CallRefused("call_no_price") from None
     if not price.is_finite() or price <= 0 or moment.tzinfo is None:
         raise CallRefused("call_no_price")
+    if not 0 <= (now - moment).total_seconds() <= STALE_QUOTE_SECONDS or _session(moment) != _session(now):
+        raise CallRefused("call_options_stale")
     return price, format(price.normalize(), "f"), moment.astimezone(timezone.utc)
 
 
@@ -347,9 +349,7 @@ def _vol_entry(options, symbol, expiry, now):
     ]
     if not contracts:
         raise CallRefused("call_contract_not_shown")
-    price_dec, price_text, price_moment = _snapshot_underlying(options)
-    if not 0 <= (now - price_moment).total_seconds() <= STALE_QUOTE_SECONDS:
-        raise CallRefused("call_options_stale")
+    price_dec, price_text, price_moment = _snapshot_underlying(options, now)
     entry_session = _session(price_moment)
     trading_days = _exchange_sessions_after(entry_session, expiry)
     if trading_days < 2:
@@ -439,7 +439,7 @@ def _option_entry(market, options, symbol, expiry, option_type, strike, now):
     if (isinstance(matched.get("bid"), bool) or isinstance(matched.get("ask"), bool)
             or not bid.is_finite() or not ask.is_finite() or bid < 0 or ask <= 0 or ask < bid):
         raise CallRefused("call_bad_option_quote")
-    _, price_text, price_moment = _option_underlying(market, options, symbol)
+    _, price_text, price_moment = _option_underlying(market, options, symbol, now)
     entry_session = _session(price_moment)
     if expiry <= entry_session:
         raise CallRefused("call_horizon_too_short")
