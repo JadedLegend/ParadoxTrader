@@ -5,10 +5,10 @@ color: "#D68C24"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
-    "core/market/**/*.py": allow
+    "*": ask
     "core/market/*.py": allow
+    "core/market/**/*.py": allow
     "data/feeds/**/*.py": allow
     "tests/test_market_*.py": allow
     "tests/test_options_*.py": allow

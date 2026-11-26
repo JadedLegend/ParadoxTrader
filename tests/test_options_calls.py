@@ -177,15 +177,16 @@ class VolCallStoreTests(Blocked):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
 
-    def test_thanksgiving_leaves_only_one_session_until_expiry(self):
+    def test_refuses_vol_entry_with_only_one_session_after_thanksgiving(self):
         market = {**MARKET, "quotes": [
             {**MARKET["quotes"][0], "as_of": "2026-11-25T14:58:00+00:00"},
         ]}
-        options = options_snapshot(quote_time="2026-11-25T14:59:30+00:00")
         with self.assertRaises(CallRefused) as refused:
             self.calls.record(
                 agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
-                choice=VOL_CALL, market=market, options=options, now=OPEN.replace(day=25),
+                choice=VOL_CALL, market=market,
+                options=options_snapshot(quote_time="2026-11-25T14:59:30+00:00"),
+                now=OPEN.replace(day=25),
             )
         self.assertEqual(refused.exception.code, "call_horizon_too_short")
         self.assertEqual(self.calls.open_vol_calls("tempest"), [])
@@ -370,21 +371,26 @@ class OptionCallShapeAndStoreTests(Blocked):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
 
-    def test_cached_quotes_age_at_commit_without_changing_sealed_entries(self):
-        snapshot = options_snapshot(quote_time=(OPEN - timedelta(minutes=30)).isoformat())
-        late = OPEN + timedelta(seconds=1)
-        for idx, choice in enumerate((OPTION_CALL, VOL_CALL), start=1):
-            with self.subTest(kind=choice["kind"]):
-                args = dict(agent_id="alchemist", run_id="run-a", choice=choice,
-                            market=MARKET, options=snapshot)
-                wake = f"alchemist-r{idx}"
-                call_id = self.calls.record(**args, wake_id=wake, now=OPEN)
-                self.assertEqual(self.calls.record(**args, wake_id=wake, now=late), call_id)
-                with self.assertRaises(CallRefused) as refused:
-                    self.calls.record(**args, wake_id=f"alchemist-r{idx + 2}", now=late)
-                self.assertEqual(refused.exception.code, "call_options_stale")
-        self.assertEqual(len(self.calls.open_vol_calls("alchemist")), 1)
-        self.assertEqual(len(self.calls.open_option_calls("alchemist")), 1)
+    def test_commit_time_quote_age_and_retries(self):
+        at_threshold = OPEN.replace(minute=29, second=30)
+        too_late = at_threshold.replace(second=31)
+        for kind, choice, read in (
+            ("option", OPTION_CALL, self.calls.open_option_calls),
+            ("vol", VOL_CALL, self.calls.open_vol_calls),
+        ):
+            with self.subTest(kind=kind):
+                entry = dict(agent_id="siren", run_id=kind, wake_id="siren-r1",
+                             choice=choice, market=MARKET, options=options_snapshot())
+                for rejected_at in (too_late, OPEN - timedelta(minutes=1)):
+                    with self.assertRaises(CallRefused) as refused:
+                        self.calls.record(**{**entry, "wake_id": "siren-r2"}, now=rejected_at)
+                    self.assertEqual(refused.exception.code, "call_options_stale")
+                self.assertEqual(read("siren"), [])
+
+                call_id = self.calls.record(**entry, now=at_threshold)
+                original = read("siren")
+                self.assertEqual(self.calls.record(**entry, now=too_late), call_id)
+                self.assertEqual(read("siren"), original)
 
     def test_option_refusals(self):
         bad_quote = options_snapshot()

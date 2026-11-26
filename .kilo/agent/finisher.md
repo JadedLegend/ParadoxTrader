@@ -5,8 +5,8 @@ color: "#6B4EE6"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
+    "*": ask
     "docs/**/*.md": allow
     "README.md": allow
     "TODO.md": allow

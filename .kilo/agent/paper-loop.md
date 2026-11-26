@@ -5,10 +5,10 @@ color: "#2AA08F"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
-    "core/trading/**/*.py": allow
+    "*": ask
     "core/trading/*.py": allow
+    "core/trading/**/*.py": allow
     "core/usage/**/*.py": allow
     "core/runtime/inquiry.py": allow
     "tests/test_lineage_*.py": allow
