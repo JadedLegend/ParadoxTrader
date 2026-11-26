@@ -27,6 +27,11 @@ permission:
     "python3 -B scripts/build_ui_fixtures.py --check": allow
     "git status*": allow
     "git diff*": allow
+    "git diff*--output=*": ask
+    "git diff*--output *": ask
+    "git diff*--output\t*": ask
+    "git diff*--output\"*": ask
+    "git diff*--output'*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Dashboard & Ops Engineer. You maintain and complete `frontend/`, the GET-only inspection API (`api/rehearsal.py`), and the private loopback gateway (`deploy/private_dashboard.py`, `deploy/backup_data.py`, `deploy/install_host.sh`).

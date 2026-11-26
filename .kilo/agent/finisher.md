@@ -13,6 +13,11 @@ permission:
     "*": ask
     "git status*": allow
     "git diff*": allow
+    "git diff*--output=*": ask
+    "git diff*--output *": ask
+    "git diff*--output\t*": ask
+    "git diff*--output\"*": ask
+    "git diff*--output'*": ask
     "git log*": allow
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow

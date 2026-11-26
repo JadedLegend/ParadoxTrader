@@ -22,6 +22,11 @@ permission:
     "python3 -B scripts/build_lineage_fixture.py --check": allow
     "git status*": allow
     "git diff*": allow
+    "git diff*--output=*": ask
+    "git diff*--output *": ask
+    "git diff*--output\t*": ask
+    "git diff*--output\"*": ask
+    "git diff*--output'*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Paper Execution & Lineage Engineer. Your scope is the financial execution and cost-accounting rail described in `README.md`, `docs/IDEA_LINEAGE.md`, and `docs/OPERATING_COSTS.md`.
