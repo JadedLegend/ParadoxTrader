@@ -1,6 +1,6 @@
 # Options and volatility calls: test options edge at zero broker risk
 
-Status: approved. Phase 1 built in `build/options-calls-phase1`; Phases 2–3 not started.
+Status: approved. Phase 1 built in `build/options-calls-phase1`; Phases 2–3 not started. Wake storage and stock-only database compatibility covered by regression tests.
 
 Builds on [`CALLS_AND_SETTLEMENT.md`](CALLS_AND_SETTLEMENT.md),
 [`OPTIONS_VIEW.md`](OPTIONS_VIEW.md), and the
@@ -96,25 +96,43 @@ or order access.
 
 Once `expiry` has closed (after 16:30 Eastern):
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fa6766e40917d42831fced41531cbb48c2bf38b3260f1afaeb7fc759d186da2b -->
+
 1. Fetch official closes $S_0$ (`entry_session`) and $S_T$ (`expiry`) for `symbol`
-   and `YARDSTICK` (`SPY`).
+   and `YARDSTICK` (`SPY`). The price sealed at the time of the call remains
+   recorded as evidence. The official entry-session close is the baseline for
+   settlement. If either close for `symbol` is missing, wait for up to
+   `SETTLE_GRACE_SESSIONS` (five completed exchange sessions after expiry).
+   If a close is still missing after that grace period, record `unsettled`
+   with the missing date or an unavailable-data reason.
 2. Compare the **actual absolute % move** $|S_T - S_0| / S_0 \times 100$ directly
    against the sealed **implied % move** (`implied_move_pct`), with a deadband of
-   **±0.25 percentage points** (within ±0.25% of implied = `flat`):
+   **±0.25 percentage points**, including both boundaries as `flat`. Compare the
+   unrounded move and round only the recorded percentage:
    - `iv_view == "high"` (agent expected less movement than options priced):
      `right` if $\text{actual\_move\_pct} < \text{implied\_move\_pct} - 0.25$,
      `wrong` if $\text{actual\_move\_pct} > \text{implied\_move\_pct} + 0.25$.
    - `iv_view == "low"` (agent expected more movement than options priced):
      `right` if $\text{actual\_move\_pct} > \text{implied\_move\_pct} + 0.25$,
      `wrong` if $\text{actual\_move\_pct} < \text{implied\_move\_pct} - 0.25$.
-3. Record `actual_move_pct`, `signed_move_pct`, `implied_move_pct`, `entry_iv`,
+3. Record the official `entry_close`, `actual_move_pct`, `signed_move_pct`, `implied_move_pct`, `entry_iv`,
    `spy_move_pct`, and `outcome`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ### Tests (network blocked)
 
 - Valid `vol` call seals `entry_iv`, `implied_move_pct`, `atm_strike`, `entry_session`, `expiry`, and `quote_time`.
 - Refusals: closed market, stale ATM quote, missing `iv`, unknown `expiry`, `< 2` trading sessions remaining, shared open-call cap of 5.
-- Settlement: `right`, `wrong`, `flat` (within ±0.25% deadband), missing expiry close -> `pending` -> `unsettled`, idempotent re-settle.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:bf44e868a6fd13db461954e9fa91674bbcaa9550c4f589f7d105ae45484d5967 -->
+
+- Settlement: `right`, `wrong`, `flat` (including the exact deadband boundaries), missing entry or expiry close -> `pending` -> `unsettled`, idempotent re-settle.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ---
 

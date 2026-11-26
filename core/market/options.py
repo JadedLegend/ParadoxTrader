@@ -253,6 +253,18 @@ def options_line(record, *, now=None):
     return (lead + ": " + "; ".join(parts) + ".")[:700]
 
 
+def options_at_decision(record, moment):
+    """Copy cached contracts and freeze their freshness at the decision time."""
+    if not record or not record.get("contracts"):
+        return record
+    contracts = []
+    for contract in record["contracts"]:
+        quoted = _time(contract.get("quote_time"))
+        stale = quoted is None or not 0 <= (moment - quoted).total_seconds() <= STALE_QUOTE_SECONDS
+        contracts.append(dict(contract, stale=bool(contract.get("stale")) or stale))
+    return dict(record, contracts=contracts)
+
+
 def options_evidence(record):
     """The inquire slot's options: status plus up to five contracts."""
     if not record or record.get("status") not in ("open", "closed") or not record.get("contracts"):

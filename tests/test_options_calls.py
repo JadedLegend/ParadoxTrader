@@ -2,7 +2,7 @@
 
 Scripted offline data and controller tests; the network is blocked."""
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -125,6 +125,27 @@ class VolCallStoreTests(Blocked):
         super().setUp()
         self.calls = CallStore(self.root / CALLS_FILE)
 
+    def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
+        self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
+                          choice=STOCK_CALL, market=MARKET, now=OPEN)
+        path = self.root / CALLS_FILE
+        with closing(sqlite3.connect(path)) as db:
+            for prefix in ("vol", "option"):
+                for suffix in ("handbacks", "settlements", "calls"):
+                    db.execute(f"DROP TABLE IF EXISTS {prefix}_{suffix}")
+            db.commit()
+        before = path.read_bytes()
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 1)
+        self.assertEqual(len(self.calls.open_calls("tempest")), 1)
+        self.assertEqual(len(self.calls.all_open()), 1)
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+        self.assertEqual(self.calls.all_open_vol(), [])
+        self.assertEqual(self.calls.vol_settlements(), [])
+        self.assertTrue(path.read_bytes() == before, "read operations changed the calls database")
+        self.calls.record(agent_id="tempest", run_id="new", wake_id="tempest-r1",
+                          choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 2)
+
     def test_seals_atm_iv_implied_move_and_shared_cap(self):
         call_id = self.calls.record(
             agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
@@ -225,8 +246,8 @@ class VolCallStoreTests(Blocked):
                 row = self.calls.open_vol_calls("tempest")[-1]
                 self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
                                  ("596", expected_iv, expected_move))
-                closes = {"SPY": {"2026-11-27": Decimal("615")}}
-                state, result = settle_vol_call(row, closes, ["2026-11-27"], "2026-11-27")
+                closes = {"SPY": {"2026-11-19": Decimal("596"), "2026-11-27": Decimal("615")}}
+                state, result = settle_vol_call(row, closes, sorted(closes["SPY"]), "2026-11-27")
                 self.assertEqual((state, result["outcome"]), ("settled", "right"))
 
 
@@ -295,8 +316,82 @@ class VolSettleTests(Blocked):
                          {"open": 0, "settled": 1, "right": 1, "wrong": 0, "flat": 0, "unsettled": 0})
         self.assertFalse(calls.has_open())
 
+    def test_settlement_uses_official_entry_close_instead_of_sealed_price(self):
+        call = self._vol(implied="2", entry="100")
+        closes = self._closes({"2026-11-19": 102, "2026-11-27": 103})
+        state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+        self.assertEqual((state, detail["outcome"], detail["actual_move_percent"]), ("settled", "right", "0.98"))
+        self.assertEqual((call["entry_price"], detail["entry_close"]), ("100", "102"))
+
+    def test_missing_entry_close_waits_through_the_same_grace_as_missing_expiry(self):
+        call = self._vol()
+        for missing, available in (("2026-11-19", "2026-11-27"), ("2026-11-27", "2026-11-19")):
+            with self.subTest(missing=missing):
+                closes = self._closes({available: 500})
+                reason = f"no SPY close for {missing}"
+                self.assertEqual(settle_vol_call(call, closes, self.SESSIONS[:-1], "2026-12-03"),
+                                 ("pending", reason))
+                state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+                self.assertEqual((state, detail["outcome"], detail["reason"]), ("settled", "unsettled", reason))
+
+    def test_grace_with_truncated_data_skips_holiday_and_unfinished_session(self):
+        call = {**self._vol(), "expiry": "2026-11-25"}
+        for closes, sessions in ((self._closes({"2026-11-19": 500}), self.SESSIONS[:4]), (None, [])):
+            with self.subTest(market_data=closes is not None):
+                # Dec 2 is only the fourth session after expiry because of Thanksgiving.
+                self.assertEqual(settle_vol_call(call, closes, sessions, "2026-12-02")[0], "pending")
+                state, detail = settle_vol_call(call, closes, sessions, "2026-12-03")
+                self.assertEqual((state, detail["outcome"]), ("settled", "unsettled"))
+                self.assertEqual(settle_vol_call(call, closes, sessions, "2026-12-03", completed_today=False)[0],
+                                 "pending")
+
+    def test_deadband_compares_unrounded_move_and_includes_exact_boundaries(self):
+        call = self._vol(implied="2", entry="600")
+        for close, outcome, display in (
+            ("613.51", "wrong", "2.25"), ("613.50", "flat", "2.25"),
+            ("612", "flat", "2.00"), ("610.50", "flat", "1.75"), ("610.49", "right", "1.75"),
+        ):
+            with self.subTest(close=close):
+                closes = self._closes({"2026-11-19": 600, "2026-11-27": close})
+                state, detail = settle_vol_call(call, closes, self.SESSIONS, "2026-12-04")
+                self.assertEqual((state, detail["outcome"], detail["actual_move_percent"]),
+                                 ("settled", outcome, display))
+
 
 class VolControllerTests(Blocked):
+    def test_recomputes_cached_freshness_once_and_reuses_it_on_recovery(self):
+        for minutes_after_fetch, stale in ((10, False), (25, True)):
+            with self.subTest(stale=stale):
+                store = RehearsalStore(self.root / f"sessions-{minutes_after_fetch}")
+                run_id = store.prepare(day_cfg())["run_id"]
+                snapshot = options_snapshot(quote_time=(OPEN - timedelta(minutes=15)).isoformat())
+                transport = OpenRouterTransport("scripted-offline", http_post=ScriptedHTTP())
+                controller = RehearsalController(store, run_id, transport=transport,
+                                                 market=lambda: MARKET, options=lambda: snapshot)
+                controller._now = lambda: OPEN + timedelta(minutes=minutes_after_fetch)
+                controller.prepare_profiles()
+                store.add_wake(run_id, "tempest")
+                controller._token = store.begin(run_id)
+                job = store.claim_job(run_id, "tempest-r1", controller._token)
+                first = controller._decision_details(job, new_picker=True)
+                self.assertTrue(all(row["stale"] == stale
+                                    for row in first["private_context"]["options_snapshot"]["contracts"]))
+                self.assertTrue(all(not row["stale"] for row in snapshot["contracts"]))
+
+                store.recover(run_id)
+                resumed = RehearsalController(store, run_id, transport=transport)
+                resumed._now = lambda: OPEN + timedelta(hours=2)
+                resumed._token = store.begin(run_id, resume=True)
+                job = store.claim_job(run_id, "tempest-r1", resumed._token)
+                details = resumed._decision_details(job, new_picker=True)
+                self.assertEqual(details["private_context"], first["private_context"])
+                if stale:
+                    with self.assertRaises(CallRefused) as refused:
+                        resumed._call(job, VOL_CALL, details)
+                    self.assertEqual(refused.exception.code, "call_options_stale")
+                else:
+                    self.assertEqual(resumed._call(job, VOL_CALL, details), [{"kind": "call", "id": 1}])
+
     def test_legacy_reduced_options_cannot_seal_a_vol_call(self):
         from core.market.options import options_evidence
 
@@ -339,7 +434,7 @@ class VolControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(),
+            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
         )
         job = controller.run_wake("tempest")
         self.assertEqual((job["status"], job["action"]), ("completed", "call"))

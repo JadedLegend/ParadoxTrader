@@ -29,7 +29,9 @@ permission:
     "python -m pytest tests/*": allow
     "python3 -B scripts/build_*_fixture.py --check": allow
     "git status*": allow
-    "git diff*": allow
+    "git diff": allow
+    "git diff --stat": allow
+    "git diff --check": allow
   skill: "ask"
 ---
 You are the ParadoxTrader Runtime & Social Engineer. You work on the seven agents' continuing home, staggered clocks, memory/notebook/calls continuity, inquiry receipts, and social communication (`FORUM_AND_MESSAGES.md`).

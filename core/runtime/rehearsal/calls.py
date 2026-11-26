@@ -385,6 +385,17 @@ class CallStore:
         connection.executescript(_SCHEMA)
         return connection
 
+    def _reader(self):
+        connection = sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    @staticmethod
+    def _has_table(connection, table):
+        return connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone() is not None
+
     @staticmethod
     def _next_call_id(connection):
         row = connection.execute(
@@ -455,20 +466,26 @@ class CallStore:
     def open_calls(self, agent_id):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "calls"):
+                return []
             return self._open(connection, agent_id)
 
     def open_vol_calls(self, agent_id):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_calls"):
+                return []
             return self._open_vol(connection, agent_id)
 
     def all_open(self):
         """Every agent's open stock calls, oldest first, for settling."""
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "calls"):
+                return []
             return [dict(row) for row in connection.execute(
                 "SELECT c.call_id, c.agent_id, c.symbol, c.direction, c.horizon_days, c.entry_price,"
                 " c.entry_session FROM calls c LEFT JOIN settlements s USING (call_id)"
@@ -478,7 +495,9 @@ class CallStore:
         """Every agent's open volatility calls, oldest first, for settling."""
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_calls"):
+                return []
             return [dict(row) for row in connection.execute(
                 "SELECT v.call_id, v.agent_id, v.symbol, v.expiry, v.iv_view, v.entry_price,"
                 " v.entry_iv, v.implied_move_pct, v.entry_session FROM vol_calls v"
@@ -532,8 +551,10 @@ class CallStore:
         if not self.path.exists():
             return {}
         result = {}
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
             for table, settle_table in (("calls", "settlements"), ("vol_calls", "vol_settlements")):
+                if not self._has_table(connection, table):
+                    continue
                 for row in connection.execute(f"SELECT c.agent_id, s.detail FROM {table} c LEFT JOIN {settle_table} s"
                                               " USING (call_id)"):
                     item = result.setdefault(row["agent_id"], dict(NO_CALLS))
@@ -549,14 +570,18 @@ class CallStore:
     def settlements(self):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "settlements"):
+                return []
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM settlements ORDER BY call_id")]
 
     def vol_settlements(self):
         if not self.path.exists():
             return []
-        with closing(self._connect()) as connection:
+        with closing(self._reader()) as connection:
+            if not self._has_table(connection, "vol_settlements"):
+                return []
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM vol_settlements ORDER BY call_id")]
 
@@ -622,31 +647,37 @@ def settle_call(call, closes, sessions, today):
     return "settled", detail
 
 
-def settle_vol_call(call, closes, sessions, today):
-    """Decide one open volatility call against expiry close. Pure: no clock, no network."""
-    entry = Decimal(call["entry_price"])
+def settle_vol_call(call, closes, sessions, today, *, completed_today=True):
+    """Grade a volatility call using official closes and completed sessions."""
+    entry_session = call["entry_session"]
     expiry = call["expiry"]
-    if closes is None or not sessions:
-        if today < expiry:
-            return "open", None
-        waited = _weekdays_after(expiry, today)
-        if waited >= SETTLE_GRACE_SESSIONS + NO_DATA_WEEKDAY_SLACK:
-            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": "no market data reached the heartbeat"}
-        return "pending", "market data unavailable"
-    if not any(s >= expiry for s in sessions):
-        if today <= expiry:
-            return "open", None
-        reason = f"no {call['symbol']} close for {expiry}"
-        if _weekdays_after(expiry, today) >= SETTLE_GRACE_SESSIONS:
+    reached_expiry = any(s >= expiry for s in sessions)
+    if today < expiry or (today == expiry and not reached_expiry
+                          and (sessions or not completed_today)):
+        return "open", None
+    symbol = call["symbol"]
+    symbol_closes = (closes or {}).get(symbol, {})
+    entry = symbol_closes.get(entry_session)
+    price = symbol_closes.get(expiry)
+    if closes is None or not sessions or entry is None or price is None:
+        if closes is None or not sessions:
+            reason = "market data unavailable"
+        else:
+            missing = [s for s, close in ((entry_session, entry), (expiry, price)) if close is None]
+            reason = f"no {symbol} close for " + " or ".join(missing)
+        waited = sum(s > expiry for s in sessions)
+        if waited < SETTLE_GRACE_SESSIONS:
+            # Returned bars can have gaps or stop before expiry. Use the calendar,
+            # excluding today's session while its closing bar is still forming.
+            through = today if completed_today else (date.fromisoformat(today) - timedelta(days=1)).isoformat()
+            try:
+                waited = _vol_sessions_after(expiry, through)
+            except CallRefused:
+                pass  # Outside the calendar's coverage; keep waiting for observed sessions.
+        if waited >= SETTLE_GRACE_SESSIONS:
             return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
         return "pending", reason
-    price = closes.get(call["symbol"], {}).get(expiry)
-    if price is None:
-        reason = f"no {call['symbol']} close for {expiry}"
-        if len([s for s in sessions if s > expiry]) >= SETTLE_GRACE_SESSIONS:
-            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
-        return "pending", reason
-    signed_move = _percent(entry, price)
+    signed_move = (price - entry) * 100 / entry
     actual_move = abs(signed_move)
     implied_move = Decimal(call["implied_move_pct"])
     diff = actual_move - implied_move
@@ -660,9 +691,10 @@ def settle_vol_call(call, closes, sessions, today):
         "kind": "vol",
         "outcome": outcome,
         "exit_session": expiry,
+        "entry_close": format(entry.normalize(), "f"),
         "exit_price": format(price.normalize(), "f"),
-        "signed_move_percent": format(signed_move, "f"),
-        "actual_move_percent": format(actual_move, "f"),
+        "signed_move_percent": format(signed_move, ".2f"),
+        "actual_move_percent": format(actual_move, ".2f"),
         "implied_move_percent": call["implied_move_pct"],
         "entry_iv": call["entry_iv"],
     }
@@ -697,7 +729,7 @@ def settle_open_calls(store, fetch, *, now, today, completed):
         elif state == "pending":
             pending.append(f"{call['agent_id']} call {call['call_id']}: {value}")
     for call in vol_calls:
-        state, value = settle_vol_call(call, closes, sessions, today)
+        state, value = settle_vol_call(call, closes, sessions, today, completed_today=completed(today))
         if state == "settled":
             settled += store.settle_vol(call["call_id"], value, now=now)
         elif state == "pending":
