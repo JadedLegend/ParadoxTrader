@@ -254,11 +254,11 @@ def options_line(record, *, now=None):
 
 
 def options_evidence(record):
-    """The inquire slot's options: status plus up to five contracts."""
+    """The inquire slot's options: status plus up to MAX_CONTRACTS contracts."""
     if not record or record.get("status") not in ("open", "closed") or not record.get("contracts"):
         return {"status": "unavailable"}
     contracts = []
-    for c in record["contracts"][:5]:
+    for c in record["contracts"][:MAX_CONTRACTS]:
         contracts.append({key: c[key] for key in ("symbol", "type", "strike", "expiration", "bid", "ask",
                                                   "iv", "delta", "quote_time") if key in c})
     return {"status": "ok" if record["status"] == "open" else "closed", "source": "alpaca-options indicative delayed",

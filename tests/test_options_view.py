@@ -87,7 +87,7 @@ class FetchTests(Blocked):
         self.assertIn("Nov 20 (1 day): call 733 2.1/2.18 IV 14.2%", line)
         self.assertLessEqual(len(line), 700)
         evidence = options_evidence(record)
-        self.assertEqual((evidence["status"], len(evidence["contracts"])), ("ok", 5))
+        self.assertEqual((evidence["status"], len(evidence["contracts"])), ("ok", 8))
 
     def test_old_quotes_are_marked_and_failures_never_invent_numbers(self):
         from decimal import Decimal

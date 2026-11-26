@@ -28,8 +28,8 @@ from core.runtime.inquiry import InquiryReceiptStore, _validate_command, run_inq
 from core.runtime.orientation import skill_text
 from core.trading.queue import ensure_private_db_file
 
-from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, VOL_CALL_INSTRUCTIONS, CallRefused, CallStore,
-                    call_results_line, open_calls_line)
+from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, OPTION_CALL_INSTRUCTIONS,
+                    VOL_CALL_INSTRUCTIONS, CallRefused, CallStore, call_results_line, open_calls_line)
 from .notebook import NOTEBOOK_FILE, NOTEBOOK_INSTRUCTIONS, NotebookStore, notebook_text
 from .continuity import (clip_continuity, continuity_message, owner_continuity,
                          public_coverage)
@@ -517,7 +517,11 @@ class RehearsalController:
             calls_path = self.store.safe_run_file(self.run_id, CALLS_FILE)
             with self._memory_lock:
                 calls = CallStore(calls_path)
-                private["open_calls"] = open_calls_line(calls.open_calls(job["agent_id"]), calls.open_vol_calls(job["agent_id"]))
+                private["open_calls"] = open_calls_line(
+                    calls.open_calls(job["agent_id"]),
+                    calls.open_vol_calls(job["agent_id"]),
+                    calls.open_option_calls(job["agent_id"]),
+                )
         if self.options is not None:
             from core.market.options import options_evidence, options_line
             try:
@@ -533,7 +537,7 @@ class RehearsalController:
             private["options"] = options_evidence(chain)
             private["options_snapshot"] = chain
             if self.market is not None:
-                private["choice_instructions"] += VOL_CALL_INSTRUCTIONS
+                private["choice_instructions"] += VOL_CALL_INSTRUCTIONS + OPTION_CALL_INSTRUCTIONS
         if self.feeds is not None:
             from core.market.feeds import feed_lines
             try:

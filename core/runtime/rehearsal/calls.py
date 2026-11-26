@@ -31,9 +31,12 @@ CALL_OPTIONS = {
     "max_reason_chars": 400, "max_open_per_agent": 5,
     "symbols": "this wake's market window",
 }
-CALL_FIELDS = ("kind", "symbol", "direction", "horizon_days", "expiry", "iv_view", "confidence", "reason")
+CALL_FIELDS = ("kind", "symbol", "direction", "horizon_days", "expiry", "iv_view",
+               "option_type", "strike", "confidence", "reason")
 VOL_IV_VIEWS = ("high", "low")
+OPTION_TYPES = ("call", "put")
 VOL_DEADBAND = Decimal("0.25")
+OPTION_DEADBAND = Decimal("0.01")
 NO_CALLS = {"open": 0, "settled": 0, "right": 0, "wrong": 0, "flat": 0, "unsettled": 0}
 _SYMBOL = re.compile(r"[A-Z]{1,5}(?:[.][A-Z]{1,2})?")
 
@@ -64,6 +67,13 @@ VOL_CALL_INSTRUCTIONS = (
     "{\"action\":\"call\",\"kind\":\"vol\",\"symbol\":<options ticker>,\"expiry\":<YYYY-MM-DD>,"
     "\"iv_view\":<high|low>,\"confidence\":<low|medium|high>,\"reason\":<optional, <=400 chars>}. "
     "Checks whether the move by expiry is smaller (high) or larger (low) than the options' implied move."
+)
+
+OPTION_CALL_INSTRUCTIONS = (
+    "\nOPTION CALL (when options are open): or seal one long option from the options line at its ask: "
+    "{\"action\":\"call\",\"kind\":\"option\",\"symbol\":<options ticker>,\"expiry\":<YYYY-MM-DD>,"
+    "\"option_type\":<call|put>,\"strike\":<number>,\"confidence\":<low|medium|high>,"
+    "\"reason\":<optional, <=400 chars>}. Settles at expiry close minus ask."
 )
 
 _SCHEMA = """
@@ -134,6 +144,42 @@ CREATE TRIGGER IF NOT EXISTS vol_handbacks_no_update BEFORE UPDATE ON vol_handba
  BEGIN SELECT RAISE(ABORT, 'vol handbacks are append-only'); END;
 CREATE TRIGGER IF NOT EXISTS vol_handbacks_no_delete BEFORE DELETE ON vol_handbacks
  BEGIN SELECT RAISE(ABORT, 'vol handbacks are append-only'); END;
+CREATE TABLE IF NOT EXISTS option_calls (
+ call_id INTEGER PRIMARY KEY,
+ agent_id TEXT NOT NULL, run_id TEXT NOT NULL, wake_id TEXT NOT NULL,
+ contract TEXT NOT NULL, symbol TEXT NOT NULL, expiry TEXT NOT NULL,
+ option_type TEXT NOT NULL CHECK (option_type IN ('call','put')),
+ strike TEXT NOT NULL,
+ confidence TEXT NOT NULL CHECK (confidence IN ('low','medium','high')),
+ reason TEXT NOT NULL,
+ entry_bid TEXT NOT NULL, entry_ask TEXT NOT NULL, spread_pct TEXT NOT NULL,
+ entry_iv TEXT, entry_delta TEXT,
+ entry_underlying_price TEXT NOT NULL, price_as_of TEXT NOT NULL,
+ quote_time TEXT NOT NULL, feed TEXT NOT NULL,
+ entry_session TEXT NOT NULL, created_at TEXT NOT NULL,
+ UNIQUE (run_id, wake_id)
+);
+CREATE TRIGGER IF NOT EXISTS option_calls_no_update BEFORE UPDATE ON option_calls
+ BEGIN SELECT RAISE(ABORT, 'option calls are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS option_calls_no_delete BEFORE DELETE ON option_calls
+ BEGIN SELECT RAISE(ABORT, 'option calls are append-only'); END;
+CREATE TABLE IF NOT EXISTS option_settlements (
+ call_id INTEGER PRIMARY KEY REFERENCES option_calls(call_id),
+ settled_at TEXT NOT NULL, detail TEXT NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS option_settlements_no_update BEFORE UPDATE ON option_settlements
+ BEGIN SELECT RAISE(ABORT, 'option settlements are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS option_settlements_no_delete BEFORE DELETE ON option_settlements
+ BEGIN SELECT RAISE(ABORT, 'option settlements are append-only'); END;
+CREATE TABLE IF NOT EXISTS option_handbacks (
+ call_id INTEGER NOT NULL REFERENCES option_settlements(call_id),
+ run_id TEXT NOT NULL, sitting TEXT NOT NULL, shown_at TEXT NOT NULL,
+ PRIMARY KEY (call_id, run_id, sitting)
+);
+CREATE TRIGGER IF NOT EXISTS option_handbacks_no_update BEFORE UPDATE ON option_handbacks
+ BEGIN SELECT RAISE(ABORT, 'option handbacks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS option_handbacks_no_delete BEFORE DELETE ON option_handbacks
+ BEGIN SELECT RAISE(ABORT, 'option handbacks are append-only'); END;
 """
 
 
@@ -145,6 +191,15 @@ class CallRefused(ValueError):
         self.code = code
 
 
+def _validate_expiry(expiry):
+    if not isinstance(expiry, str) or len(expiry) != 10:
+        raise ValueError("invalid call expiry")
+    try:
+        date.fromisoformat(expiry)
+    except ValueError as exc:
+        raise ValueError("invalid call expiry") from exc
+
+
 def validate_call_fields(value):
     """Shape only. Raises ValueError; market/options quotes are checked later."""
     if value.get("action") != "call":
@@ -152,27 +207,37 @@ def validate_call_fields(value):
             raise ValueError("invalid call fields")
         return
     kind = value.get("kind", "stock")
-    if "kind" in value and kind not in ("stock", "vol"):
+    if "kind" in value and kind not in ("stock", "vol", "option"):
         raise ValueError("invalid call kind")
     if kind == "vol":
-        if {"direction", "horizon_days"} & set(value):
+        if {"direction", "horizon_days", "option_type", "strike"} & set(value):
             raise ValueError("invalid vol call fields")
         missing = {"symbol", "expiry", "iv_view", "confidence"} - set(value)
         if missing:
             raise ValueError("incomplete call")
         if not isinstance(value["symbol"], str) or not _SYMBOL.fullmatch(value["symbol"]):
             raise ValueError("invalid call symbol")
-        expiry = value["expiry"]
-        if not isinstance(expiry, str) or len(expiry) != 10:
-            raise ValueError("invalid call expiry")
-        try:
-            date.fromisoformat(expiry)
-        except ValueError as exc:
-            raise ValueError("invalid call expiry") from exc
+        _validate_expiry(value["expiry"])
         if value["iv_view"] not in VOL_IV_VIEWS:
             raise ValueError("invalid iv_view")
+    elif kind == "option":
+        if {"direction", "horizon_days", "iv_view"} & set(value):
+            raise ValueError("invalid option call fields")
+        missing = {"symbol", "expiry", "option_type", "strike", "confidence"} - set(value)
+        if missing:
+            raise ValueError("incomplete call")
+        if not isinstance(value["symbol"], str) or not _SYMBOL.fullmatch(value["symbol"]):
+            raise ValueError("invalid call symbol")
+        _validate_expiry(value["expiry"])
+        if value["option_type"] not in OPTION_TYPES:
+            raise ValueError("invalid option_type")
+        strike = value["strike"]
+        if isinstance(strike, bool) or not isinstance(strike, (int, float)):
+            raise ValueError("invalid call strike")
+        if not math.isfinite(strike) or Decimal(str(strike)) <= 0:
+            raise ValueError("invalid call strike")
     else:
-        if {"expiry", "iv_view"} & set(value):
+        if {"expiry", "iv_view", "option_type", "strike"} & set(value):
             raise ValueError("invalid stock call fields")
         missing = {"symbol", "direction", "horizon_days", "confidence"} - set(value)
         if missing:
@@ -230,6 +295,22 @@ def _vol_underlying(market, options, symbol):
     return price, format(price.normalize(), "f"), moment.astimezone(timezone.utc)
 
 
+def _parse_quote_time(row):
+    """Check staleness and return UTC quote_time, or raise CallRefused('call_options_stale')."""
+    if row.get("stale") is True:
+        raise CallRefused("call_options_stale")
+    raw_qt = row.get("quote_time")
+    if not isinstance(raw_qt, str):
+        raise CallRefused("call_options_stale")
+    try:
+        qt = datetime.fromisoformat(raw_qt.replace("Z", "+00:00"))
+    except ValueError:
+        raise CallRefused("call_options_stale") from None
+    if qt.tzinfo is None:
+        raise CallRefused("call_options_stale")
+    return qt.astimezone(timezone.utc)
+
+
 def _vol_entry(market, options, symbol, expiry):
     """Seal ATM implied volatility and expected move from committed options snapshot."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
@@ -265,18 +346,7 @@ def _vol_entry(market, options, symbol, expiry):
     atm_rows = by_strike[atm_strike]
     quote_times, ivs = [], []
     for row in atm_rows:
-        if row.get("stale") is True:
-            raise CallRefused("call_options_stale")
-        raw_qt = row.get("quote_time")
-        if not isinstance(raw_qt, str):
-            raise CallRefused("call_options_stale")
-        try:
-            qt = datetime.fromisoformat(raw_qt.replace("Z", "+00:00"))
-        except ValueError:
-            raise CallRefused("call_options_stale") from None
-        if qt.tzinfo is None:
-            raise CallRefused("call_options_stale")
-        quote_times.append(qt.astimezone(timezone.utc))
+        quote_times.append(_parse_quote_time(row))
         if row.get("iv") is not None and not isinstance(row.get("iv"), bool):
             try:
                 iv = Decimal(str(row["iv"]))
@@ -303,6 +373,70 @@ def _vol_entry(market, options, symbol, expiry):
     }
 
 
+def _optional_decimal(value):
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        dec = Decimal(str(value))
+    except (ValueError, InvalidOperation):
+        return None
+    return format(dec.normalize(), "f") if dec.is_finite() else None
+
+
+def _option_entry(market, options, symbol, expiry, option_type, strike):
+    """Seal a single-leg long option contract at its quoted ask price."""
+    if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
+        raise CallRefused("call_options_unavailable")
+    if options.get("symbol") not in (None, symbol):
+        raise CallRefused("call_contract_not_shown")
+    target_strike = Decimal(str(strike)).normalize()
+    matched = None
+    for row in options.get("contracts") or []:
+        if not isinstance(row, dict):
+            continue
+        if row.get("expiration") != expiry or row.get("type") != option_type:
+            continue
+        if row.get("symbol") and not str(row["symbol"]).startswith(symbol):
+            continue
+        try:
+            row_strike = Decimal(str(row["strike"])).normalize()
+        except (KeyError, TypeError, ValueError, InvalidOperation):
+            continue
+        if row_strike == target_strike:
+            matched = row
+            break
+    if matched is None:
+        raise CallRefused("call_contract_not_shown")
+    qt = _parse_quote_time(matched)
+    try:
+        bid = Decimal(str(matched["bid"]))
+        ask = Decimal(str(matched["ask"]))
+    except (KeyError, TypeError, ValueError, InvalidOperation):
+        raise CallRefused("call_bad_option_quote") from None
+    if (isinstance(matched.get("bid"), bool) or isinstance(matched.get("ask"), bool)
+            or not bid.is_finite() or not ask.is_finite() or bid < 0 or ask <= 0 or ask < bid):
+        raise CallRefused("call_bad_option_quote")
+    _, price_text, price_moment = _vol_underlying(market, options, symbol)
+    entry_session = _session(price_moment)
+    if expiry <= entry_session:
+        raise CallRefused("call_horizon_too_short")
+    spread_pct = ((ask - bid) / ask * Decimal("100")).quantize(Decimal("0.01"))
+    return {
+        "contract": str(matched["symbol"]),
+        "strike": format(target_strike, "f"),
+        "entry_bid": format(bid.normalize(), "f"),
+        "entry_ask": format(ask.normalize(), "f"),
+        "spread_pct": format(spread_pct, "f"),
+        "entry_iv": _optional_decimal(matched.get("iv")),
+        "entry_delta": _optional_decimal(matched.get("delta")),
+        "entry_underlying_price": price_text,
+        "price_as_of": price_moment.isoformat(),
+        "entry_session": entry_session,
+        "quote_time": qt.isoformat(),
+        "feed": str(options.get("source") or options.get("feed") or "alpaca-options indicative delayed"),
+    }
+
+
 class CallStore:
     def __init__(self, path):
         self.path = path
@@ -320,6 +454,8 @@ class CallStore:
             " SELECT COALESCE(MAX(call_id), 0) AS id FROM calls"
             " UNION ALL"
             " SELECT COALESCE(MAX(call_id), 0) AS id FROM vol_calls"
+            " UNION ALL"
+            " SELECT COALESCE(MAX(call_id), 0) AS id FROM option_calls"
             ")"
         ).fetchone()
         return (row[0] or 0) + 1
@@ -330,14 +466,20 @@ class CallStore:
         kind = choice.get("kind", "stock")
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
-            for table in ("calls", "vol_calls"):
+            for table in ("calls", "vol_calls", "option_calls"):
                 existing = connection.execute(f"SELECT call_id FROM {table} WHERE run_id=? AND wake_id=?",
                                               (run_id, wake_id)).fetchone()
                 if existing is not None:
                     return existing["call_id"]
-            if len(self._open(connection, agent_id)) + len(self._open_vol(connection, agent_id)) >= CALL_OPTIONS["max_open_per_agent"]:
+            open_count = (len(self._open(connection, agent_id))
+                          + len(self._open_vol(connection, agent_id))
+                          + len(self._open_option(connection, agent_id)))
+            if open_count >= CALL_OPTIONS["max_open_per_agent"]:
                 if kind == "vol":
                     _vol_entry(market, options, choice["symbol"], choice["expiry"])
+                elif kind == "option":
+                    _option_entry(market, options, choice["symbol"], choice["expiry"],
+                                  choice["option_type"], choice["strike"])
                 else:
                     _entry(market, choice["symbol"])
                 raise CallRefused("call_too_many_open")
@@ -354,6 +496,21 @@ class CallStore:
                      sealed["entry_iv"], sealed["implied_move_pct"], sealed["trading_days"],
                      sealed["atm_strike"], sealed["quote_time"], sealed["feed"],
                      sealed["entry_session"], stamp.isoformat()))
+                return call_id
+            if kind == "option":
+                sealed = _option_entry(market, options, choice["symbol"], choice["expiry"],
+                                       choice["option_type"], choice["strike"])
+                connection.execute(
+                    "INSERT INTO option_calls (call_id, agent_id, run_id, wake_id, contract, symbol, expiry,"
+                    " option_type, strike, confidence, reason, entry_bid, entry_ask, spread_pct,"
+                    " entry_iv, entry_delta, entry_underlying_price, price_as_of, quote_time, feed,"
+                    " entry_session, created_at)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (call_id, agent_id, run_id, wake_id, sealed["contract"], choice["symbol"], choice["expiry"],
+                     choice["option_type"], sealed["strike"], choice["confidence"], choice.get("reason", ""),
+                     sealed["entry_bid"], sealed["entry_ask"], sealed["spread_pct"], sealed["entry_iv"],
+                     sealed["entry_delta"], sealed["entry_underlying_price"], sealed["price_as_of"],
+                     sealed["quote_time"], sealed["feed"], sealed["entry_session"], stamp.isoformat()))
                 return call_id
             price, moment, status = _entry(market, choice["symbol"])
             connection.execute(
@@ -380,6 +537,15 @@ class CallStore:
             " FROM vol_calls v LEFT JOIN vol_settlements s USING (call_id)"
             " WHERE v.agent_id=? AND s.call_id IS NULL ORDER BY v.call_id", (agent_id,))]
 
+    @staticmethod
+    def _open_option(connection, agent_id):
+        return [dict(row) for row in connection.execute(
+            "SELECT o.call_id, o.contract, o.symbol, o.expiry, o.option_type, o.strike, o.confidence,"
+            " o.entry_bid, o.entry_ask, o.spread_pct, o.entry_iv, o.entry_delta,"
+            " o.entry_underlying_price, o.quote_time, o.entry_session"
+            " FROM option_calls o LEFT JOIN option_settlements s USING (call_id)"
+            " WHERE o.agent_id=? AND s.call_id IS NULL ORDER BY o.call_id", (agent_id,))]
+
     def open_calls(self, agent_id):
         if not self.path.exists():
             return []
@@ -391,6 +557,12 @@ class CallStore:
             return []
         with closing(self._connect()) as connection:
             return self._open_vol(connection, agent_id)
+
+    def open_option_calls(self, agent_id):
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection:
+            return self._open_option(connection, agent_id)
 
     def all_open(self):
         """Every agent's open stock calls, oldest first, for settling."""
@@ -412,8 +584,18 @@ class CallStore:
                 " v.entry_iv, v.implied_move_pct, v.entry_session FROM vol_calls v"
                 " LEFT JOIN vol_settlements s USING (call_id) WHERE s.call_id IS NULL ORDER BY v.call_id")]
 
+    def all_open_option(self):
+        """Every agent's open option calls, oldest first, for settling."""
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT o.call_id, o.agent_id, o.contract, o.symbol, o.expiry, o.option_type, o.strike,"
+                " o.entry_ask, o.spread_pct, o.entry_underlying_price, o.entry_session FROM option_calls o"
+                " LEFT JOIN option_settlements s USING (call_id) WHERE s.call_id IS NULL ORDER BY o.call_id")]
+
     def has_open(self):
-        return bool(self.all_open() or self.all_open_vol())
+        return bool(self.all_open() or self.all_open_vol() or self.all_open_option())
 
     def settle(self, call_id, detail, *, now):
         """Write one stock settlement. A call already settled is left as it was."""
@@ -428,6 +610,14 @@ class CallStore:
         with closing(self._connect()) as connection, connection:
             cursor = connection.execute(
                 "INSERT OR IGNORE INTO vol_settlements (call_id, settled_at, detail) VALUES (?,?,?)",
+                (call_id, now.astimezone(timezone.utc).isoformat(), json.dumps(detail, sort_keys=True)))
+            return cursor.rowcount == 1
+
+    def settle_option(self, call_id, detail, *, now):
+        """Write one option settlement. A call already settled is left as it was."""
+        with closing(self._connect()) as connection, connection:
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO option_settlements (call_id, settled_at, detail) VALUES (?,?,?)",
                 (call_id, now.astimezone(timezone.utc).isoformat(), json.dumps(detail, sort_keys=True)))
             return cursor.rowcount == 1
 
@@ -461,7 +651,8 @@ class CallStore:
             return {}
         result = {}
         with closing(self._connect()) as connection:
-            for table, settle_table in (("calls", "settlements"), ("vol_calls", "vol_settlements")):
+            for table, settle_table in (("calls", "settlements"), ("vol_calls", "vol_settlements"),
+                                        ("option_calls", "option_settlements")):
                 for row in connection.execute(f"SELECT c.agent_id, s.detail FROM {table} c LEFT JOIN {settle_table} s"
                                               " USING (call_id)"):
                     item = result.setdefault(row["agent_id"], dict(NO_CALLS))
@@ -487,6 +678,13 @@ class CallStore:
         with closing(self._connect()) as connection:
             return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
                 "SELECT call_id, settled_at, detail FROM vol_settlements ORDER BY call_id")]
+
+    def option_settlements(self):
+        if not self.path.exists():
+            return []
+        with closing(self._connect()) as connection:
+            return [{**dict(row), "detail": json.loads(row["detail"])} for row in connection.execute(
+                "SELECT call_id, settled_at, detail FROM option_settlements ORDER BY call_id")]
 
 
 # ---- Phase 2: settle (code only, no model, no cost) ----------------------
@@ -550,30 +748,38 @@ def settle_call(call, closes, sessions, today):
     return "settled", detail
 
 
+def _expiry_settlement_price(kind, symbol, expiry, closes, sessions, today):
+    """Shared expiry close lookup with grace period. Returns (Decimal, None) or (None, (state, val))."""
+    if closes is None or not sessions:
+        if today < expiry:
+            return None, ("open", None)
+        if _weekdays_after(expiry, today) >= SETTLE_GRACE_SESSIONS + NO_DATA_WEEKDAY_SLACK:
+            return None, ("settled", {"kind": kind, "outcome": "unsettled",
+                                      "reason": "no market data reached the heartbeat"})
+        return None, ("pending", "market data unavailable")
+    if not any(s >= expiry for s in sessions):
+        if today <= expiry:
+            return None, ("open", None)
+        reason = f"no {symbol} close for {expiry}"
+        if _weekdays_after(expiry, today) >= SETTLE_GRACE_SESSIONS:
+            return None, ("settled", {"kind": kind, "outcome": "unsettled", "reason": reason, "exit_session": expiry})
+        return None, ("pending", reason)
+    price = closes.get(symbol, {}).get(expiry)
+    if price is None:
+        reason = f"no {symbol} close for {expiry}"
+        if len([s for s in sessions if s > expiry]) >= SETTLE_GRACE_SESSIONS:
+            return None, ("settled", {"kind": kind, "outcome": "unsettled", "reason": reason, "exit_session": expiry})
+        return None, ("pending", reason)
+    return price, None
+
+
 def settle_vol_call(call, closes, sessions, today):
     """Decide one open volatility call against expiry close. Pure: no clock, no network."""
     entry = Decimal(call["entry_price"])
     expiry = call["expiry"]
-    if closes is None or not sessions:
-        if today < expiry:
-            return "open", None
-        waited = _weekdays_after(expiry, today)
-        if waited >= SETTLE_GRACE_SESSIONS + NO_DATA_WEEKDAY_SLACK:
-            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": "no market data reached the heartbeat"}
-        return "pending", "market data unavailable"
-    if not any(s >= expiry for s in sessions):
-        if today <= expiry:
-            return "open", None
-        reason = f"no {call['symbol']} close for {expiry}"
-        if _weekdays_after(expiry, today) >= SETTLE_GRACE_SESSIONS:
-            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
-        return "pending", reason
-    price = closes.get(call["symbol"], {}).get(expiry)
-    if price is None:
-        reason = f"no {call['symbol']} close for {expiry}"
-        if len([s for s in sessions if s > expiry]) >= SETTLE_GRACE_SESSIONS:
-            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
-        return "pending", reason
+    price, early = _expiry_settlement_price("vol", call["symbol"], expiry, closes, sessions, today)
+    if early is not None:
+        return early
     signed_move = _percent(entry, price)
     actual_move = abs(signed_move)
     implied_move = Decimal(call["implied_move_pct"])
@@ -600,17 +806,52 @@ def settle_vol_call(call, closes, sessions, today):
     return "settled", detail
 
 
+def settle_option_call(call, closes, sessions, today):
+    """Decide one open single-leg option call against expiry intrinsic value minus entry ask."""
+    expiry = call["expiry"]
+    price, early = _expiry_settlement_price("option", call["symbol"], expiry, closes, sessions, today)
+    if early is not None:
+        return early
+    strike = Decimal(call["strike"])
+    ask = Decimal(call["entry_ask"])
+    entry_underlying = Decimal(call["entry_underlying_price"])
+    intrinsic = max(Decimal("0"), price - strike) if call["option_type"] == "call" else max(Decimal("0"), strike - price)
+    net_pnl = intrinsic - ask
+    return_pct = (net_pnl / ask * Decimal("100")).quantize(Decimal("0.01"))
+    if abs(net_pnl) <= OPTION_DEADBAND:
+        outcome = "flat"
+    else:
+        outcome = "right" if net_pnl > OPTION_DEADBAND else "wrong"
+    detail = {
+        "kind": "option",
+        "outcome": outcome,
+        "exit_session": expiry,
+        "exit_underlying": format(price.normalize(), "f"),
+        "intrinsic": format(intrinsic.normalize(), "f"),
+        "entry_ask": call["entry_ask"],
+        "net_pnl": format(net_pnl.normalize(), "f"),
+        "return_percent": format(return_pct, "f"),
+        "spread_percent": call["spread_pct"],
+        "underlying_move_percent": format(_percent(entry_underlying, price), "f"),
+    }
+    spy = closes.get(YARDSTICK, {})
+    if call["entry_session"] in spy and expiry in spy:
+        detail["spy_move_percent"] = format(_percent(spy[call["entry_session"]], spy[expiry]), "f")
+    return "settled", detail
+
+
 def settle_open_calls(store, fetch, *, now, today, completed):
-    """Settle every open stock and volatility call whose horizon/expiry has passed.
+    """Settle every open stock, volatility, and option call whose horizon/expiry has passed.
 
     ``fetch(symbols, start, end)`` returns the fetch_closes record.
     ``completed(session)`` says whether that session has closed, so today's
     still-moving bar is never used. Returns a short summary for the heartbeat."""
     calls = store.all_open()
     vol_calls = store.all_open_vol()
-    if not calls and not vol_calls:
+    option_calls = store.all_open_option()
+    if not calls and not vol_calls and not option_calls:
         return {"open": 0, "settled": 0, "pending": []}
-    all_rows = calls + vol_calls
+    all_rows = calls + vol_calls + option_calls
     symbols = sorted({c["symbol"] for c in all_rows} | {YARDSTICK})
     record = fetch(symbols, min(c["entry_session"] for c in all_rows), today)
     closes = record.get("closes") if isinstance(record, dict) and record.get("status") == "ok" else None
@@ -630,6 +871,12 @@ def settle_open_calls(store, fetch, *, now, today, completed):
             settled += store.settle_vol(call["call_id"], value, now=now)
         elif state == "pending":
             pending.append(f"{call['agent_id']} vol call {call['call_id']}: {value}")
+    for call in option_calls:
+        state, value = settle_option_call(call, closes, sessions, today)
+        if state == "settled":
+            settled += store.settle_option(call["call_id"], value, now=now)
+        elif state == "pending":
+            pending.append(f"{call['agent_id']} option call {call['call_id']}: {value}")
     summary = {"open": len(all_rows) - settled, "settled": settled, "pending": pending}
     if closes is None:
         summary["unavailable"] = (record or {}).get("reason") or "market data unavailable"
@@ -666,9 +913,9 @@ def call_results_line(results):
             f"each shows on {HANDBACK_WAKES} wakes, then stays in your record): " + " ".join(parts))
 
 
-def open_calls_line(calls, vol_calls=()):
+def open_calls_line(calls, vol_calls=(), option_calls=()):
     """The agent's own open calls, for its next choice. Empty when none."""
-    if not calls and not vol_calls:
+    if not calls and not vol_calls and not option_calls:
         return ""
     parts = [f"call {c['call_id']}: {c['symbol']} {c['direction']} within {c['horizon_days']} trading days"
              f" of {c['entry_session']} ({c['confidence']}), sealed at {c['entry_price']}" for c in calls]
@@ -677,6 +924,12 @@ def open_calls_line(calls, vol_calls=()):
         f"(priced +/-{v['implied_move_pct']}%, {v['confidence']}), made {v['entry_session']} at {v['entry_price']}"
         for v in vol_calls
     )
-    total = len(calls) + len(vol_calls)
+    parts.extend(
+        f"option call {o['call_id']}: long {o['symbol']} {o['expiry']} {o['strike']} {o['option_type']} "
+        f"at {o['entry_ask']} ask (spread {o['spread_pct']}%, {o['confidence']}), "
+        f"made {o['entry_session']} ({o['symbol']} {o['entry_underlying_price']})"
+        for o in option_calls
+    )
+    total = len(calls) + len(vol_calls) + len(option_calls)
     return (f"Your open calls ({total} of {CALL_OPTIONS['max_open_per_agent']}; they settle after "
             "their horizon): " + "; ".join(parts) + ".")
