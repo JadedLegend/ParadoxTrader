@@ -235,6 +235,51 @@ class VolCallStoreTests(Blocked):
             self.assertEqual(refused.exception.code, expected)
 
 
+    def test_iv_comes_from_the_nearest_strike_with_one_or_both_sides(self):
+        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "last": 596}]}
+        snapshot = options_snapshot()
+        [atm_call] = [row for row in snapshot["contracts"] if row["strike"] == 596]
+        atm_call["iv"] = 0.30
+        for wake, put_iv, expected_iv, expected_move in (
+            ("tempest-r1", None, "0.3", "4.23"),
+            ("tempest-r2", 0.20, "0.25", "3.52"),
+        ):
+            with self.subTest(put_iv=put_iv):
+                contracts = list(snapshot["contracts"])
+                if put_iv is not None:
+                    contracts.append({**atm_call, "type": "put", "iv": put_iv,
+                                      "symbol": atm_call["symbol"].replace("27C", "27P")})
+                self.calls.record(
+                    agent_id="tempest", run_id="run-a", wake_id=wake, choice=VOL_CALL,
+                    market=market, options={**snapshot, "contracts": contracts}, now=OPEN,
+                )
+                row = self.calls.open_vol_calls("tempest")[-1]
+                self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
+                                 ("596", expected_iv, expected_move))
+                closes = {"SPY": {"2026-11-27": Decimal("615")}}
+                state, result = settle_vol_call(row, closes, ["2026-11-27"], "2026-11-27")
+                self.assertEqual((state, result["outcome"]), ("settled", "right"))
+
+
+    def test_thanksgiving_counts_only_the_sessions_that_trade(self):
+        def record_as_of(day):
+            market = {**MARKET, "quotes": [
+                {**MARKET["quotes"][0], "as_of": f"2026-11-{day}T14:58:00+00:00"},
+            ]}
+            return self.calls.record(
+                agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{day}",
+                choice=VOL_CALL, market=market, now=OPEN.replace(day=day),
+                options=options_snapshot(quote_time=f"2026-11-{day}T14:59:30+00:00"),
+            )
+
+        with self.assertRaises(CallRefused) as refused:
+            record_as_of(25)
+        self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        record_as_of(24)
+        [row] = self.calls.open_vol_calls("tempest")
+        self.assertEqual((row["trading_days"], row["implied_move_pct"]), (2, "1.27"))
+
+
 class VolSettleTests(Blocked):
     SESSIONS = ["2026-11-19", "2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25",
                 "2026-11-27", "2026-11-30", "2026-12-01", "2026-12-02", "2026-12-03", "2026-12-04"]
@@ -335,6 +380,29 @@ class VolControllerTests(Blocked):
                 else:
                     self.assertEqual(resumed._call(job, VOL_CALL, details), [{"kind": "call", "id": 1}])
 
+    def test_legacy_reduced_options_cannot_seal_a_vol_call(self):
+        from core.market.options import options_evidence
+
+        store = RehearsalStore(self.root / "sessions")
+        run_id = store.prepare(day_cfg())["run_id"]
+        controller = RehearsalController(
+            store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=ScriptedHTTP()),
+        )
+        details = {"metadata": {"call_options": CALL_OPTIONS}, "private_context": {
+            "market": MARKET, "options": options_evidence(options_snapshot(stale=True)),
+        }}
+        job = {"agent_id": "tempest", "wake_id": "tempest-r1"}
+        for snapshot in (None, {}):
+            if snapshot is not None:
+                details["private_context"]["options_snapshot"] = snapshot
+            with self.subTest(snapshot=snapshot):
+                with self.assertRaises(CallRefused) as refused:
+                    controller._call(job, VOL_CALL, details)
+                self.assertEqual(refused.exception.code, "call_options_unavailable")
+        del details["private_context"]["options_snapshot"]
+        self.assertEqual(controller._call(job, STOCK_CALL, details), [{"kind": "call", "id": 1}])
+
+
     def test_controller_wake_offers_and_records_vol_call(self):
         store = RehearsalStore(self.root / "sessions")
         run_id = store.prepare(day_cfg())["run_id"]
@@ -355,7 +423,7 @@ class VolControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
+            market=lambda: MARKET, options=lambda: options_snapshot(),
         )
         with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
             clock.now.return_value = OPEN
@@ -540,7 +608,7 @@ class OptionSettleAndControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
+            market=lambda: MARKET, options=lambda: options_snapshot(),
         )
         with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
             clock.now.return_value = OPEN

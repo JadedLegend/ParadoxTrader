@@ -352,16 +352,14 @@ def _vol_entry(market, options, symbol, expiry, now):
             strike = Decimal(str(row["strike"]))
         except (KeyError, TypeError, ValueError, InvalidOperation):
             continue
-        if not strike.is_finite() or strike <= 0:
+        if not strike.is_finite() or strike <= 0 or row.get("type") not in ("call", "put"):
             continue
         by_strike.setdefault(strike, []).append(row)
     if not by_strike:
         raise CallRefused("call_contract_not_shown")
-    paired = [s for s, rows in by_strike.items() if {r.get("type") for r in rows} >= {"call", "put"}]
-    pool = paired or list(by_strike)
-    atm_strike = min(pool, key=lambda s: (abs(s - price_dec), s))
+    atm_strike = min(by_strike, key=lambda strike: (abs(strike - price_dec), strike))
     atm_rows = by_strike[atm_strike]
-    quote_times, ivs = [], []
+    quote_times, ivs = [], {}
     for row in atm_rows:
         quote_times.append(_parse_quote_time(row, now))
         if row.get("iv") is not None and not isinstance(row.get("iv"), bool):
@@ -370,10 +368,10 @@ def _vol_entry(market, options, symbol, expiry, now):
             except (ValueError, InvalidOperation):
                 iv = None
             if iv is not None and iv.is_finite() and iv > 0:
-                ivs.append(iv)
+                ivs.setdefault(row["type"], iv)
     if not ivs:
         raise CallRefused("call_no_iv")
-    entry_iv = (sum(ivs) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
+    entry_iv = (sum(ivs.values()) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
     implied_move_pct = (entry_iv * Decimal(str(math.sqrt(trading_days / 252))) * Decimal("100")).quantize(Decimal("0.01"))
     if implied_move_pct <= 0:
         raise CallRefused("call_no_iv")

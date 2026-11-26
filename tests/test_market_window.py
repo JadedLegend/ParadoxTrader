@@ -181,7 +181,7 @@ class WakeTests(BlockedNetwork):
         self.assertEqual([w["status"] for w in result["wakes"]], ["completed"] * 3)
         choices = [p for p in prompts if "REHEARSAL CHOICE" in p]
         self.assertEqual(len(choices), 3)
-        self.assertTrue(all("Outside the window (UNTRUSTED" in p for p in choices))
+        self.assertTrue(all("Outside the window (UNTRUSTED quoted market data" in p for p in choices))
         self.assertIn(SHELF_ORIENTATION, choices[0])  # The table of contents, not full skill texts.
         self.assertIn("SPY 505 (+1.00%)", choices[0])
         self.assertIn("Headlines (Massive news): Fed holds rates (Wire)", choices[0])
