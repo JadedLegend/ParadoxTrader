@@ -32,6 +32,23 @@ describe('wake IDs past round two', () => {
     expect(projected.source_refs.at(-1)).toMatchObject({ kind: 'journal', wake_id: 'oracle-r120' })
   })
 
+  it("shows the steward account of a full seven-agent day, and an agent's call", () => {
+    const owners = ['tempest', 'siren', 'alchemist', 'weaver', 'oracle', 'shadow', 'paradox_hunter']
+    const refs: Record<string, unknown>[] = [{ kind: 'run', id: ID }]
+    for (const owner of owners) for (let round = 1; round <= MAX_WAKES_PER_AGENT; round += 1) {
+      refs.push({ kind: 'wake', id: `${owner}-r${round}`, agent_id: owner },
+        { kind: 'request', id: ID, agent_id: owner }, { kind: 'request', id: ID, agent_id: owner },
+        { kind: 'call', id: ID, agent_id: owner })
+    }
+    expect(refs.length).toBeGreaterThan(2521)
+    const steward = { ...account(refs), scope: 'steward' }
+    expect(projectWitnessAccount(steward, 'steward').source_refs).toHaveLength(refs.length)
+    // An owner account still has the one-owner bound.
+    expect(() => projectWitnessAccount(account(refs.filter(ref => !ref.agent_id || ref.agent_id === 'oracle').concat(
+      Array.from({ length: 2048 }, () => ({ kind: 'request', id: ID, agent_id: 'oracle' })))), 'oracle')).toThrow()
+    expect(projectWitnessAccount(account([{ kind: 'call', id: ID, agent_id: 'oracle' }]), 'oracle').source_refs[0].kind).toBe('call')
+  })
+
   it("still refuses another agent's wake and wakes past the day's limit", () => {
     for (const ref of [{ kind: 'wake', id: 'siren-r3' }, { kind: 'wake', id: 'oracle-r121' }, { kind: 'journal', id: 1, wake_id: 'siren-r3' }])
       expect(() => projectWitnessAccount(account([ref]), 'oracle')).toThrow()
