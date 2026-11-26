@@ -115,12 +115,16 @@ class CacheTests(Blocked):
     def test_one_fetch_per_half_hour_and_none_outside_market_hours(self):
         clock = [CLOSED]
         http = Scripted()
-        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, "tempest paper account"), lambda: 733.4,
+        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, "tempest paper account"),
+                           lambda: (733.4, "2026-11-19T14:58:00Z"),
                            http_get=http, now=lambda: clock[0])
         self.assertEqual(view.read()["status"], "unavailable")  # Closed and nothing read yet.
         self.assertEqual(http.calls, [])
         clock[0] = OPEN
         self.assertEqual(view.read()["status"], "open")
+        cached = view.cached()
+        self.assertEqual(cached["underlying_as_of"], "2026-11-19T14:58:00+00:00")
+        self.assertEqual(cached["checked_at"], OPEN.isoformat())
         clock[0] = OPEN + timedelta(minutes=29)
         view.read()
         self.assertEqual(len(http.calls), 1)

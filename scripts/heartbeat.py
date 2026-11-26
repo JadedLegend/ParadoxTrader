@@ -110,7 +110,8 @@ def build(root, config_path):
 
         def price():
             record = window.cached() or {}
-            return next((q.get("last") for q in record.get("quotes") or [] if q.get("symbol") == symbol), None)
+            return next(((q.get("last"), q.get("as_of")) for q in record.get("quotes") or []
+                         if q.get("symbol") == symbol), (None, None))
 
         return OptionsView(Path(schedule.settings_dir) / "market", symbol, settings.data_credentials, price).read
 
