@@ -55,8 +55,8 @@ def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.1
         "feed": "indicative",
         "source": "alpaca-options",
         "checked_at": checked_at.isoformat(),
-        "underlying_as_of": checked_at.isoformat(),
         "underlying_price": 593.50,
+        "underlying_as_of": (checked_at - timedelta(minutes=2)).isoformat(),
         "contracts": contracts,
     }
 
@@ -250,16 +250,21 @@ class VolCallStoreTests(Blocked):
     def test_refuses_missing_or_stale_snapshot_underlying(self):
         missing = options_snapshot()
         del missing["underlying_price"]
-        for snapshot, expected in (
-            (missing, "call_no_price"),
-            (options_snapshot(checked_at=OPEN - timedelta(minutes=31)), "call_options_stale"),
+        untimed = options_snapshot()
+        del untimed["underlying_as_of"]
+        stale = {**options_snapshot(), "underlying_as_of": (OPEN - timedelta(minutes=31)).isoformat()}
+        for case, snapshot, expected in (
+            ("missing_price", missing, "call_no_price"),
+            ("missing_time", untimed, "call_no_price"),
+            ("stale_time", stale, "call_options_stale"),
         ):
-            with self.subTest(expected=expected), self.assertRaises(CallRefused) as refused:
-                self.calls.record(
-                    agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
-                    choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN,
-                )
-            self.assertEqual(refused.exception.code, expected)
+            with self.subTest(case=case):
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(
+                        agent_id="tempest", run_id=case, wake_id="tempest-r1",
+                        choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN,
+                    )
+                self.assertEqual(refused.exception.code, expected)
         self.assertEqual(self.calls.open_vol_calls("tempest"), [])
 
     def test_vol_refusals(self):
@@ -305,7 +310,7 @@ class VolCallStoreTests(Blocked):
                     [price_as_of] = connection.execute(
                         "SELECT price_as_of FROM vol_calls WHERE wake_id = ?", (wake,),
                     ).fetchone()
-                self.assertEqual(price_as_of, OPEN.isoformat())
+                self.assertEqual(price_as_of, "2026-11-19T14:58:00+00:00")
                 self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
                                  ("596", expected_iv, expected_move))
                 closes = {"SPY": {"2026-11-19": Decimal("596"), "2026-11-27": Decimal("615")}}
@@ -631,14 +636,15 @@ class OptionCallShapeAndStoreTests(Blocked):
     def test_commit_time_quote_age_and_retries(self):
         at_threshold = OPEN.replace(minute=29, second=30)
         too_late = at_threshold.replace(second=31)
-        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "as_of": (OPEN - timedelta(seconds=30)).isoformat()}]}
+        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "as_of": at_threshold.isoformat()}]}
         for kind, choice, read in (
             ("option", OPTION_CALL, self.calls.open_option_calls),
             ("vol", VOL_CALL, self.calls.open_vol_calls),
         ):
             with self.subTest(kind=kind):
                 entry = dict(agent_id="siren", run_id=kind, wake_id="siren-r1",
-                             choice=choice, market=market, options=options_snapshot())
+                             choice=choice, market=market,
+                             options={**options_snapshot(), "underlying_as_of": at_threshold.isoformat()})
                 for rejected_at in (too_late, OPEN - timedelta(minutes=1)):
                     with self.assertRaises(CallRefused) as refused:
                         self.calls.record(**{**entry, "wake_id": "siren-r2"}, now=rejected_at)
