@@ -632,16 +632,35 @@ class CallStore:
             return []
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
-            rows = [dict(row) for row in connection.execute(
-                "SELECT c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price,"
-                " c.entry_session, s.detail FROM calls c JOIN settlements s USING (call_id)"
-                " WHERE c.agent_id=? AND (SELECT COUNT(*) FROM handbacks h WHERE h.call_id=c.call_id"
-                " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
-                (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS))]
+            specs = (
+                ("stock", "calls", "settlements", "handbacks",
+                 "c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price, c.entry_session"),
+                ("vol", "vol_calls", "vol_settlements", "vol_handbacks",
+                 "c.call_id, c.symbol, c.expiry, c.iv_view, c.confidence, c.entry_price,"
+                 " c.entry_iv, c.implied_move_pct, c.entry_session"),
+                ("option", "option_calls", "option_settlements", "option_handbacks",
+                 "c.call_id, c.contract, c.symbol, c.expiry, c.option_type, c.strike, c.confidence,"
+                 " c.entry_bid, c.entry_ask, c.spread_pct, c.entry_underlying_price, c.entry_session"),
+            )
+            candidates = []
+            for kind, table, settle_table, handback_table, cols in specs:
+                for raw in connection.execute(
+                    f"SELECT {cols}, s.detail FROM {table} c JOIN {settle_table} s USING (call_id)"
+                    f" WHERE c.agent_id=? AND (SELECT COUNT(*) FROM {handback_table} h WHERE h.call_id=c.call_id"
+                    " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
+                    (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS),
+                ):
+                    row = dict(raw)
+                    row["kind"] = kind
+                    row["_handback_table"] = handback_table
+                    candidates.append(row)
+            candidates.sort(key=lambda r: r["call_id"], reverse=True)
+            rows = candidates[:MAX_HANDBACKS]
+            stamp = now.astimezone(timezone.utc).isoformat()
             for row in rows:
-                connection.execute("INSERT OR IGNORE INTO handbacks (call_id, run_id, sitting, shown_at)"
-                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting,
-                                                         now.astimezone(timezone.utc).isoformat()))
+                table = row.pop("_handback_table")
+                connection.execute(f"INSERT OR IGNORE INTO {table} (call_id, run_id, sitting, shown_at)"
+                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting, stamp))
                 row["detail"] = json.loads(row["detail"])
             return rows
 
@@ -891,6 +910,30 @@ def _signed(text):
     return text if text.startswith("-") else "+" + text
 
 
+def _format_vol_result(r, d):
+    iv_pct = format((Decimal(r["entry_iv"]) * Decimal("100")).quantize(Decimal("0.1")), "f")
+    made = (f"vol call {r['call_id']}: {r['symbol']} {r['expiry']} options priced "
+            f"+/-{r['implied_move_pct']}% (IV {iv_pct}%, {r['iv_view']}), "
+            f"made {r['entry_session']} at {r['entry_price']} ({r['confidence']})")
+    if d.get("outcome") == "unsettled":
+        return f"{made}. Could not be settled: {d.get('reason') or 'no closing price'}."
+    spy = f", SPY {_signed(d['spy_move_percent'])}%" if "spy_move_percent" in d else ", SPY unknown"
+    return (f"{made}. Settled {d['exit_session']} at {d['exit_price']}: "
+            f"{r['symbol']} moved {_signed(d['signed_move_percent'])}%{spy}. {d['outcome'].capitalize()}.")
+
+
+def _format_option_result(r, d):
+    made = (f"option call {r['call_id']}: long {r['symbol']} {r['expiry']} {r['strike']} {r['option_type']} "
+            f"at {r['entry_ask']} ask (indicative, spread {r['spread_pct']}%), "
+            f"made {r['entry_session']} ({r['symbol']} {r['entry_underlying_price']}, {r['confidence']})")
+    if d.get("outcome") == "unsettled":
+        return f"{made}. Could not be settled: {d.get('reason') or 'no closing price'}."
+    spy = f", SPY {_signed(d['spy_move_percent'])}%" if "spy_move_percent" in d else ", SPY unknown"
+    return (f"{made}. Expiry close {d['exit_underlying']} -> intrinsic {d['intrinsic']} "
+            f"({_signed(d['return_percent'])}%, {r['symbol']} {_signed(d['underlying_move_percent'])}%{spy}). "
+            f"{d['outcome'].capitalize()}.")
+
+
 def call_results_line(results):
     """Settled calls handed back to their agent as quoted data. Empty when none.
 
@@ -901,6 +944,13 @@ def call_results_line(results):
     parts = []
     for r in results:
         d = r["detail"]
+        kind = r.get("kind") or d.get("kind") or "stock"
+        if kind == "vol":
+            parts.append(_format_vol_result(r, d))
+            continue
+        if kind == "option":
+            parts.append(_format_option_result(r, d))
+            continue
         made = (f"call {r['call_id']}: {r['symbol']} {r['direction']} within {r['horizon_days']} trading days"
                 f" ({r['confidence']}), made {r['entry_session']} at {r['entry_price']}")
         if d.get("outcome") == "unsettled":

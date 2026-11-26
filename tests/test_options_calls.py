@@ -14,13 +14,14 @@ from unittest.mock import patch
 
 from core.runtime.rehearsal.calls import (
     CALL_OPTIONS, CALLS_FILE, CallRefused, CallStore,
-    open_calls_line, settle_open_calls, settle_option_call, settle_vol_call,
+    call_results_line, open_calls_line, settle_open_calls, settle_option_call, settle_vol_call,
 )
 from core.runtime.rehearsal.controller import RehearsalController, validate_choice
 from core.runtime.rehearsal.examples import ScriptedHTTP, ScriptedResponse
 from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule
 from core.runtime.rehearsal.provider import OpenRouterTransport
 from core.runtime.rehearsal.store import RehearsalStore
+from scripts.evaluate_calls import main as evaluate_main, summarize_calls
 from tests.test_rehearsal_provider import manifest
 
 OPEN = datetime(2026, 11, 19, 15, 0, tzinfo=timezone.utc)  # Thursday 10:00 ET.
@@ -471,6 +472,97 @@ class OptionSettleAndControllerTests(Blocked):
         self.assertEqual(calls.counts()["alchemist"],
                          {"open": 0, "settled": 1, "right": 1, "wrong": 0, "flat": 0, "unsettled": 0})
         self.assertEqual(calls.option_settlements()[0]["detail"]["outcome"], "right")
+
+
+class HandBackAndEvaluateTests(Blocked):
+    SESSIONS = ["2026-11-19", "2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25", "2026-11-27"]
+
+    def test_hand_back_quotes_settled_vol_and_option_calls_for_two_wakes_only(self):
+        calls = CallStore(self.root / CALLS_FILE)
+        vol_id = calls.record(
+            agent_id="tempest", run_id="run-1", wake_id="tempest-r1",
+            choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+        )
+        opt_id = calls.record(
+            agent_id="tempest", run_id="run-1", wake_id="tempest-r2",
+            choice=OPTION_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+        )
+        settle_open_calls(
+            calls,
+            lambda syms, start, end: {"status": "ok", "closes": {
+                "SPY": {s: Decimal("594") if s == "2026-11-27" else Decimal("593.5") for s in self.SESSIONS}
+            }},
+            now=datetime(2026, 11, 27, 22, tzinfo=timezone.utc),
+            today="2026-11-27",
+            completed=lambda s: True,
+        )
+
+        # Wake 1 & 2 see both results; replay of wake 1 stays identical; wake 3 stops showing them.
+        first = calls.hand_back("tempest", run_id="run-2", sitting="tempest-r1", now=OPEN)
+        self.assertEqual([r["call_id"] for r in first], [opt_id, vol_id])
+        self.assertEqual(
+            [r["call_id"] for r in calls.hand_back("tempest", run_id="run-2", sitting="tempest-r1", now=OPEN)],
+            [opt_id, vol_id],
+        )
+        line = call_results_line(first)
+        self.assertIn("vol call 1: SPY 2026-11-27 options priced +/-2.19% (IV 14.2%, high)", line)
+        self.assertIn("option call 2: long SPY 2026-11-27 593 call at 2.18 ask (indicative, spread 3.67%)", line)
+        self.assertIn("Expiry close 594 -> intrinsic 1 (-54.13%", line)
+
+        second = calls.hand_back("tempest", run_id="run-2", sitting="tempest-r2", now=OPEN)
+        self.assertEqual([r["call_id"] for r in second], [opt_id, vol_id])
+        third = calls.hand_back("tempest", run_id="run-2", sitting="tempest-r3", now=OPEN)
+        self.assertEqual(third, [])
+
+        # Append-only handback triggers hold.
+        with closing(sqlite3.connect(str(self.root / CALLS_FILE))) as conn:
+            for stmt in ("DELETE FROM vol_handbacks", "DELETE FROM option_handbacks"):
+                with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
+                    conn.execute(stmt)
+
+    def test_evaluate_calls_summarizes_calibration_spread_and_direction_vs_payoff_without_reasons(self):
+        missing = summarize_calls(self.root / "nonexistent.sqlite3")
+        self.assertEqual(missing["status"], "missing")
+
+        calls = CallStore(self.root / CALLS_FILE)
+        secret_reason = "PRIVATE AGENT REASON MUST NEVER APPEAR IN EVALUATION OUTPUT"
+        calls.record(
+            agent_id="tempest", run_id="run-1", wake_id="tempest-r1",
+            choice={**VOL_CALL, "reason": secret_reason}, market=MARKET, options=options_snapshot(), now=OPEN,
+        )
+        calls.record(
+            agent_id="alchemist", run_id="run-1", wake_id="alchemist-r1",
+            choice={**OPTION_CALL, "confidence": "high", "reason": secret_reason},
+            market=MARKET, options=options_snapshot(), now=OPEN,
+        )
+        calls.record(
+            agent_id="siren", run_id="run-1", wake_id="siren-r1",
+            choice={**STOCK_CALL, "horizon_days": 10, "confidence": "low", "reason": secret_reason},
+            market=MARKET, now=OPEN,
+        )
+        # Close at 594.0: vol high is right (+0.08% < 2.19%), option call ITM (+1.00) < ask (2.18) -> wrong
+        # despite underlying moving up (+0.08% -> right_direction_net_loss_count=1), stock call stays open (horizon 10).
+        settle_open_calls(
+            calls,
+            lambda syms, start, end: {"status": "ok", "closes": {
+                "SPY": {s: Decimal("594") if s == "2026-11-27" else Decimal("593.5") for s in self.SESSIONS}
+            }},
+            now=datetime(2026, 11, 27, 22, tzinfo=timezone.utc),
+            today="2026-11-27",
+            completed=lambda s: s < "2026-11-27" or s == "2026-11-27",
+        )
+        summary = summarize_calls(self.root / CALLS_FILE)
+        self.assertEqual(summary["status"], "ok")
+        self.assertNotIn(secret_reason, json.dumps(summary))
+        self.assertEqual(summary["overall"],
+                         {"open": 1, "settled": 2, "right": 1, "wrong": 1, "flat": 0, "unsettled": 0, "hit_rate": "0.5000"})
+        self.assertEqual(summary["by_kind"]["vol"]["hit_rate"], "1.0000")
+        self.assertEqual(summary["by_kind"]["option"]["hit_rate"], "0.0000")
+        self.assertIsNone(summary["by_kind"]["stock"]["hit_rate"])
+        self.assertEqual(summary["option_summary"]["right_direction_net_loss_count"], 1)
+        self.assertEqual(summary["option_summary"]["mean_spread_percent"], "3.67")
+        self.assertEqual(summary["vol_summary"]["high_count"], 1)
+        self.assertEqual(evaluate_main(["--db", str(self.root / CALLS_FILE), "--json"]), 0)
 
 
 if __name__ == "__main__":
