@@ -54,6 +54,8 @@ DEFAULT_LIMITS = {
 MAX_WAKES_PER_AGENT = 120
 DAY_MAX_OUTPUT_TOKENS = 3000  # Day runs only; full rehearsals keep DEFAULT_LIMITS.
 DAY_MAX_INPUT_BYTES = 48000  # Day runs only, as above; matches provider.DAY_MAX_INPUT_BYTES.
+# The frozen page also stores structured market evidence for sealing and replay.
+MAX_PRIVATE_CONTEXT_CHARS = DAY_MAX_INPUT_BYTES + 16000
 LIMIT_CAPS = {**DEFAULT_LIMITS, "wakes_per_agent": MAX_WAKES_PER_AGENT,
               "max_requests": 2 * MAX_WAKES_PER_AGENT * 7, "max_output_tokens": DAY_MAX_OUTPUT_TOKENS,
               "max_input_bytes": DAY_MAX_INPUT_BYTES}
@@ -1115,7 +1117,7 @@ class RehearsalStore:
         # A local storage bound only; what reaches the model is bounded by
         # max_input_bytes, which clips continuity to fit. Room for the
         # market window, headlines and posts beside the full continuity.
-        private = _bounded_json(private_context, "private context", 16000)
+        private = _bounded_json(private_context, "private context", MAX_PRIVATE_CONTEXT_CHARS)
         # Work on the validated frozen values, not caller-owned mutable objects.
         metadata, private_context = json.loads(serialized), json.loads(private)
         with self._connection(run_id, write=True) as connection:

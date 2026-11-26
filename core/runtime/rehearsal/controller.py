@@ -525,7 +525,7 @@ class RehearsalController:
                 chain = self.options()
             except Exception:
                 chain = {"status": "unavailable", "reason": "the options view could not be read"}
-            chain = options_at_decision(chain, self._now())
+            chain = options_at_decision(chain, self._now()) or {}
             line = options_line(chain)
             expiries = sorted({c["expiration"] for c in (chain.get("contracts") or [])
                                if isinstance(c, dict) and c.get("expiration")})

@@ -125,6 +125,27 @@ class VolCallStoreTests(Blocked):
         super().setUp()
         self.calls = CallStore(self.root / CALLS_FILE)
 
+    def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
+        self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
+                          choice=STOCK_CALL, market=MARKET, now=OPEN)
+        path = self.root / CALLS_FILE
+        with closing(sqlite3.connect(path)) as db:
+            for prefix in ("vol", "option"):
+                for suffix in ("handbacks", "settlements", "calls"):
+                    db.execute(f"DROP TABLE IF EXISTS {prefix}_{suffix}")
+            db.commit()
+        before = path.read_bytes()
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 1)
+        self.assertEqual(len(self.calls.open_calls("tempest")), 1)
+        self.assertEqual(len(self.calls.all_open()), 1)
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+        self.assertEqual(self.calls.all_open_vol(), [])
+        self.assertEqual(self.calls.vol_settlements(), [])
+        self.assertTrue(path.read_bytes() == before, "read operations changed the calls database")
+        self.calls.record(agent_id="tempest", run_id="new", wake_id="tempest-r1",
+                          choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 2)
+
     def test_seals_atm_iv_implied_move_and_shared_cap(self):
         call_id = self.calls.record(
             agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
