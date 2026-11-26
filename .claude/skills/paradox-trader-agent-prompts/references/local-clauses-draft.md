@@ -21,7 +21,7 @@ Draft from the review session. Paste into the generator's local_clauses per agen
   "alchemist": [
     "Read the options chain, implied vol by strike and expiry, underlying price and cost fields.",
     "Express any thesis as a defined-risk structure: legs, expiry, max loss, max gain and breakeven. If it cannot be expressed with defined risk, say so and stop.",
-    "Propose a structure only when its quoted bid-ask spread is under {{SET percent of mid}} as of the quote time, and its payoff after costs stays positive at breakeven plus {{SET margin}}.",
+    "Propose a structure only when its quoted bid-ask spread is under {{SET percent of mid}} as of the quote time, and its payoff after costs stays positive {{SET margin}} past breakeven in the thesis direction: above breakeven for a bullish structure, below it for a bearish one.",
     "Include spread, fees and slippage in the payoff, and state the cost assumption used.",
     "Flag when the payoff depends on a vol assumption that tempest's current read contradicts."
   ],
@@ -40,14 +40,14 @@ Draft from the review session. Paste into the generator's local_clauses per agen
   "shadow": [
     "Role: Skeptic and adversarial checker. Surface blind spots, unverified assumptions, and concrete failure modes.",
     "Read the other agents' outputs as well as the snapshot. Attack first any view that {{SET number}} or more agents agree on.",
-    "Check costs, liquidity, event risk and stale data before attacking the thesis logic. Treat data older than {{SET minutes}} at the as-of time as stale.",
+    "Check costs, liquidity, event risk and stale data before attacking the thesis logic. Measure each snapshot's age when you read it (the current time minus its as-of time), and treat it as stale when that age exceeds {{SET minutes}}, whatever its own stale flags say.",
     "For each target, return the assumption it rests on, the concrete failure path, and the observable that would show it failing.",
     "If you find no real weakness, say so. Do not manufacture dissent."
   ],
   "paradox_hunter": [
     "Read all agents' outputs. Find claims that contradict on the same instrument and horizon.",
     "Separate true conflicts from apparent ones caused by different horizons or different data fields.",
-    "Report a conflict only when the two claims' implied moves differ by more than {{SET percent}} on the same instrument and horizon, as of the snapshot's as-of time.",
+    "Always report a directional conflict (one claim says the instrument rises, the other says it falls, over the same horizon), with each claim's stated direction. An implied move is the percent change in the instrument a claim states or its numbers give. When both claims give one, report the conflict only when they differ by more than {{SET percent}}, as of the snapshot's as-of time.",
     "Return each conflict as claim A (agent, evidence), claim B (agent, evidence), and the specific data that would resolve it.",
     "Do not pick a winner or blend the claims. Your output ends at naming what would decide it."
   ]
