@@ -49,6 +49,32 @@ class HandBackStoreTests(Blocked):
     def test_nothing_is_handed_back_before_settling(self):
         self.assertEqual(self.shown("tempest-r1"), [])
 
+    def test_an_empty_selection_stays_empty_after_a_settlement(self):
+        self.assertEqual(self.shown("tempest-r1"), [])
+        self.calls.settle(self.call_id, RIGHT, now=NOW)
+        self.calls = CallStore(self.calls.path)
+        self.assertEqual(self.shown("tempest-r1"), [])
+        self.assertEqual(self.shown("tempest-r1", run="run-c"), [self.call_id])
+        self.assertEqual(self.shown("tempest-r2", run="run-c"), [self.call_id])
+        self.assertEqual(self.shown("tempest-r3", run="run-c"), [])
+
+    def test_the_five_shown_results_stay_fixed_when_a_newer_call_settles(self):
+        self.calls.settle(self.call_id, RIGHT, now=NOW)
+        settled = [self.call_id]
+        for number in range(2, 8):
+            call_id = self.calls.record(agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{number}",
+                                        choice=CALL, market=MARKET, now=NOW)
+            if number < 7:
+                self.calls.settle(call_id, RIGHT, now=NOW)
+                settled.append(call_id)
+        first = settled[:0:-1]
+        self.assertEqual(self.shown("tempest-r1"), first)
+        self.calls.settle(call_id, RIGHT, now=NOW)
+        self.assertEqual(self.shown("tempest-r1"), first)
+        self.assertEqual(self.shown("tempest-r2"), [call_id, *first[:4]])
+        self.assertEqual(self.shown("tempest-r3"), [call_id, first[-1], self.call_id])
+        self.assertEqual(self.shown("tempest-r4"), [self.call_id])
+
     def test_a_result_shows_on_two_wakes_then_stays_only_in_the_record(self):
         self.calls.settle(self.call_id, RIGHT, now=NOW)
         self.assertEqual(self.shown("tempest-r1"), [self.call_id])
@@ -120,6 +146,19 @@ class HandBackWakeTests(Blocked):
         self.assertIn("Right.", self.wake(step=(1, 2)))  # The second wake.
         self.assertIn("Right.", self.wake(step=(2, 2)))
         self.assertEqual(self.wake(step=(1, 2)), "")  # The third wake: back in the record only.
+
+    def test_later_moves_stay_empty_if_the_calls_file_appears_mid_wake(self):
+        day = self.store.prepare(day_manifest(wakes=10))["run_id"]
+        self.day = day
+        path = self.store.safe_run_file(day, CALLS_FILE)
+        self.assertFalse(path.exists())
+        self.assertEqual(self.wake(step=(1, 2)), "")
+        calls = CallStore(path)
+        call_id = calls.record(agent_id="tempest", run_id=day, wake_id="tempest-r0", choice=CALL,
+                               market=MARKET, now=NOW)
+        calls.settle(call_id, RIGHT, now=NOW)
+        self.assertEqual(self.wake(step=(2, 2)), "")
+        self.assertIn("Right.", self.wake(step=(1, 2)))
 
 
 class HeartbeatPageCallsTests(Blocked):

@@ -24,6 +24,7 @@ import re
 import sqlite3
 
 from core.market.options import STALE_QUOTE_SECONDS
+from core.trading.queue import ensure_private_db_file
 
 CALLS_FILE = "calls.sqlite3"
 CALL_OPTIONS = {
@@ -182,6 +183,14 @@ CREATE TRIGGER IF NOT EXISTS option_handbacks_no_update BEFORE UPDATE ON option_
  BEGIN SELECT RAISE(ABORT, 'option handbacks are append-only'); END;
 CREATE TRIGGER IF NOT EXISTS option_handbacks_no_delete BEFORE DELETE ON option_handbacks
  BEGIN SELECT RAISE(ABORT, 'option handbacks are append-only'); END;
+CREATE TABLE IF NOT EXISTS handback_wakes (
+ agent_id TEXT NOT NULL, run_id TEXT NOT NULL, sitting TEXT NOT NULL,
+ PRIMARY KEY (agent_id, run_id, sitting)
+);
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_update BEFORE UPDATE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_delete BEFORE DELETE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
 """
 
 
@@ -677,8 +686,7 @@ class CallStore:
         moves counts once, by its first move), then drops out of routine
         context; the settlement itself stays in the record. Asking again for
         the same wake returns the same results."""
-        if not self.path.exists():
-            return []
+        ensure_private_db_file(self.path)
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             specs = (
@@ -691,25 +699,42 @@ class CallStore:
                  "c.call_id, c.contract, c.symbol, c.expiry, c.option_type, c.strike, c.confidence,"
                  " c.entry_bid, c.entry_ask, c.spread_pct, c.entry_underlying_price, c.entry_session"),
             )
-            candidates = []
-            for kind, table, settle_table, handback_table, cols in specs:
-                for raw in connection.execute(
-                    f"SELECT {cols}, s.detail FROM {table} c JOIN {settle_table} s USING (call_id)"
-                    f" WHERE c.agent_id=? AND (SELECT COUNT(*) FROM {handback_table} h WHERE h.call_id=c.call_id"
-                    " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
-                    (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS),
-                ):
-                    row = dict(raw)
-                    row["kind"] = kind
-                    row["_handback_table"] = handback_table
-                    candidates.append(row)
-            candidates.sort(key=lambda r: r["call_id"], reverse=True)
-            rows = candidates[:MAX_HANDBACKS]
+            key = (agent_id, run_id, sitting)
+            recorded = connection.execute(
+                "SELECT 1 FROM handback_wakes WHERE agent_id=? AND run_id=? AND sitting=?", key,
+            ).fetchone()
+
+            def select_rows(*, shown):
+                candidates = []
+                for kind, table, settle_table, handback_table, cols in specs:
+                    if shown:
+                        condition = (f"EXISTS (SELECT 1 FROM {handback_table} h WHERE h.call_id=c.call_id"
+                                     " AND h.run_id=? AND h.sitting=?)")
+                        params = (*key, MAX_HANDBACKS)
+                    else:
+                        condition = f"(SELECT COUNT(*) FROM {handback_table} h WHERE h.call_id=c.call_id) < ?"
+                        params = (agent_id, HANDBACK_WAKES, MAX_HANDBACKS)
+                    for raw in connection.execute(
+                        f"SELECT {cols}, s.detail FROM {table} c JOIN {settle_table} s USING (call_id)"
+                        f" WHERE c.agent_id=? AND {condition} ORDER BY c.call_id DESC LIMIT ?", params,
+                    ):
+                        candidates.append({**dict(raw), "kind": kind, "_handback_table": handback_table})
+                candidates.sort(key=lambda r: r["call_id"], reverse=True)
+                return candidates[:MAX_HANDBACKS]
+
+            # Existing handback rows also recover nonempty selections made before wake markers existed.
+            rows = select_rows(shown=True)
+            if not recorded:
+                connection.execute("INSERT INTO handback_wakes (agent_id, run_id, sitting) VALUES (?,?,?)", key)
+            newly_selected = not recorded and not rows
+            if newly_selected:
+                rows = select_rows(shown=False)
             stamp = now.astimezone(timezone.utc).isoformat()
             for row in rows:
                 table = row.pop("_handback_table")
-                connection.execute(f"INSERT OR IGNORE INTO {table} (call_id, run_id, sitting, shown_at)"
-                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting, stamp))
+                if newly_selected:
+                    connection.execute(f"INSERT INTO {table} (call_id, run_id, sitting, shown_at)"
+                                       " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting, stamp))
                 row["detail"] = json.loads(row["detail"])
             return rows
 
