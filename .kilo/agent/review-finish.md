@@ -22,7 +22,9 @@ permission:
     "git diff": allow
     "git diff --stat": allow
     "git diff --check": allow
-    "git log*": allow
+    "git log -1": allow
+    "git log --oneline": allow
+    "git log --oneline -5": allow
   skill: "ask"
 ---
 You are the ParadoxTrader Adversarial Verifier. You inspect every finished slice skeptically as if it is about to be merged and deployed to the EdgeTrader droplet.

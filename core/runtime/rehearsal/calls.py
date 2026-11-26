@@ -840,12 +840,17 @@ def _expiry_settlement_price(kind, symbol, expiry, closes, sessions, today):
 
 
 def settle_vol_call(call, closes, sessions, today):
-    """Decide one open volatility call against expiry close. Pure: no clock, no network."""
-    entry = Decimal(call["entry_price"])
-    expiry = call["expiry"]
-    price, early = _expiry_settlement_price("vol", call["symbol"], expiry, closes, sessions, today)
+    """Compare official entry and expiry closes, with the same grace for either missing close."""
+    symbol, entry_session, expiry = call["symbol"], call["entry_session"], call["expiry"]
+    price, early = _expiry_settlement_price("vol", symbol, expiry, closes, sessions, today)
     if early is not None:
         return early
+    entry = closes[symbol].get(entry_session)
+    if entry is None:
+        reason = f"no {symbol} close for {entry_session}"
+        if sum(s > expiry for s in sessions) >= SETTLE_GRACE_SESSIONS:
+            return "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": expiry}
+        return "pending", reason
     signed_move = _percent(entry, price)
     actual_move = abs(signed_move)
     implied_move = Decimal(call["implied_move_pct"])
@@ -919,6 +924,7 @@ def settle_open_calls(store, fetch, *, now, today, completed):
         return {"open": 0, "settled": 0, "pending": []}
     all_rows = calls + vol_calls + option_calls
     symbols = sorted({c["symbol"] for c in all_rows} | {YARDSTICK})
+    # Volatility settlement needs the underlying's official entry-session close.
     record = fetch(symbols, min(c["entry_session"] for c in all_rows), today)
     closes = record.get("closes") if isinstance(record, dict) and record.get("status") == "ok" else None
     sessions = sorted({s for by_day in (closes or {}).values() for s in by_day if completed(s)})

@@ -19,7 +19,7 @@ from core.runtime.rehearsal.calls import (
 )
 from core.runtime.rehearsal.controller import RehearsalController, validate_choice
 from core.runtime.rehearsal.examples import ScriptedHTTP, ScriptedResponse
-from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule
+from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule, SETTLE_EVERY_MINUTES
 from core.runtime.rehearsal.provider import OpenRouterTransport
 from core.runtime.rehearsal.store import RehearsalStore
 from scripts.evaluate_calls import main as evaluate_main, resolve_calls_db, summarize_calls
@@ -258,8 +258,8 @@ class VolCallStoreTests(Blocked):
                 row = self.calls.open_vol_calls("tempest")[-1]
                 self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
                                  ("596", expected_iv, expected_move))
-                closes = {"SPY": {"2026-11-27": Decimal("615")}}
-                state, result = settle_vol_call(row, closes, ["2026-11-27"], "2026-11-27")
+                closes = {"SPY": {"2026-11-19": Decimal("596"), "2026-11-27": Decimal("615")}}
+                state, result = settle_vol_call(row, closes, sorted(closes["SPY"]), "2026-11-27")
                 self.assertEqual((state, result["outcome"]), ("settled", "right"))
 
 
@@ -320,6 +320,16 @@ class VolSettleTests(Blocked):
         self.assertEqual(settle_vol_call(self._vol(), self._closes({}), self.SESSIONS[:7], "2026-11-30")[0], "pending")
         self.assertEqual(settle_vol_call(self._vol(), self._closes({}), self.SESSIONS, "2026-12-04")[1]["outcome"], "unsettled")
 
+    def test_missing_entry_close_waits_through_the_expiry_grace_period(self):
+        call = {**self._vol(), "symbol": "QQQ"}
+        # A yardstick close is available on entry; it cannot stand in for QQQ's close.
+        closes = {**self._closes({"2026-11-19": 500}), "QQQ": {"2026-11-27": Decimal("504")}}
+        reason = "no QQQ close for 2026-11-19"
+        self.assertEqual(settle_vol_call(call, closes, self.SESSIONS[:-1], "2026-12-03"), ("pending", reason))
+        self.assertEqual(settle_vol_call(call, closes, self.SESSIONS, "2026-12-04"), (
+            "settled", {"kind": "vol", "outcome": "unsettled", "reason": reason, "exit_session": "2026-11-27"},
+        ))
+
     def test_heartbeat_and_counts_settle_vol_only_calls(self):
         store = RehearsalStore(self.root / "sessions")
         run_id = store.prepare(day_cfg())["run_id"]
@@ -333,19 +343,30 @@ class VolSettleTests(Blocked):
         cfg = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
                "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live"}
         clock = datetime(2026, 11, 27, 22, 0, tzinfo=timezone.utc)
+        prices = {"2026-11-27": 615}
+
+        def fetch_closes(symbols, start, end):
+            self.assertEqual((symbols, start, end), (["SPY"], "2026-11-19", "2026-11-27"))
+            return {"status": "ok", "closes": self._closes(prices)}
+
         beat = Heartbeat(
             store, Schedule.from_config(cfg), prepare_day=None, run_wake=None,
             now=lambda: clock,
-            fetch_closes=lambda syms, start, end: {
-                "status": "ok",
-                "closes": self._closes({s: 595 if s == "2026-11-27" else 593.5 for s in self.SESSIONS[:6]}),
-            },
+            fetch_closes=fetch_closes,
         )
+        self.assertEqual(beat.tick()["calls"], {
+            "open": 1, "settled": 0, "pending": ["tempest vol call 1: no SPY close for 2026-11-19"],
+        })
+        self.assertEqual(calls.vol_settlements(), [])
+        # Intraday entry was 593.50 (over 3% below expiry); both official closes are 615.
+        prices["2026-11-19"] = 615
+        clock += timedelta(minutes=SETTLE_EVERY_MINUTES)
         result = beat.tick()
         self.assertEqual(result["calls"], {"open": 0, "settled": 1, "pending": []})
         self.assertEqual(calls.counts()["tempest"],
                          {"open": 0, "settled": 1, "right": 1, "wrong": 0, "flat": 0, "unsettled": 0})
         self.assertFalse(calls.has_open())
+        self.assertEqual(calls.vol_settlements()[0]["detail"]["actual_move_percent"], "0.00")
 
 
 class VolControllerTests(Blocked):
