@@ -65,6 +65,17 @@ class Blocked(unittest.TestCase):
 
 
 class FetchTests(Blocked):
+    def test_fetch_keeps_quote_time_separate_from_fetch_time(self):
+        from decimal import Decimal
+        earlier = (OPEN - timedelta(minutes=7)).isoformat()
+        for source_time in (earlier, None):
+            with self.subTest(source_time=source_time):
+                record = fetch("SPY", Decimal("733.4"), KEY_ID, SECRET, None,
+                               http_get=Scripted(), now=lambda: OPEN, underlying_as_of=source_time)
+                self.assertEqual(record["status"], "open")
+                self.assertEqual(record["checked_at"], OPEN.isoformat())
+                self.assertEqual(record.get("underlying_as_of"), source_time)
+
     def test_two_nearest_expiries_atm_pair_and_one_strike_out_each_side(self):
         from decimal import Decimal
         http = Scripted()

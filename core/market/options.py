@@ -117,7 +117,7 @@ def _pick(contracts, price):
     return chosen[:MAX_CONTRACTS]
 
 
-def fetch(symbol, price, key_id, secret, account, *, http_get, now):
+def fetch(symbol, price, key_id, secret, account, *, http_get, now, underlying_as_of=None):
     """One snapshots GET for ``symbol`` around ``price``. Never raises for data trouble."""
     stamp = now().astimezone(timezone.utc)
     base = {"checked_at": stamp.isoformat(), "symbol": symbol, "feed": FEED, "source": "alpaca-options",
@@ -155,6 +155,9 @@ def fetch(symbol, price, key_id, secret, account, *, http_get, now):
         quoted = _time(item.get("quote_time"))
         item["stale"] = quoted is None or (stamp - quoted).total_seconds() > STALE_QUOTE_SECONDS
     state = "open" if market_open(stamp) and not all(item["stale"] for item in chosen) else "closed"
+    quote_time = _time(underlying_as_of)
+    if quote_time is not None:
+        base["underlying_as_of"] = quote_time.isoformat()
     return {**base, "status": state, "underlying_price": float(price), "contracts": chosen}
 
 
@@ -202,12 +205,10 @@ class OptionsView:
         # Older numeric callbacks can select strikes, but cannot date the underlying.
         price_time = None
         if isinstance(price, dict):
-            price_time = _time(price.get("as_of"))
+            price_time = price.get("as_of")
             price = price.get("last")
         record = fetch(self.symbol, _number(price) if price is not None else None, given[0], given[1], given[2],
-                       http_get=http_get, now=self.now)
-        if price_time is not None and "underlying_price" in record:
-            record["underlying_as_of"] = price_time.isoformat()
+                       http_get=http_get, now=self.now, underlying_as_of=price_time)
         self._write(record)
         return record
 
