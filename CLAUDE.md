@@ -13,3 +13,5 @@ Fall back to grep or file reads only for what the graph does not model: literal 
 <!-- graphify-rules-end -->
 
 If the Graphify tools stay unavailable after checking the MCP connection, use CodeGraph (`codegraph explore`) when a `.codegraph/` index exists, otherwise grep and file reads. Use Graphify again once it reconnects.
+
+New to this repository? Read [`AGENTS.md`](AGENTS.md) first: the 15-minute reading route, which code runs on the server and which is legacy, the walls, and the exact commands and skills.
