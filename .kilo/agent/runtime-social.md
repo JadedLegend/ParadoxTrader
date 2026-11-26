@@ -5,8 +5,8 @@ color: "#8B5CF6"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
+    "*": ask
     "**/*.md": ask
     "core/runtime/*.py": allow
     "core/runtime/**/*.py": allow

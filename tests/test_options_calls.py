@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from core.runtime.rehearsal.calls import (
     CALL_OPTIONS, CALLS_FILE, CallRefused, CallStore,
-    open_calls_line, settle_open_calls, settle_vol_call,
+    open_calls_line, settle_open_calls, settle_option_call, settle_vol_call,
 )
 from core.runtime.rehearsal.controller import RehearsalController, validate_choice
 from core.runtime.rehearsal.examples import ScriptedHTTP, ScriptedResponse
@@ -30,7 +30,7 @@ MARKET = {"status": "ok", "source": "alpaca-iex", "quotes": [
 
 
 def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.142,
-                     stale=False, quote_time="2026-11-19T14:59:30+00:00"):
+                     stale=False, quote_time="2026-11-19T14:59:30+00:00", checked_at=OPEN):
     contracts = []
     for option_type, strike in (("call", 593.0), ("put", 593.0), ("call", 596.0), ("put", 590.0)):
         item = {
@@ -52,8 +52,9 @@ def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.1
         "symbol": symbol,
         "feed": "indicative",
         "source": "alpaca-options",
-        "checked_at": "2026-11-19T15:00:00+00:00",
+        "checked_at": checked_at.isoformat(),
         "underlying_price": 593.50,
+        "underlying_as_of": (checked_at - timedelta(minutes=2)).isoformat(),
         "contracts": contracts,
     }
 
@@ -74,6 +75,16 @@ STOCK_CALL = {
     "horizon_days": 5,
     "confidence": "medium",
     "reason": "Breadth improving.",
+}
+OPTION_CALL = {
+    "action": "call",
+    "kind": "option",
+    "symbol": "SPY",
+    "expiry": "2026-11-27",
+    "option_type": "call",
+    "strike": 593,
+    "confidence": "medium",
+    "reason": "Near-money call looks underpriced for an upside break.",
 }
 
 
@@ -125,6 +136,20 @@ class VolCallStoreTests(Blocked):
         super().setUp()
         self.calls = CallStore(self.root / CALLS_FILE)
 
+    def test_options_fetch_time_cannot_refresh_the_underlying_price(self):
+        snapshot = options_snapshot()
+        for underlying_time, code in ((None, "call_no_price"),
+                                      ((OPEN - timedelta(hours=24)).isoformat(), "call_options_stale")):
+            with self.subTest(underlying_time=underlying_time):
+                snapshot.pop("underlying_as_of", None)
+                if underlying_time is not None:
+                    snapshot["underlying_as_of"] = underlying_time
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(agent_id="siren", run_id="a", wake_id="siren-r1",
+                                      choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN)
+                self.assertEqual(refused.exception.code, code)
+        self.assertEqual(self.calls.all_open_vol(), [])
+
     def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
         self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
                           choice=STOCK_CALL, market=MARKET, now=OPEN)
@@ -141,6 +166,9 @@ class VolCallStoreTests(Blocked):
         self.assertEqual(self.calls.open_vol_calls("tempest"), [])
         self.assertEqual(self.calls.all_open_vol(), [])
         self.assertEqual(self.calls.vol_settlements(), [])
+        self.assertEqual(self.calls.open_option_calls("tempest"), [])
+        self.assertEqual(self.calls.all_open_option(), [])
+        self.assertEqual(self.calls.option_settlements(), [])
         self.assertTrue(path.read_bytes() == before, "read operations changed the calls database")
         self.calls.record(agent_id="tempest", run_id="new", wake_id="tempest-r1",
                           choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
@@ -188,6 +216,38 @@ class VolCallStoreTests(Blocked):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
 
+    def test_refuses_vol_entry_with_only_one_session_after_thanksgiving(self):
+        # The older market quote would incorrectly make the horizon long enough.
+        with self.assertRaises(CallRefused) as refused:
+            self.calls.record(
+                agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
+                choice=VOL_CALL, market=MARKET,
+                options=options_snapshot(quote_time="2026-11-25T14:59:30+00:00", checked_at=OPEN.replace(day=25)),
+                now=OPEN.replace(day=25),
+            )
+        self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+
+    def test_refuses_missing_or_stale_snapshot_underlying(self):
+        missing = options_snapshot()
+        del missing["underlying_price"]
+        untimed = options_snapshot()
+        del untimed["underlying_as_of"]
+        stale = {**options_snapshot(), "underlying_as_of": (OPEN - timedelta(minutes=31)).isoformat()}
+        for case, snapshot, expected in (
+            ("missing_price", missing, "call_no_price"),
+            ("missing_time", untimed, "call_no_price"),
+            ("stale_time", stale, "call_options_stale"),
+        ):
+            with self.subTest(case=case):
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(
+                        agent_id="tempest", run_id=case, wake_id="tempest-r1",
+                        choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN,
+                    )
+                self.assertEqual(refused.exception.code, expected)
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+
     def test_vol_refusals(self):
         cases = [
             (VOL_CALL, MARKET, None, "call_options_unavailable"),
@@ -207,27 +267,9 @@ class VolCallStoreTests(Blocked):
                 )
             self.assertEqual(refused.exception.code, expected)
 
-    def test_thanksgiving_counts_only_the_sessions_that_trade(self):
-        def record_as_of(day):
-            market = {**MARKET, "quotes": [
-                {**MARKET["quotes"][0], "as_of": f"2026-11-{day}T14:58:00+00:00"},
-            ]}
-            return self.calls.record(
-                agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{day}",
-                choice=VOL_CALL, market=market,
-                options=options_snapshot(quote_time=f"2026-11-{day}T14:59:30+00:00"),
-            )
-
-        with self.assertRaises(CallRefused) as refused:
-            record_as_of(25)
-        self.assertEqual(refused.exception.code, "call_horizon_too_short")
-        record_as_of(24)
-        [row] = self.calls.open_vol_calls("tempest")
-        self.assertEqual((row["trading_days"], row["implied_move_pct"]), (2, "1.27"))
 
     def test_iv_comes_from_the_nearest_strike_with_one_or_both_sides(self):
-        market = {**MARKET, "quotes": [{**MARKET["quotes"][0], "last": 596}]}
-        snapshot = options_snapshot()
+        snapshot = {**options_snapshot(), "underlying_price": 596}
         [atm_call] = [row for row in snapshot["contracts"] if row["strike"] == 596]
         atm_call["iv"] = 0.30
         for wake, put_iv, expected_iv, expected_move in (
@@ -241,14 +283,37 @@ class VolCallStoreTests(Blocked):
                                       "symbol": atm_call["symbol"].replace("27C", "27P")})
                 self.calls.record(
                     agent_id="tempest", run_id="run-a", wake_id=wake, choice=VOL_CALL,
-                    market=market, options={**snapshot, "contracts": contracts}, now=OPEN,
+                    market=MARKET, options={**snapshot, "contracts": contracts}, now=OPEN,
                 )
                 row = self.calls.open_vol_calls("tempest")[-1]
+                self.assertEqual(row["entry_price"], "596")
+                with closing(sqlite3.connect(self.root / CALLS_FILE)) as connection:
+                    [price_as_of] = connection.execute(
+                        "SELECT price_as_of FROM vol_calls WHERE wake_id = ?", (wake,),
+                    ).fetchone()
+                self.assertEqual(price_as_of, "2026-11-19T14:58:00+00:00")
                 self.assertEqual((row["atm_strike"], row["entry_iv"], row["implied_move_pct"]),
                                  ("596", expected_iv, expected_move))
                 closes = {"SPY": {"2026-11-19": Decimal("596"), "2026-11-27": Decimal("615")}}
                 state, result = settle_vol_call(row, closes, sorted(closes["SPY"]), "2026-11-27")
                 self.assertEqual((state, result["outcome"]), ("settled", "right"))
+
+
+    def test_thanksgiving_counts_only_the_sessions_that_trade(self):
+        def record_as_of(day):
+            return self.calls.record(
+                agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{day}",
+                choice=VOL_CALL, market=MARKET, now=OPEN.replace(day=day),
+                options=options_snapshot(quote_time=f"2026-11-{day}T14:59:30+00:00",
+                                         checked_at=OPEN.replace(day=day)),
+            )
+
+        with self.assertRaises(CallRefused) as refused:
+            record_as_of(25)
+        self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        record_as_of(24)
+        [row] = self.calls.open_vol_calls("tempest")
+        self.assertEqual((row["trading_days"], row["implied_move_pct"]), (2, "1.27"))
 
 
 class VolSettleTests(Blocked):
@@ -414,6 +479,7 @@ class VolControllerTests(Blocked):
         del details["private_context"]["options_snapshot"]
         self.assertEqual(controller._call(job, STOCK_CALL, details), [{"kind": "call", "id": 1}])
 
+
     def test_controller_wake_offers_and_records_vol_call(self):
         store = RehearsalStore(self.root / "sessions")
         run_id = store.prepare(day_cfg())["run_id"]
@@ -434,9 +500,11 @@ class VolControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
+            market=lambda: MARKET, options=lambda: options_snapshot(),
         )
-        job = controller.run_wake("tempest")
+        with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
+            clock.now.return_value = OPEN
+            job = controller.run_wake("tempest")
         self.assertEqual((job["status"], job["action"]), ("completed", "call"))
         self.assertIn("VOLATILITY CALL", prompts[0])
         self.assertIn("Options expiries: 2026-11-27.", prompts[0])
@@ -447,6 +515,205 @@ class VolControllerTests(Blocked):
         # Second wake shows the open vol call in context.
         controller.run_wake("tempest")
         self.assertIn("vol call 1: SPY 2026-11-27 IV high", prompts[1])
+
+
+class OptionCallShapeAndStoreTests(Blocked):
+    def setUp(self):
+        super().setUp()
+        self.calls = CallStore(self.root / CALLS_FILE)
+
+    def test_option_call_shape_validation(self):
+        parsed = validate_choice(json.dumps(OPTION_CALL))
+        self.assertEqual((parsed["kind"], parsed["option_type"], parsed["strike"]), ("option", "call", 593))
+        for broken in (
+            {**OPTION_CALL, "option_type": "straddle"},
+            {**OPTION_CALL, "strike": 0},
+            {**OPTION_CALL, "strike": -5},
+            {**OPTION_CALL, "strike": True},
+            {**OPTION_CALL, "strike": "593"},
+            {**OPTION_CALL, "direction": "up"},
+            {**OPTION_CALL, "iv_view": "high"},
+            {k: v for k, v in OPTION_CALL.items() if k != "strike"},
+        ):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                validate_choice(json.dumps(broken))
+
+    def test_seals_at_ask_and_shares_open_cap(self):
+        call_id = self.calls.record(
+            agent_id="alchemist", run_id="run-a", wake_id="alchemist-r1",
+            choice=OPTION_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+        )
+        self.assertEqual(
+            self.calls.record(
+                agent_id="alchemist", run_id="run-a", wake_id="alchemist-r1",
+                choice=OPTION_CALL, market=MARKET, options=options_snapshot(), now=OPEN,
+            ),
+            call_id,
+        )
+        [row] = self.calls.open_option_calls("alchemist")
+        self.assertEqual(row["contract"], "SPY261127C00593000")
+        self.assertEqual((row["entry_bid"], row["entry_ask"], row["spread_pct"]), ("2.1", "2.18", "3.67"))
+        self.assertEqual(row["entry_underlying_price"], "593.5")
+        line = open_calls_line([], [], [row])
+        self.assertIn("option call 1: long SPY 2026-11-27 593 call at 2.18 ask (spread 3.67%, medium)", line)
+
+        # Shared cap of 5 across stock, vol, and option calls.
+        self.calls.record(agent_id="alchemist", run_id="run-a", wake_id="alchemist-r2",
+                          choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
+        for idx in range(3, CALL_OPTIONS["max_open_per_agent"] + 1):
+            self.calls.record(agent_id="alchemist", run_id="run-a", wake_id=f"alchemist-r{idx}",
+                              choice=STOCK_CALL, market=MARKET, now=OPEN)
+        with self.assertRaises(CallRefused) as refused:
+            self.calls.record(agent_id="alchemist", run_id="run-a", wake_id="alchemist-r6",
+                              choice=OPTION_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
+        self.assertEqual(refused.exception.code, "call_too_many_open")
+
+        with closing(sqlite3.connect(str(self.root / CALLS_FILE))) as conn:
+            for stmt in ("UPDATE option_calls SET entry_ask='1'", "DELETE FROM option_calls"):
+                with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
+                    conn.execute(stmt)
+
+    def test_commit_time_quote_age_and_retries(self):
+        at_threshold = OPEN.replace(minute=29, second=30)
+        too_late = at_threshold.replace(second=31)
+        for kind, choice, read in (
+            ("option", OPTION_CALL, self.calls.open_option_calls),
+            ("vol", VOL_CALL, self.calls.open_vol_calls),
+        ):
+            with self.subTest(kind=kind):
+                entry = dict(agent_id="siren", run_id=kind, wake_id="siren-r1",
+                             choice=choice, market=MARKET,
+                             options={**options_snapshot(), "underlying_as_of": OPEN.isoformat()})
+                for rejected_at in (too_late, OPEN - timedelta(minutes=1)):
+                    with self.assertRaises(CallRefused) as refused:
+                        self.calls.record(**{**entry, "wake_id": "siren-r2"}, now=rejected_at)
+                    self.assertEqual(refused.exception.code, "call_options_stale")
+                self.assertEqual(read("siren"), [])
+
+                call_id = self.calls.record(**entry, now=at_threshold)
+                original = read("siren")
+                self.assertEqual(self.calls.record(**entry, now=too_late), call_id)
+                self.assertEqual(read("siren"), original)
+
+    def test_option_refusals(self):
+        bad_quote = options_snapshot()
+        bad_quote["contracts"][0]["ask"] = 0
+        cases = [
+            (OPTION_CALL, MARKET, None, "call_options_unavailable"),
+            (OPTION_CALL, MARKET, options_snapshot(status="closed"), "call_options_unavailable"),
+            ({**OPTION_CALL, "strike": 999}, MARKET, options_snapshot(), "call_contract_not_shown"),
+            (OPTION_CALL, MARKET, options_snapshot(stale=True), "call_options_stale"),
+            (OPTION_CALL, MARKET, bad_quote, "call_bad_option_quote"),
+            ({**OPTION_CALL, "expiry": "2026-11-19"}, MARKET, options_snapshot(expiry="2026-11-19"), "call_horizon_too_short"),
+        ]
+        for idx, (choice, market, opts, expected) in enumerate(cases, start=1):
+            with self.subTest(expected=expected), self.assertRaises(CallRefused) as refused:
+                self.calls.record(
+                    agent_id="siren", run_id="run-a", wake_id=f"siren-r{idx}",
+                    choice=choice, market=market, options=opts, now=OPEN,
+                )
+            self.assertEqual(refused.exception.code, expected)
+
+
+class OptionSettleAndControllerTests(Blocked):
+    SESSIONS = ["2026-11-19", "2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25",
+                "2026-11-27", "2026-11-30", "2026-12-01", "2026-12-02", "2026-12-03", "2026-12-04"]
+
+    @staticmethod
+    def _opt(option_type="call", strike="593", ask="2.18"):
+        return {
+            "call_id": 1, "agent_id": "alchemist", "contract": "SPY261127C00593000",
+            "symbol": "SPY", "expiry": "2026-11-27", "option_type": option_type,
+            "strike": strike, "entry_ask": ask, "spread_pct": "3.67",
+            "entry_underlying_price": "593.5", "entry_session": "2026-11-19",
+        }
+
+    @staticmethod
+    def _closes(spy_prices):
+        return {"SPY": {s: Decimal(str(p)) for s, p in spy_prices.items()}}
+
+    def test_settle_option_itm_win_itm_net_loss_otm_loss_and_put(self):
+        # ITM profit: SPY closes at 598 -> intrinsic 5.00 - 2.18 ask = +2.82 (+129.36%) -> right.
+        state, detail = settle_option_call(
+            self._opt(), self._closes({"2026-11-19": 593.5, "2026-11-27": 598}),
+            self.SESSIONS, "2026-12-04",
+        )
+        self.assertEqual(state, "settled")
+        self.assertEqual((detail["kind"], detail["outcome"], detail["intrinsic"], detail["net_pnl"], detail["return_percent"]),
+                         ("option", "right", "5", "2.82", "129.36"))
+
+        # Direction right (594 > 593.5) and ITM (intrinsic 1.00), but ask was 2.18 -> net -1.18 -> wrong!
+        state, loss_detail = settle_option_call(
+            self._opt(), self._closes({"2026-11-19": 593.5, "2026-11-27": 594}),
+            self.SESSIONS, "2026-12-04",
+        )
+        self.assertEqual((loss_detail["outcome"], loss_detail["intrinsic"], loss_detail["net_pnl"],
+                          loss_detail["underlying_move_percent"]),
+                         ("wrong", "1", "-1.18", "0.08"))
+
+        # OTM total loss (-100%).
+        otm = settle_option_call(self._opt(), self._closes({"2026-11-19": 593.5, "2026-11-27": 590}),
+                                 self.SESSIONS, "2026-12-04")[1]
+        self.assertEqual((otm["outcome"], otm["intrinsic"], otm["return_percent"]), ("wrong", "0", "-100.00"))
+
+        # Put ITM win: strike 593, close 588 -> intrinsic 5.00 - 2.18 = +2.82 -> right.
+        put = settle_option_call(self._opt(option_type="put"), self._closes({"2026-11-19": 593.5, "2026-11-27": 588}),
+                                 self.SESSIONS, "2026-12-04")[1]
+        self.assertEqual((put["outcome"], put["net_pnl"]), ("right", "2.82"))
+
+        # Missing close -> pending -> unsettled.
+        self.assertEqual(settle_option_call(self._opt(), self._closes({}), self.SESSIONS[:7], "2026-11-30")[0], "pending")
+        self.assertEqual(settle_option_call(self._opt(), self._closes({}), self.SESSIONS, "2026-12-04")[1]["outcome"],
+                         "unsettled")
+
+    def test_heartbeat_and_controller_handle_option_calls(self):
+        store = RehearsalStore(self.root / "sessions")
+        run_id = store.prepare(day_cfg())["run_id"]
+        scripted, prompts = ScriptedHTTP(), []
+
+        def http(url, **kwargs):
+            text = "\n".join(str(m.get("content", "")) for m in kwargs["json"]["messages"])
+            prompts.append(text)
+            if "Stable owner ID: alchemist" in text and "REHEARSAL CHOICE" in text and len(prompts) == 1:
+                clock.now.return_value = OPEN + timedelta(hours=1)
+                scripted.calls += 1
+                return ScriptedResponse({
+                    "id": "opt-1", "model": kwargs["json"].get("model"), "provider": "scripted-offline",
+                    "choices": [{"message": {"content": json.dumps(OPTION_CALL)}, "finish_reason": "stop"}],
+                    "usage": {"prompt_tokens": 60, "completion_tokens": 20, "total_tokens": 80, "cost": "0"},
+                })
+            return scripted(url, **kwargs)
+
+        controller = RehearsalController(
+            store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
+            market=lambda: MARKET, options=lambda: options_snapshot(),
+        )
+        with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
+            clock.now.return_value = OPEN
+            job = controller.run_wake("alchemist")
+        self.assertEqual((job["status"], job["action"]), ("completed", "call"))
+        self.assertIn("OPTION CALL", prompts[0])
+
+        controller.run_wake("alchemist")
+        self.assertIn("option call 1: long SPY 2026-11-27 593 call at 2.18 ask", prompts[1])
+
+        calls = CallStore(store.safe_run_file(run_id, CALLS_FILE))
+        self.assertTrue(calls.has_open())
+        cfg = {"timezone": "UTC", "active_window": ["09:00", "10:00"], "active_interval_minutes": 14,
+               "grace_minutes": 10, "daily_budget_usd": "5.00", "mode": "offline", "dispatch": "live"}
+        clock = datetime(2026, 11, 27, 22, 0, tzinfo=timezone.utc)
+        beat = Heartbeat(
+            store, Schedule.from_config(cfg), prepare_day=None, run_wake=None,
+            now=lambda: clock,
+            fetch_closes=lambda syms, start, end: {
+                "status": "ok",
+                "closes": self._closes({s: 598 if s == "2026-11-27" else 593.5 for s in self.SESSIONS[:6]}),
+            },
+        )
+        self.assertEqual(beat.tick()["calls"], {"open": 0, "settled": 1, "pending": []})
+        self.assertEqual(calls.counts()["alchemist"],
+                         {"open": 0, "settled": 1, "right": 1, "wrong": 0, "flat": 0, "unsettled": 0})
+        self.assertEqual(calls.option_settlements()[0]["detail"]["outcome"], "right")
 
 
 if __name__ == "__main__":

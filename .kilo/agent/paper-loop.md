@@ -5,8 +5,8 @@ color: "#2AA08F"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
+    "*": ask
     "**/*.md": ask
     "core/trading/*.py": allow
     "core/trading/**/*.py": allow

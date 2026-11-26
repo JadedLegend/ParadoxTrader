@@ -5,8 +5,8 @@ color: "#6B4EE6"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
+    "*": ask
     "**/*.py": ask
     "**/*.ts": ask
     "**/*.tsx": ask
@@ -20,6 +20,7 @@ permission:
     "git diff": allow
     "git diff --stat": allow
     "git diff --check": allow
+    "git diff*--output*": ask
     "git log*": allow
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow

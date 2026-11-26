@@ -5,6 +5,7 @@ color: "#3B82F6"
 permission:
   read: allow
   edit:
+    "**/*": ask
     "*": ask
     "**/*": ask
     "**/*.md": ask

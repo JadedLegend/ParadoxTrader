@@ -5,8 +5,8 @@ color: "#D68C24"
 permission:
   read: allow
   edit:
-    "*": ask
     "**/*": ask
+    "*": ask
     "**/*.md": ask
     "core/market/*.py": allow
     "core/market/**/*.py": allow

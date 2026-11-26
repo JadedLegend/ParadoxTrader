@@ -28,8 +28,8 @@ from core.runtime.inquiry import InquiryReceiptStore, _validate_command, run_inq
 from core.runtime.orientation import skill_text
 from core.trading.queue import ensure_private_db_file
 
-from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, VOL_CALL_INSTRUCTIONS, CallRefused, CallStore,
-                    call_results_line, open_calls_line)
+from .calls import (CALL_INSTRUCTIONS, CALL_OPTIONS, CALLS_FILE, OPTION_CALL_INSTRUCTIONS,
+                    VOL_CALL_INSTRUCTIONS, CallRefused, CallStore, call_results_line, open_calls_line)
 from .notebook import NOTEBOOK_FILE, NOTEBOOK_INSTRUCTIONS, NotebookStore, notebook_text
 from .continuity import (clip_continuity, continuity_message, owner_continuity,
                          public_coverage)
@@ -518,14 +518,20 @@ class RehearsalController:
             calls_path = self.store.safe_run_file(self.run_id, CALLS_FILE)
             with self._memory_lock:
                 calls = CallStore(calls_path)
-                private["open_calls"] = open_calls_line(calls.open_calls(job["agent_id"]), calls.open_vol_calls(job["agent_id"]))
+                private["open_calls"] = open_calls_line(
+                    calls.open_calls(job["agent_id"]),
+                    calls.open_vol_calls(job["agent_id"]),
+                    calls.open_option_calls(job["agent_id"]),
+                )
         if self.options is not None:
             from core.market.options import options_at_decision, options_evidence, options_line
             try:
                 chain = self.options()
             except Exception:
                 chain = {"status": "unavailable", "reason": "the options view could not be read"}
-            chain = options_at_decision(chain, self._now()) or {}
+            moment = self._now()
+            chain = options_at_decision(chain, moment) or {}
+            private["options_committed_at"] = moment.isoformat()
             line = options_line(chain)
             expiries = sorted({c["expiration"] for c in (chain.get("contracts") or [])
                                if isinstance(c, dict) and c.get("expiration")})
@@ -535,7 +541,7 @@ class RehearsalController:
             private["options"] = options_evidence(chain)
             private["options_snapshot"] = chain
             if self.market is not None:
-                private["choice_instructions"] += VOL_CALL_INSTRUCTIONS
+                private["choice_instructions"] += VOL_CALL_INSTRUCTIONS + OPTION_CALL_INSTRUCTIONS
         if self.feeds is not None:
             from core.market.feeds import feed_lines
             try:
@@ -743,17 +749,16 @@ class RehearsalController:
         """Seal one call with the quotes committed for this wake (no model request)."""
         if details is None or "call_options" not in details["metadata"]:
             raise CallRefused("call_not_offered")
-        private = details["private_context"]
-        snapshot = private.get("options_snapshot")
-        if choice.get("kind") == "vol" and snapshot is None:
-            raise CallRefused("call_options_unavailable")
         path = self.store.safe_run_file(self.run_id, CALLS_FILE)
+        private = details["private_context"]
+        committed_at = private.get("options_committed_at") if choice.get("kind") in ("option", "vol") else None
         with self._memory_lock:
             ensure_private_db_file(path)
             call_id = CallStore(path).record(
                 agent_id=job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
                 choice=choice, market=private.get("market"),
-                options=snapshot if snapshot is not None else private.get("options"),
+                options=private.get("options_snapshot"),
+                now=datetime.fromisoformat(committed_at) if committed_at else None,
             )
         return [{"kind": "call", "id": call_id}]
 
