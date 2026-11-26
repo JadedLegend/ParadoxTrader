@@ -417,7 +417,7 @@ def _memory_effect(memory, wake_id, action, output, library_refs=None, key_scope
 
 
 class RehearsalController:
-    def __init__(self, store, run_id, *, transport, repo_root=None, market=None, feeds=None, options=None):
+    def __init__(self, store, run_id, *, transport, repo_root=None, market=None, feeds=None, options=None, now=None):
         """``market()`` returns the shared market window record (read-only), or
         None for no window; see core/market/window.py. ``feeds()`` returns the
         cached headlines and X posts; see core/market/feeds.py. ``options()``
@@ -425,6 +425,7 @@ class RehearsalController:
         self.market = market
         self.feeds = feeds
         self.options = options
+        self._now = now or (lambda: datetime.now(timezone.utc))
         self.store = store
         self.run_id = run_id
         self.transport = transport
@@ -523,11 +524,14 @@ class RehearsalController:
                     calls.open_option_calls(job["agent_id"]),
                 )
         if self.options is not None:
-            from core.market.options import options_evidence, options_line
+            from core.market.options import options_at_decision, options_evidence, options_line
             try:
                 chain = self.options()
             except Exception:
                 chain = {"status": "unavailable", "reason": "the options view could not be read"}
+            moment = self._now()
+            chain = options_at_decision(chain, moment) or {}
+            private["options_committed_at"] = moment.isoformat()
             line = options_line(chain)
             expiries = sorted({c["expiration"] for c in (chain.get("contracts") or [])
                                if isinstance(c, dict) and c.get("expiration")})
@@ -586,8 +590,6 @@ class RehearsalController:
             if job.get("request_count", 0) or self.store.get_output(self.run_id, job["wake_id"]) is not None:
                 return None
             metadata, private = self._new_decision_context(job)
-            if "options_snapshot" in private:
-                private["options_committed_at"] = datetime.now(timezone.utc).isoformat()
             self.store.commit_decision_context(self.run_id, job["wake_id"], self._token,
                                                metadata=metadata, private_context=private)
             # Re-read the immutable persisted envelope, rather than passing an
@@ -755,7 +757,7 @@ class RehearsalController:
             call_id = CallStore(path).record(
                 agent_id=job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
                 choice=choice, market=private.get("market"),
-                options=private.get("options_snapshot") or private.get("options"),
+                options=private.get("options_snapshot"),
                 now=datetime.fromisoformat(committed_at) if committed_at else None,
             )
         return [{"kind": "call", "id": call_id}]

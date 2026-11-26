@@ -135,6 +135,30 @@ class VolCallStoreTests(Blocked):
         super().setUp()
         self.calls = CallStore(self.root / CALLS_FILE)
 
+    def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
+        self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
+                          choice=STOCK_CALL, market=MARKET, now=OPEN)
+        path = self.root / CALLS_FILE
+        with closing(sqlite3.connect(path)) as db:
+            for prefix in ("vol", "option"):
+                for suffix in ("handbacks", "settlements", "calls"):
+                    db.execute(f"DROP TABLE IF EXISTS {prefix}_{suffix}")
+            db.commit()
+        before = path.read_bytes()
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 1)
+        self.assertEqual(len(self.calls.open_calls("tempest")), 1)
+        self.assertEqual(len(self.calls.all_open()), 1)
+        self.assertEqual(self.calls.open_vol_calls("tempest"), [])
+        self.assertEqual(self.calls.all_open_vol(), [])
+        self.assertEqual(self.calls.vol_settlements(), [])
+        self.assertEqual(self.calls.open_option_calls("tempest"), [])
+        self.assertEqual(self.calls.all_open_option(), [])
+        self.assertEqual(self.calls.option_settlements(), [])
+        self.assertTrue(path.read_bytes() == before, "read operations changed the calls database")
+        self.calls.record(agent_id="tempest", run_id="new", wake_id="tempest-r1",
+                          choice=VOL_CALL, market=MARKET, options=options_snapshot(), now=OPEN)
+        self.assertEqual(self.calls.counts()["tempest"]["open"], 2)
+
     def test_seals_atm_iv_implied_move_and_shared_cap(self):
         call_id = self.calls.record(
             agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
@@ -278,6 +302,39 @@ class VolSettleTests(Blocked):
 
 
 class VolControllerTests(Blocked):
+    def test_recomputes_cached_freshness_once_and_reuses_it_on_recovery(self):
+        for minutes_after_fetch, stale in ((10, False), (25, True)):
+            with self.subTest(stale=stale):
+                store = RehearsalStore(self.root / f"sessions-{minutes_after_fetch}")
+                run_id = store.prepare(day_cfg())["run_id"]
+                snapshot = options_snapshot(quote_time=(OPEN - timedelta(minutes=15)).isoformat())
+                transport = OpenRouterTransport("scripted-offline", http_post=ScriptedHTTP())
+                controller = RehearsalController(store, run_id, transport=transport,
+                                                 market=lambda: MARKET, options=lambda: snapshot)
+                controller._now = lambda: OPEN + timedelta(minutes=minutes_after_fetch)
+                controller.prepare_profiles()
+                store.add_wake(run_id, "tempest")
+                controller._token = store.begin(run_id)
+                job = store.claim_job(run_id, "tempest-r1", controller._token)
+                first = controller._decision_details(job, new_picker=True)
+                self.assertTrue(all(row["stale"] == stale
+                                    for row in first["private_context"]["options_snapshot"]["contracts"]))
+                self.assertTrue(all(not row["stale"] for row in snapshot["contracts"]))
+
+                store.recover(run_id)
+                resumed = RehearsalController(store, run_id, transport=transport)
+                resumed._now = lambda: OPEN + timedelta(hours=2)
+                resumed._token = store.begin(run_id, resume=True)
+                job = store.claim_job(run_id, "tempest-r1", resumed._token)
+                details = resumed._decision_details(job, new_picker=True)
+                self.assertEqual(details["private_context"], first["private_context"])
+                if stale:
+                    with self.assertRaises(CallRefused) as refused:
+                        resumed._call(job, VOL_CALL, details)
+                    self.assertEqual(refused.exception.code, "call_options_stale")
+                else:
+                    self.assertEqual(resumed._call(job, VOL_CALL, details), [{"kind": "call", "id": 1}])
+
     def test_controller_wake_offers_and_records_vol_call(self):
         store = RehearsalStore(self.root / "sessions")
         run_id = store.prepare(day_cfg())["run_id"]
@@ -298,7 +355,7 @@ class VolControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(),
+            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
         )
         with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
             clock.now.return_value = OPEN
@@ -483,7 +540,7 @@ class OptionSettleAndControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(),
+            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
         )
         with patch("core.runtime.rehearsal.controller.datetime", wraps=datetime) as clock:
             clock.now.return_value = OPEN
