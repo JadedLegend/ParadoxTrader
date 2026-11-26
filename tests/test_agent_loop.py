@@ -297,6 +297,36 @@ class WakeTests(OfflineCase):
         for sentinel in ("UNREAD_DM_SENTINEL", "OWN_ONLY", "PEER_ONLY"):
             self.assertIn(sentinel, actual_user)
 
+    def test_forum_publication_uses_only_shared_context(self):
+        self.menu.return_value = [
+            {"action": "forum_post", "label": "Post to the forum", "hrv_cost": 2.0},
+        ]
+        self.messages.send("user", "tempest", "OWNER_DM_SENTINEL")
+        self.messages.send("siren", "tempest", "PEER_DM_SENTINEL")
+        self.patch(loop, "load_living", return_value={"current_focus": "LIVING_NOTE_SENTINEL"})
+        self.forum.post("siren", "SHARED_POST_SENTINEL")
+        self.llm.side_effect = ["1", "New shared contribution"]
+
+        result = loop.agent_wake("tempest", phase=1)
+
+        self.assertEqual(result["action"], "forum_post")
+        self.assertEqual(self.llm.call_count, 2)
+        picker, publisher = self.llm.call_args_list
+        private_markers = ("OWNER_DM_SENTINEL", "PEER_DM_SENTINEL", "OWN_ONLY",
+                           "PEER_ONLY", "LIVING_NOTE_SENTINEL")
+        picker_request = json.dumps([picker.args, picker.kwargs])
+        publication_request = json.dumps([publisher.args, publisher.kwargs])
+        for marker in private_markers:
+            self.assertIn(marker, picker_request)
+            self.assertNotIn(marker, publication_request)
+        self.assertIn("SHARED_POST_SENTINEL", publication_request)
+        post = self.forum.get_recent(limit=1)[0]
+        self.assertEqual((post["author"], post["thread_id"], post["content"]),
+                         ("tempest", "general", "New shared contribution"))
+        self.assertEqual(self.memory().get_recent_episodes()[0]["title"], "Forum post")
+        self.assertEqual(self.hrv.load("tempest").hrv,
+                         100.0 - self.state().get_action_cost("forum_post"))
+
     def test_phase_zero_actual_action_context_has_no_peer_holdings(self):
         self.llm.side_effect = ["1", "observed offline test"]
         loop.agent_wake("tempest", phase=0)
@@ -490,9 +520,8 @@ class ActionExecutionTests(OfflineCase):
 
     def test_history_actions_keep_wake_context_and_records_in_user_messages(self):
         self.memory().store_episode("EPISODE_TITLE_SENTINEL", "EPISODE_CONTENT_SENTINEL", phase="symmetry")
-        self.forum.post("siren", "FORUM_HISTORY_SENTINEL")
         context = {"messages": "WAKE_DM_SENTINEL", "positions": "WAKE_POSITIONS_SENTINEL"}
-        for action in ("journal", "forum_post", "propose_trade"):
+        for action in ("journal", "propose_trade"):
             with self.subTest(action=action):
                 before = self.memory().get_recent_episodes()
                 response = f"GENERATED_{action}_SENTINEL"
@@ -505,7 +534,7 @@ class ActionExecutionTests(OfflineCase):
                 actual_user = "\n".join(m["content"] for m in call.args[1] if m["role"] == "user")
                 system = call.kwargs.get("system_prompt", "") + "\n".join(
                     m["content"] for m in call.args[1] if m["role"] == "system")
-                history = ["FORUM_HISTORY_SENTINEL"] if action == "forum_post" else ["EPISODE_TITLE_SENTINEL"]
+                history = ["EPISODE_TITLE_SENTINEL"]
                 if action == "propose_trade":
                     history.append("EPISODE_CONTENT_SENTINEL")
                 for marker in [*context.values(), *history]:
@@ -521,10 +550,7 @@ class ActionExecutionTests(OfflineCase):
                 else:
                     self.assertEqual(len(after), len(before) + 1)
                     episode = next(e for e in after if e["content"] == response)
-                    self.assertEqual(episode["title"], "Forum post" if action == "forum_post" else "Trade idea")
-                    if action == "forum_post":
-                        post = next(p for p in self.forum.get_recent() if p["content"] == response)
-                        self.assertEqual(post["author"], "tempest")
+                    self.assertEqual(episode["title"], "Trade idea")
                 self.assertNotIn("order", result)
                 self.broker.assert_not_called()
 
