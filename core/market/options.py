@@ -160,7 +160,7 @@ def fetch(symbol, price, key_id, secret, account, *, http_get, now):
 
 class OptionsView:
     """Shared cached options record. ``credentials()`` returns (key_id, secret, label) or None;
-    ``price()`` returns the underlying's current price or None."""
+    ``price()`` returns a market quote with last and as_of, a numeric price, or None."""
 
     def __init__(self, cache_dir, symbol, credentials, price, *, http_get=None, now=None):
         if not isinstance(symbol, str) or not _SYMBOL.fullmatch(symbol):
@@ -199,8 +199,15 @@ class OptionsView:
             price = self.price()
         except Exception:
             price = None
+        # Older numeric callbacks can select strikes, but cannot date the underlying.
+        price_time = None
+        if isinstance(price, dict):
+            price_time = _time(price.get("as_of"))
+            price = price.get("last")
         record = fetch(self.symbol, _number(price) if price is not None else None, given[0], given[1], given[2],
                        http_get=http_get, now=self.now)
+        if price_time is not None and "underlying_price" in record:
+            record["underlying_as_of"] = price_time.isoformat()
         self._write(record)
         return record
 

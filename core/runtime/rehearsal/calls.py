@@ -294,7 +294,7 @@ def _snapshot_underlying(options):
     """Read the underlying price and time sealed with the options snapshot."""
     try:
         price = Decimal(str(options["underlying_price"]))
-        moment = datetime.fromisoformat(str(options["checked_at"]).replace("Z", "+00:00"))
+        moment = datetime.fromisoformat(str(options["underlying_as_of"]).replace("Z", "+00:00"))
     except (KeyError, TypeError, ValueError, InvalidOperation):
         raise CallRefused("call_no_price") from None
     if not price.is_finite() or price <= 0 or moment.tzinfo is None:
