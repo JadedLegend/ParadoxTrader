@@ -168,6 +168,7 @@ class WakeTests(BlockedNetwork):
                 "scripted-offline", http_post=recording), market=window.read,
                 options=lambda: {"symbol": "SPY", "status": "open", "feed": "indicative",
                                  "contracts": [dict(contract)]},
+                now=lambda: clock[0],
                 feeds=lambda: {"headlines": {"status": "ok", "items": [{"title": "Fed holds rates", "source": "Wire"}]},
                                "x": {"status": "unavailable", "reason": "it answered 403"}}).run_wake(owner, step=step)
 
