@@ -5,11 +5,9 @@ color: "#2AA08F"
 permission:
   read: allow
   edit:
-    "**/*": ask
     "*": ask
     "core/trading/*.py": allow
-    "core/trading/**/*.py": allow
-    "core/usage/**/*.py": allow
+    "core/usage/*.py": allow
     "core/runtime/inquiry.py": allow
     "tests/test_lineage_*.py": allow
     "tests/test_paper_*.py": allow
@@ -17,7 +15,6 @@ permission:
     "tests/test_usage_*.py": allow
     "tests/test_budget_*.py": allow
     "tests/test_inquiry_*.py": allow
-    "**/*.md": ask
   bash:
     "*": ask
     "python3 -B -m unittest tests/test_lineage_* tests/test_paper_* tests/test_mock_* tests/test_usage_* tests/test_inquiry_*": allow

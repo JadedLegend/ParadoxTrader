@@ -49,6 +49,45 @@ class HandBackStoreTests(Blocked):
     def test_nothing_is_handed_back_before_settling(self):
         self.assertEqual(self.shown("tempest-r1"), [])
 
+    def test_an_empty_selection_stays_empty_after_a_settlement(self):
+        self.assertEqual(self.shown("tempest-r1"), [])
+        self.calls.settle(self.call_id, RIGHT, now=NOW)
+        self.calls = CallStore(self.calls.path)
+        self.assertEqual(self.shown("tempest-r1"), [])
+        self.assertEqual(self.shown("tempest-r1", run="run-c"), [self.call_id])
+        self.assertEqual(self.shown("tempest-r2", run="run-c"), [self.call_id])
+        self.assertEqual(self.shown("tempest-r3", run="run-c"), [])
+
+    def test_first_empty_selection_is_kept_even_if_the_database_did_not_exist(self):
+        path = Path(self.temp.name) / "fresh.sqlite3"
+        wake = {"run_id": "run-b", "sitting": "tempest-r1", "now": NOW}
+        self.assertEqual(CallStore(path).hand_back("tempest", **wake), [])
+
+        calls = CallStore(path)
+        call_id = calls.record(agent_id="tempest", run_id="run-a", wake_id="tempest-r1",
+                               choice=CALL, market=MARKET, now=NOW)
+        calls.settle(call_id, RIGHT, now=NOW)
+        self.assertEqual(calls.hand_back("tempest", **wake), [])
+        for sitting in ("tempest-r2", "tempest-r3"):
+            self.assertEqual([row["call_id"] for row in calls.hand_back(
+                "tempest", **{**wake, "sitting": sitting})], [call_id])
+
+    def test_first_five_results_survive_later_settlements_and_other_wakes(self):
+        ids = [self.call_id]
+        for i in range(2, 8):
+            ids.append(self.calls.record(agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{i}",
+                                         choice=CALL, market=MARKET, now=NOW))
+            self.calls.settle(ids[-2], RIGHT, now=NOW)
+
+        selected = ids[-2:-7:-1]
+        self.assertEqual(self.shown("tempest-r1"), selected)
+        self.calls.settle(ids[-1], RIGHT, now=NOW)
+        self.assertEqual(self.shown("tempest-r1"), selected)
+        self.assertEqual(self.shown("tempest-r2"), ids[-1:-6:-1])
+        # The oldest result was eligible before but was never shown.
+        self.assertEqual(self.shown("tempest-r3"), [ids[-1], ids[1], ids[0]])
+        self.assertEqual(self.shown("tempest-r1"), selected)
+
     def test_a_result_shows_on_two_wakes_then_stays_only_in_the_record(self):
         self.calls.settle(self.call_id, RIGHT, now=NOW)
         self.assertEqual(self.shown("tempest-r1"), [self.call_id])
@@ -120,6 +159,19 @@ class HandBackWakeTests(Blocked):
         self.assertIn("Right.", self.wake(step=(1, 2)))  # The second wake.
         self.assertIn("Right.", self.wake(step=(2, 2)))
         self.assertEqual(self.wake(step=(1, 2)), "")  # The third wake: back in the record only.
+
+    def test_later_moves_stay_empty_if_the_calls_file_appears_mid_wake(self):
+        day = self.store.prepare(day_manifest(wakes=10))["run_id"]
+        self.day = day
+        path = self.store.safe_run_file(day, CALLS_FILE)
+        self.assertFalse(path.exists())
+        self.assertEqual(self.wake(step=(1, 2)), "")
+        calls = CallStore(path)
+        call_id = calls.record(agent_id="tempest", run_id=day, wake_id="tempest-r0", choice=CALL,
+                               market=MARKET, now=NOW)
+        calls.settle(call_id, RIGHT, now=NOW)
+        self.assertEqual(self.wake(step=(2, 2)), "")
+        self.assertIn("Right.", self.wake(step=(1, 2)))
 
 
 class HeartbeatPageCallsTests(Blocked):

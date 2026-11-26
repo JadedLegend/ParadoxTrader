@@ -1,6 +1,6 @@
 # Options and volatility calls: test options edge at zero broker risk
 
-Status: approved. Phase 1 built in `build/options-calls-phase1`; Phase 2 built in `build/options-calls-phase2`; Phase 3 not started. Wake storage and stock-only database compatibility covered by regression tests.
+Status: approved. Phase 1 built in `build/options-calls-phase1`; Phase 2 built in `build/options-calls-phase2`; Phase 3 built in `build/options-calls-phase3`. Wake storage and stock-only database compatibility covered by regression tests.
 
 Builds on [`CALLS_AND_SETTLEMENT.md`](CALLS_AND_SETTLEMENT.md),
 [`OPTIONS_VIEW.md`](OPTIONS_VIEW.md), and the

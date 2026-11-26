@@ -5,7 +5,6 @@ color: "#3B82F6"
 permission:
   read: allow
   edit:
-    "**/*": ask
     "*": ask
     "frontend/*.ts": allow
     "frontend/*.tsx": allow
@@ -20,7 +19,6 @@ permission:
     "tests/test_heartbeat_view.py": allow
     "tests/test_deploy_scripts.py": allow
     "tests/test_api_read_contracts.py": allow
-    "**/*.md": ask
   bash:
     "*": ask
     "npm run *": allow

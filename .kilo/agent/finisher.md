@@ -5,14 +5,10 @@ color: "#6B4EE6"
 permission:
   read: allow
   edit:
-    "**/*": ask
     "*": ask
-    "docs/**/*.md": allow
+    "docs/*.md": allow
     "README.md": allow
     "TODO.md": allow
-    "**/*.py": ask
-    "**/*.ts": ask
-    "**/*.tsx": ask
   bash:
     "*": ask
     "git status*": allow
@@ -20,7 +16,10 @@ permission:
     "git diff --stat": allow
     "git diff --check": allow
     "git diff*--output*": ask
-    "git log*": allow
+    "git log -1": allow
+    "git log --oneline": allow
+    "git log --oneline -5": allow
+    "git log*--output*": ask
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow
     "python3 -B scripts/import_library.py --check": allow

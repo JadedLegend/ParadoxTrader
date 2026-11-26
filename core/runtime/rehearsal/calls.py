@@ -24,6 +24,7 @@ import re
 import sqlite3
 
 from core.market.options import STALE_QUOTE_SECONDS
+from core.trading.queue import ensure_private_db_file
 
 CALLS_FILE = "calls.sqlite3"
 CALL_OPTIONS = {
@@ -79,6 +80,14 @@ OPTION_CALL_INSTRUCTIONS = (
 )
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS handback_wakes (
+ agent_id TEXT NOT NULL, run_id TEXT NOT NULL, sitting TEXT NOT NULL,
+ results TEXT NOT NULL, PRIMARY KEY (agent_id, run_id, sitting)
+);
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_update BEFORE UPDATE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_delete BEFORE DELETE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
 CREATE TABLE IF NOT EXISTS calls (
  call_id INTEGER PRIMARY KEY,
  agent_id TEXT NOT NULL, run_id TEXT NOT NULL, wake_id TEXT NOT NULL,
@@ -278,20 +287,23 @@ def _entry(market, symbol):
     return format(price.normalize(), "f"), moment.astimezone(timezone.utc), market["status"]
 
 
-def _option_underlying(market, options, symbol):
+def _option_underlying(market, options, symbol, now):
     """Entry underlying price + timestamp from committed market or options snapshot."""
     if isinstance(market, dict) and market.get("status") in ("ok", "closed"):
         try:
             price_text, moment, _ = _entry(market, symbol)
-            return Decimal(price_text), price_text, moment
         except CallRefused as error:
             if error.code == "call_no_price":
                 pass
-    return _snapshot_underlying(options)
+        else:
+            if not 0 <= (now - moment).total_seconds() <= STALE_QUOTE_SECONDS or _session(moment) != _session(now):
+                raise CallRefused("call_options_stale")
+            return Decimal(price_text), price_text, moment
+    return _snapshot_underlying(options, now)
 
 
-def _snapshot_underlying(options):
-    """Read the underlying price and time sealed with the options snapshot."""
+def _snapshot_underlying(options, now):
+    """Read a fresh underlying quote from the committed options snapshot."""
     try:
         price = Decimal(str(options["underlying_price"]))
         moment = datetime.fromisoformat(str(options["underlying_as_of"]).replace("Z", "+00:00"))
@@ -299,6 +311,8 @@ def _snapshot_underlying(options):
         raise CallRefused("call_no_price") from None
     if not price.is_finite() or price <= 0 or moment.tzinfo is None:
         raise CallRefused("call_no_price")
+    if not 0 <= (now - moment).total_seconds() <= STALE_QUOTE_SECONDS or _session(moment) != _session(now):
+        raise CallRefused("call_options_stale")
     return price, format(price.normalize(), "f"), moment.astimezone(timezone.utc)
 
 
@@ -319,18 +333,19 @@ def _parse_quote_time(row, now):
 
 
 def _exchange_sessions_after(entry_session, expiry):
-    """Count US equity sessions after entry through expiry, including early closes."""
+    """Count NYSE sessions after entry through expiry, including early closes."""
+    from exchange_calendars import get_calendar
+
     if expiry <= entry_session:
         return 0
-    # The offline exchange calendar includes future sessions, unlike daily bars.
-    from exchange_calendars import get_calendar
-    from exchange_calendars.errors import DateOutOfBounds
-
     start = date.fromisoformat(entry_session) + timedelta(days=1)
+    end = date.fromisoformat(expiry)
+    # Use stable calendar bounds around the frozen dates, independent of retry time.
     try:
-        return len(get_calendar("XNYS").sessions_in_range(start.isoformat(), expiry))
-    except DateOutOfBounds:
-        raise CallRefused("call_options_unavailable") from None
+        calendar = get_calendar("XNYS", start=f"{start.year - 1:04d}-12-01", end=f"{end.year + 1:04d}-01-31")
+        return calendar.sessions_distance(start, end)
+    except ValueError:
+        raise CallRefused("call_calendar_unavailable") from None
 
 
 def _vol_entry(options, symbol, expiry, now):
@@ -346,9 +361,7 @@ def _vol_entry(options, symbol, expiry, now):
     ]
     if not contracts:
         raise CallRefused("call_contract_not_shown")
-    price_dec, price_text, price_moment = _snapshot_underlying(options)
-    if not 0 <= (now - price_moment).total_seconds() <= STALE_QUOTE_SECONDS:
-        raise CallRefused("call_options_stale")
+    price_dec, price_text, price_moment = _snapshot_underlying(options, now)
     entry_session = _session(price_moment)
     trading_days = _exchange_sessions_after(entry_session, expiry)
     if trading_days < 2:
@@ -438,7 +451,7 @@ def _option_entry(market, options, symbol, expiry, option_type, strike, now):
     if (isinstance(matched.get("bid"), bool) or isinstance(matched.get("ask"), bool)
             or not bid.is_finite() or not ask.is_finite() or bid < 0 or ask <= 0 or ask < bid):
         raise CallRefused("call_bad_option_quote")
-    _, price_text, price_moment = _option_underlying(market, options, symbol)
+    _, price_text, price_moment = _option_underlying(market, options, symbol, now)
     entry_session = _session(price_moment)
     if expiry <= entry_session:
         raise CallRefused("call_horizon_too_short")
@@ -674,20 +687,61 @@ class CallStore:
         context; the settlement itself stays in the record. Asking again for
         the same wake returns the same results."""
         if not self.path.exists():
-            return []
+            ensure_private_db_file(self.path)
+        key = (agent_id, run_id, sitting)
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
-            rows = [dict(row) for row in connection.execute(
-                "SELECT c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price,"
-                " c.entry_session, s.detail FROM calls c JOIN settlements s USING (call_id)"
-                " WHERE c.agent_id=? AND (SELECT COUNT(*) FROM handbacks h WHERE h.call_id=c.call_id"
-                " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
-                (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS))]
+            saved = connection.execute(
+                "SELECT results FROM handback_wakes WHERE agent_id=? AND run_id=? AND sitting=?", key
+            ).fetchone()
+            if saved is not None:
+                return json.loads(saved["results"])
+            specs = (
+                ("stock", "calls", "settlements", "handbacks",
+                 "c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price, c.entry_session"),
+                ("vol", "vol_calls", "vol_settlements", "vol_handbacks",
+                 "c.call_id, c.symbol, c.expiry, c.iv_view, c.confidence, c.entry_price,"
+                 " c.entry_iv, c.implied_move_pct, c.entry_session"),
+                ("option", "option_calls", "option_settlements", "option_handbacks",
+                 "c.call_id, c.contract, c.symbol, c.expiry, c.option_type, c.strike, c.confidence,"
+                 " c.entry_bid, c.entry_ask, c.spread_pct, c.entry_underlying_price, c.entry_session"),
+            )
+            # Older stores only tracked which results were shown. Use those rows
+            # when resuming such a wake, without adding any newly eligible calls.
+            previously_shown = any(connection.execute(
+                f"SELECT 1 FROM {handback_table} h JOIN {table} c USING (call_id)"
+                " WHERE c.agent_id=? AND h.run_id=? AND h.sitting=? LIMIT 1", key
+            ).fetchone() for _, table, _, handback_table, _ in specs)
+            candidates = []
+            for kind, table, settle_table, handback_table, cols in specs:
+                handbacks = f"FROM {handback_table} h WHERE h.call_id=c.call_id"
+                if previously_shown:
+                    eligible = f"EXISTS (SELECT 1 {handbacks} AND h.run_id=? AND h.sitting=?)"
+                    params = key
+                else:
+                    eligible = f"(SELECT COUNT(*) {handbacks}) < ?"
+                    params = (agent_id, HANDBACK_WAKES)
+                for raw in connection.execute(
+                    f"SELECT {cols}, s.detail FROM {table} c JOIN {settle_table} s USING (call_id)"
+                    f" WHERE c.agent_id=? AND {eligible} ORDER BY c.call_id DESC LIMIT ?",
+                    (*params, MAX_HANDBACKS),
+                ):
+                    row = dict(raw)
+                    row["kind"] = kind
+                    row["_handback_table"] = handback_table
+                    candidates.append(row)
+            candidates.sort(key=lambda r: r["call_id"], reverse=True)
+            rows = candidates[:MAX_HANDBACKS]
+            stamp = now.astimezone(timezone.utc).isoformat()
             for row in rows:
-                connection.execute("INSERT OR IGNORE INTO handbacks (call_id, run_id, sitting, shown_at)"
-                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting,
-                                                         now.astimezone(timezone.utc).isoformat()))
+                table = row.pop("_handback_table")
+                connection.execute(f"INSERT OR IGNORE INTO {table} (call_id, run_id, sitting, shown_at)"
+                                   " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting, stamp))
                 row["detail"] = json.loads(row["detail"])
+            connection.execute(
+                "INSERT INTO handback_wakes (agent_id, run_id, sitting, results) VALUES (?,?,?,?)",
+                (*key, json.dumps(rows)),
+            )
             return rows
 
     def counts(self):
@@ -930,6 +984,7 @@ def settle_open_calls(store, fetch, *, now, today, completed):
         return {"open": 0, "settled": 0, "pending": []}
     all_rows = calls + vol_calls + option_calls
     symbols = sorted({c["symbol"] for c in all_rows} | {YARDSTICK})
+    # Volatility settlement needs the underlying's official entry-session close.
     record = fetch(symbols, min(c["entry_session"] for c in all_rows), today)
     closes = record.get("closes") if isinstance(record, dict) and record.get("status") == "ok" else None
     sessions = sorted({s for by_day in (closes or {}).values() for s in by_day if completed(s)})
@@ -968,6 +1023,30 @@ def _signed(text):
     return text if text.startswith("-") else "+" + text
 
 
+def _format_vol_result(r, d):
+    iv_pct = format((Decimal(r["entry_iv"]) * Decimal("100")).quantize(Decimal("0.1")), "f")
+    made = (f"vol call {r['call_id']}: {r['symbol']} {r['expiry']} options priced "
+            f"+/-{r['implied_move_pct']}% (IV {iv_pct}%, {r['iv_view']}), "
+            f"made {r['entry_session']} at {r['entry_price']} ({r['confidence']})")
+    if d.get("outcome") == "unsettled":
+        return f"{made}. Could not be settled: {d.get('reason') or 'no closing price'}."
+    spy = f", SPY {_signed(d['spy_move_percent'])}%" if "spy_move_percent" in d else ", SPY unknown"
+    return (f"{made}. Settled {d['exit_session']} at {d['exit_price']}: "
+            f"{r['symbol']} moved {_signed(d['signed_move_percent'])}%{spy}. {d['outcome'].capitalize()}.")
+
+
+def _format_option_result(r, d):
+    made = (f"option call {r['call_id']}: long {r['symbol']} {r['expiry']} {r['strike']} {r['option_type']} "
+            f"at {r['entry_ask']} ask (indicative, spread {r['spread_pct']}%), "
+            f"made {r['entry_session']} ({r['symbol']} {r['entry_underlying_price']}, {r['confidence']})")
+    if d.get("outcome") == "unsettled":
+        return f"{made}. Could not be settled: {d.get('reason') or 'no closing price'}."
+    spy = f", SPY {_signed(d['spy_move_percent'])}%" if "spy_move_percent" in d else ", SPY unknown"
+    return (f"{made}. Expiry close {d['exit_underlying']} -> intrinsic {d['intrinsic']} "
+            f"({_signed(d['return_percent'])}%, {r['symbol']} {_signed(d['underlying_move_percent'])}%{spy}). "
+            f"{d['outcome'].capitalize()}.")
+
+
 def call_results_line(results):
     """Settled calls handed back to their agent as quoted data. Empty when none.
 
@@ -978,6 +1057,13 @@ def call_results_line(results):
     parts = []
     for r in results:
         d = r["detail"]
+        kind = r.get("kind") or d.get("kind") or "stock"
+        if kind == "vol":
+            parts.append(_format_vol_result(r, d))
+            continue
+        if kind == "option":
+            parts.append(_format_option_result(r, d))
+            continue
         made = (f"call {r['call_id']}: {r['symbol']} {r['direction']} within {r['horizon_days']} trading days"
                 f" ({r['confidence']}), made {r['entry_session']} at {r['entry_price']}")
         if d.get("outcome") == "unsettled":

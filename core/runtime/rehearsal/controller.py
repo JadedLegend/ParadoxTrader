@@ -636,14 +636,20 @@ class RehearsalController:
         Keyed by the wake's first move, so every move of one wake sees the same
         results and the whole wake counts once toward HANDBACK_WAKES. Only day
         runs keep calls; a rehearsal never has any."""
-        path = self.store.safe_run_file(self.run_id, CALLS_FILE)
-        if not path.exists():
-            return ""
         step = getattr(self, "_step", None)
         first = job["round"] - (step[0] - 1) if step else job["round"]
+        sitting = f"{job['agent_id']}-r{first}"
+        if 1 <= first < job["round"]:
+            # The first move can have an empty result before the calls file exists.
+            details = self.store.get_decision_details(self.run_id, sitting)
+            if details is not None:
+                return details["private_context"].get("call_results", "")
+        path = self.store.safe_run_file(self.run_id, CALLS_FILE)
+        if not path.exists() and (self.manifest.get("kind") != "day" or self.market is None):
+            return ""
         with self._memory_lock:
             results = CallStore(path).hand_back(job["agent_id"], run_id=self.run_id,
-                                                sitting=f"{job['agent_id']}-r{first}",
+                                                sitting=sitting,
                                                 now=datetime.now(timezone.utc))
         return call_results_line(results)
 
