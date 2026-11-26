@@ -6,16 +6,23 @@ permission:
   read: allow
   edit:
     "*": ask
+    "**/*": ask
+    "**/*.md": ask
     "core/runtime/*.py": allow
+    "core/runtime/**/*.py": allow
+    "core/runtime/skills/*": allow
     "core/runtime/skills/**": allow
+    "core/runtime/orientations/*": allow
     "core/runtime/orientations/**": allow
     "core/forum/*.py": allow
+    "core/forum/**/*.py": allow
     "core/messaging/*.py": allow
+    "core/messaging/**/*.py": allow
     "core/memory/*.py": allow
+    "core/memory/**/*.py": allow
     "scripts/heartbeat.py": allow
     "scripts/rehearsal.py": allow
     "tests/test_*.py": allow
-    "**/*.md": ask
   bash:
     "*": ask
     "python3 -B -m unittest tests/test_*": allow

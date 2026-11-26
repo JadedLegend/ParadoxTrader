@@ -6,20 +6,28 @@ permission:
   read: allow
   edit:
     "*": ask
+    "**/*": ask
+    "**/*.md": ask
     "frontend/*.ts": allow
     "frontend/*.tsx": allow
     "frontend/*.html": allow
     "frontend/*.css": allow
     "frontend/*.json": allow
+    "frontend/**/*.ts": allow
+    "frontend/**/*.tsx": allow
+    "frontend/**/*.html": allow
+    "frontend/**/*.css": allow
+    "frontend/**/*.json": allow
     "api/rehearsal.py": allow
     "deploy/*.py": allow
     "deploy/*.sh": allow
+    "deploy/**/*.py": allow
+    "deploy/**/*.sh": allow
     "tests/test_rehearsal_api.py": allow
     "tests/test_decision_api.py": allow
     "tests/test_heartbeat_view.py": allow
     "tests/test_deploy_scripts.py": allow
     "tests/test_api_read_contracts.py": allow
-    "**/*.md": ask
   bash:
     "*": ask
     "npm run *": allow

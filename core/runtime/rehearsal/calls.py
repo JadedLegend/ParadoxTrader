@@ -301,18 +301,78 @@ def _vol_entry(market, options, symbol, expiry):
     }
 
 
+def _observed_holiday(day):
+    """Return NYSE observed date for a fixed-date holiday."""
+    if day.weekday() == 5:
+        return day - timedelta(days=1)
+    if day.weekday() == 6:
+        return day + timedelta(days=1)
+    return day
+
+
+def _easter_sunday(year):
+    """Return Gregorian Easter Sunday for ``year``."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(h + l - 7 * m + 114, 31)
+    return date(year, month, day + 1)
+
+
+def _nth_weekday(year, month, weekday, n):
+    """Return the nth ``weekday`` (0=Mon) in ``year``-``month``."""
+    first = date(year, month, 1)
+    offset = (weekday - first.weekday()) % 7
+    return first + timedelta(days=offset + 7 * (n - 1))
+
+
+def _last_weekday(year, month, weekday):
+    """Return the last ``weekday`` (0=Mon) in ``year``-``month``."""
+    next_month = date(year + (month == 12), (month % 12) + 1, 1)
+    last = next_month - timedelta(days=1)
+    offset = (last.weekday() - weekday) % 7
+    return last - timedelta(days=offset)
+
+
+def _nyse_holidays(year):
+    """Return standard NYSE full-day market holidays for ``year``."""
+    jan1 = date(year, 1, 1)
+    # NYSE Rule 7.2 observes Sunday Jan 1 on Jan 2, never Saturday Jan 1 on Dec 31.
+    holidays = {
+        jan1 + timedelta(days=1) if jan1.weekday() == 6 else jan1,
+        _nth_weekday(year, 2, 0, 3),
+        _easter_sunday(year) - timedelta(days=2),
+        _last_weekday(year, 5, 0),
+        _observed_holiday(date(year, 7, 4)),
+        _nth_weekday(year, 9, 0, 1),
+        _nth_weekday(year, 11, 3, 4),
+        _observed_holiday(date(year, 12, 25)),
+    }
+    if year >= 1998:
+        holidays.add(_nth_weekday(year, 1, 0, 3))
+    if year >= 2022:
+        holidays.add(_observed_holiday(date(year, 6, 19)))
+    return holidays
+
+
 def _vol_sessions_after(entry_session, expiry):
     """Count regular US equity sessions after entry, through expiry inclusive."""
     if expiry <= entry_session:
         return 0
-    from exchange_calendars import get_calendar
-    from exchange_calendars.errors import DateOutOfBounds
-
-    first = date.fromisoformat(entry_session) + timedelta(days=1)
-    try:
-        return len(get_calendar("XNYS").sessions_in_range(first, expiry))
-    except DateOutOfBounds:
-        raise CallRefused("call_options_unavailable") from None
+    day, count = date.fromisoformat(entry_session), 0
+    end = date.fromisoformat(expiry)
+    holidays = set().union(*(_nyse_holidays(y) for y in range(day.year, end.year + 1)))
+    while day < end:
+        day += timedelta(days=1)
+        if day.weekday() < 5 and day not in holidays:
+            count += 1
+    return count
 
 
 class CallStore:

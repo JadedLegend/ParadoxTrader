@@ -6,12 +6,14 @@ permission:
   read: allow
   edit:
     "*": ask
-    "docs/*.md": allow
-    "README.md": allow
-    "TODO.md": allow
+    "**/*": ask
     "**/*.py": ask
     "**/*.ts": ask
     "**/*.tsx": ask
+    "docs/*.md": allow
+    "docs/**/*.md": allow
+    "README.md": allow
+    "TODO.md": allow
   bash:
     "*": ask
     "git status*": allow

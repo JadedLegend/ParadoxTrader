@@ -8,6 +8,7 @@ permission:
   grep: allow
   edit:
     "*": ask
+    "**/*": ask
     "**/*.md": ask
   bash:
     "*": ask
