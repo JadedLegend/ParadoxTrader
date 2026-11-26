@@ -5,13 +5,15 @@ color: "#8B5CF6"
 permission:
   read: allow
   edit:
+    "**/*": ask
     "*": ask
     "core/runtime/*.py": allow
+    "core/runtime/**/*.py": allow
     "core/runtime/skills/**": allow
     "core/runtime/orientations/**": allow
-    "core/forum/*.py": allow
-    "core/messaging/*.py": allow
-    "core/memory/*.py": allow
+    "core/forum/**/*.py": allow
+    "core/messaging/**/*.py": allow
+    "core/memory/**/*.py": allow
     "scripts/heartbeat.py": allow
     "scripts/rehearsal.py": allow
     "tests/test_*.py": allow

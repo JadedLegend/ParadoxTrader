@@ -7,8 +7,8 @@ permission:
   glob: allow
   grep: allow
   edit:
-    "*": ask
     "**/*.md": ask
+    "**/*": ask
   bash:
     "*": ask
     "python3 -B -m unittest*": allow

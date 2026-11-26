@@ -87,7 +87,7 @@ class FetchTests(Blocked):
         self.assertIn("Nov 20 (1 day): call 733 2.1/2.18 IV 14.2%", line)
         self.assertLessEqual(len(line), 700)
         evidence = options_evidence(record)
-        self.assertEqual((evidence["status"], len(evidence["contracts"])), ("ok", 5))
+        self.assertEqual((evidence["status"], len(evidence["contracts"])), ("ok", 8))
 
     def test_old_quotes_are_marked_and_failures_never_invent_numbers(self):
         from decimal import Decimal
@@ -112,15 +112,29 @@ class FetchTests(Blocked):
 
 
 class CacheTests(Blocked):
+    def test_options_cache_keeps_the_underlying_quotes_own_timestamp(self):
+        quote_time = OPEN - timedelta(days=1)
+        quote = {"last": 733.4, "as_of": quote_time.isoformat()}
+        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, None), lambda: quote,
+                           http_get=Scripted(), now=lambda: OPEN)
+        record = view.read()
+        self.assertEqual(record["status"], "open")
+        self.assertEqual(record["underlying_as_of"], quote_time.isoformat())
+        self.assertNotEqual(record["underlying_as_of"], record["checked_at"])
+        self.assertEqual(view.cached()["underlying_as_of"], record["underlying_as_of"])
+
     def test_one_fetch_per_half_hour_and_none_outside_market_hours(self):
         clock = [CLOSED]
         http = Scripted()
-        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, "tempest paper account"), lambda: 733.4,
-                           http_get=http, now=lambda: clock[0])
+        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, "tempest paper account"),
+                           lambda: 733.4, http_get=http, now=lambda: clock[0])
         self.assertEqual(view.read()["status"], "unavailable")  # Closed and nothing read yet.
         self.assertEqual(http.calls, [])
         clock[0] = OPEN
         self.assertEqual(view.read()["status"], "open")
+        cached = view.cached()
+        self.assertNotIn("underlying_as_of", cached)
+        self.assertEqual(cached["checked_at"], OPEN.isoformat())
         clock[0] = OPEN + timedelta(minutes=29)
         view.read()
         self.assertEqual(len(http.calls), 1)
