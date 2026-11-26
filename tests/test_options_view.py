@@ -112,18 +112,28 @@ class FetchTests(Blocked):
 
 
 class CacheTests(Blocked):
+    def test_options_cache_keeps_the_underlying_quotes_own_timestamp(self):
+        quote_time = OPEN - timedelta(days=1)
+        quote = {"last": 733.4, "as_of": quote_time.isoformat()}
+        view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, None), lambda: quote,
+                           http_get=Scripted(), now=lambda: OPEN)
+        record = view.read()
+        self.assertEqual(record["status"], "open")
+        self.assertEqual(record["underlying_as_of"], quote_time.isoformat())
+        self.assertNotEqual(record["underlying_as_of"], record["checked_at"])
+        self.assertEqual(view.cached()["underlying_as_of"], record["underlying_as_of"])
+
     def test_one_fetch_per_half_hour_and_none_outside_market_hours(self):
         clock = [CLOSED]
         http = Scripted()
         view = OptionsView(self.root, "SPY", lambda: (KEY_ID, SECRET, "tempest paper account"),
-                           lambda: (733.4, "2026-11-19T14:58:00Z"),
-                           http_get=http, now=lambda: clock[0])
+                           lambda: 733.4, http_get=http, now=lambda: clock[0])
         self.assertEqual(view.read()["status"], "unavailable")  # Closed and nothing read yet.
         self.assertEqual(http.calls, [])
         clock[0] = OPEN
         self.assertEqual(view.read()["status"], "open")
         cached = view.cached()
-        self.assertEqual(cached["underlying_as_of"], "2026-11-19T14:58:00+00:00")
+        self.assertNotIn("underlying_as_of", cached)
         self.assertEqual(cached["checked_at"], OPEN.isoformat())
         clock[0] = OPEN + timedelta(minutes=29)
         view.read()

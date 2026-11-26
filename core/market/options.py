@@ -117,7 +117,7 @@ def _pick(contracts, price):
     return chosen[:MAX_CONTRACTS]
 
 
-def fetch(symbol, price, key_id, secret, account, *, http_get, now, underlying_as_of=None):
+def fetch(symbol, price, key_id, secret, account, *, http_get, now):
     """One snapshots GET for ``symbol`` around ``price``. Never raises for data trouble."""
     stamp = now().astimezone(timezone.utc)
     base = {"checked_at": stamp.isoformat(), "symbol": symbol, "feed": FEED, "source": "alpaca-options",
@@ -155,16 +155,12 @@ def fetch(symbol, price, key_id, secret, account, *, http_get, now, underlying_a
         quoted = _time(item.get("quote_time"))
         item["stale"] = quoted is None or (stamp - quoted).total_seconds() > STALE_QUOTE_SECONDS
     state = "open" if market_open(stamp) and not all(item["stale"] for item in chosen) else "closed"
-    record = {**base, "status": state, "underlying_price": float(price), "contracts": chosen}
-    priced = _time(underlying_as_of)
-    if priced is not None:
-        record["underlying_as_of"] = priced.astimezone(timezone.utc).isoformat()
-    return record
+    return {**base, "status": state, "underlying_price": float(price), "contracts": chosen}
 
 
 class OptionsView:
     """Shared cached options record. ``credentials()`` returns (key_id, secret, label) or None;
-    ``price()`` returns the underlying's price and its own timestamp (either can be None)."""
+    ``price()`` returns a market quote with last and as_of, a numeric price, or None."""
 
     def __init__(self, cache_dir, symbol, credentials, price, *, http_get=None, now=None):
         if not isinstance(symbol, str) or not _SYMBOL.fullmatch(symbol):
@@ -200,11 +196,18 @@ class OptionsView:
             import requests
             http_get = requests.get
         try:
-            price, as_of = self.price()
+            price = self.price()
         except Exception:
-            price, as_of = None, None
-        record = fetch(self.symbol, _number(price), given[0], given[1], given[2],
-                       http_get=http_get, now=self.now, underlying_as_of=as_of)
+            price = None
+        # Older numeric callbacks can select strikes, but cannot date the underlying.
+        price_time = None
+        if isinstance(price, dict):
+            price_time = _time(price.get("as_of"))
+            price = price.get("last")
+        record = fetch(self.symbol, _number(price) if price is not None else None, given[0], given[1], given[2],
+                       http_get=http_get, now=self.now)
+        if price_time is not None and "underlying_price" in record:
+            record["underlying_as_of"] = price_time.isoformat()
         self._write(record)
         return record
 
