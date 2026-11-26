@@ -741,13 +741,17 @@ class RehearsalController:
         """Seal one call with the quotes committed for this wake (no model request)."""
         if details is None or "call_options" not in details["metadata"]:
             raise CallRefused("call_not_offered")
+        private = details["private_context"]
+        snapshot = private.get("options_snapshot")
+        if choice.get("kind") == "vol" and snapshot is None:
+            raise CallRefused("call_options_unavailable")
         path = self.store.safe_run_file(self.run_id, CALLS_FILE)
         with self._memory_lock:
             ensure_private_db_file(path)
             call_id = CallStore(path).record(
                 agent_id=job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
-                choice=choice, market=details["private_context"].get("market"),
-                options=details["private_context"].get("options_snapshot") or details["private_context"].get("options"),
+                choice=choice, market=private.get("market"),
+                options=snapshot if snapshot is not None else private.get("options"),
             )
         return [{"kind": "call", "id": call_id}]
 

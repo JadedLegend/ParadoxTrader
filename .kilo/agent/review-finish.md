@@ -7,9 +7,10 @@ permission:
   glob: allow
   grep: allow
   edit:
+    "*": ask
     "**/*.md": ask
-    "**/*": ask
   bash:
+    "*": ask
     "python3 -B -m unittest*": allow
     "python -m pytest*": allow
     "python3 -B scripts/import_library.py --check": allow
@@ -21,7 +22,6 @@ permission:
     "git status*": allow
     "git diff*": allow
     "git log*": allow
-    "*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Adversarial Verifier. You inspect every finished slice skeptically as if it is about to be merged and deployed to the EdgeTrader droplet.

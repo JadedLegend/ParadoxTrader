@@ -245,7 +245,7 @@ def _vol_entry(market, options, symbol, expiry):
         raise CallRefused("call_contract_not_shown")
     price_dec, price_text, price_moment = _vol_underlying(market, options, symbol)
     entry_session = _session(price_moment)
-    trading_days = _weekdays_after(entry_session, expiry)
+    trading_days = _vol_sessions_after(entry_session, expiry)
     if trading_days < 2:
         raise CallRefused("call_horizon_too_short")
     by_strike = {}
@@ -254,16 +254,14 @@ def _vol_entry(market, options, symbol, expiry):
             strike = Decimal(str(row["strike"]))
         except (KeyError, TypeError, ValueError, InvalidOperation):
             continue
-        if not strike.is_finite() or strike <= 0:
+        if not strike.is_finite() or strike <= 0 or row.get("type") not in ("call", "put"):
             continue
         by_strike.setdefault(strike, []).append(row)
     if not by_strike:
         raise CallRefused("call_contract_not_shown")
-    paired = [s for s, rows in by_strike.items() if {r.get("type") for r in rows} >= {"call", "put"}]
-    pool = paired or list(by_strike)
-    atm_strike = min(pool, key=lambda s: (abs(s - price_dec), s))
+    atm_strike = min(by_strike, key=lambda s: (abs(s - price_dec), s))
     atm_rows = by_strike[atm_strike]
-    quote_times, ivs = [], []
+    quote_times, ivs = [], {}
     for row in atm_rows:
         if row.get("stale") is True:
             raise CallRefused("call_options_stale")
@@ -283,10 +281,10 @@ def _vol_entry(market, options, symbol, expiry):
             except (ValueError, InvalidOperation):
                 iv = None
             if iv is not None and iv.is_finite() and iv > 0:
-                ivs.append(iv)
+                ivs.setdefault(row["type"], iv)
     if not ivs:
         raise CallRefused("call_no_iv")
-    entry_iv = (sum(ivs) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
+    entry_iv = (sum(ivs.values()) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
     implied_move_pct = (entry_iv * Decimal(str(math.sqrt(trading_days / 252))) * Decimal("100")).quantize(Decimal("0.01"))
     if implied_move_pct <= 0:
         raise CallRefused("call_no_iv")
@@ -301,6 +299,20 @@ def _vol_entry(market, options, symbol, expiry):
         "quote_time": max(quote_times).isoformat(),
         "feed": str(options.get("source") or options.get("feed") or "alpaca-options indicative delayed"),
     }
+
+
+def _vol_sessions_after(entry_session, expiry):
+    """Count regular US equity sessions after entry, through expiry inclusive."""
+    if expiry <= entry_session:
+        return 0
+    from exchange_calendars import get_calendar
+    from exchange_calendars.errors import DateOutOfBounds
+
+    first = date.fromisoformat(entry_session) + timedelta(days=1)
+    try:
+        return len(get_calendar("XNYS").sessions_in_range(first, expiry))
+    except DateOutOfBounds:
+        raise CallRefused("call_options_unavailable") from None
 
 
 class CallStore:
