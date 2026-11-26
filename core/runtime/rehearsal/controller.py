@@ -751,7 +751,8 @@ class RehearsalController:
             call_id = CallStore(path).record(
                 agent_id=job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
                 choice=choice, market=details["private_context"].get("market"),
-                options=details["private_context"].get("options_snapshot") or details["private_context"].get("options"),
+                # Legacy inquiry evidence did not preserve per-contract freshness.
+                options=details["private_context"].get("options_snapshot"),
             )
         return [{"kind": "call", "id": call_id}]
 

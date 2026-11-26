@@ -1,7 +1,6 @@
 ---
 description: Route a phase or finish-line task to the ParadoxTrader Steward (`finisher`) and its specialist team.
 agent: finisher
-subtask: true
 ---
 Steward assistant for ParadoxTrader.
 

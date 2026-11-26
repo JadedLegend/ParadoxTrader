@@ -5,28 +5,25 @@ color: "#6B4EE6"
 permission:
   read: allow
   edit:
-    "docs/**/*.md": allow
+    "*": ask
+    "docs/*.md": allow
     "README.md": allow
     "TODO.md": allow
-    "**/*.py": ask
-    "**/*.ts": ask
-    "**/*.tsx": ask
-    "**/*": ask
   bash:
+    "*": ask
     "git status*": allow
     "git diff*": allow
     "git log*": allow
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow
     "python3 -B scripts/import_library.py --check": allow
-    "*": ask
   task:
+    "*": ask
     "runtime-social": allow
     "market-feeds": allow
     "paper-loop": allow
     "dashboard-finish": allow
     "review-finish": allow
-    "*": ask
   skill: "ask"
 ---
 You are the ParadoxTrader Steward (`finisher`). Your job is to turn the owner's next approved slice into verified, phased progress without inventing scope or duplicating systems.

@@ -311,6 +311,22 @@ def _parse_quote_time(row):
     return qt.astimezone(timezone.utc)
 
 
+def _trading_sessions_after(entry_session, expiry):
+    """Count NYSE sessions after entry through expiry, including early closes."""
+    from exchange_calendars import get_calendar
+
+    if expiry <= entry_session:
+        return 0
+    start = date.fromisoformat(entry_session) + timedelta(days=1)
+    end = date.fromisoformat(expiry)
+    # Use stable calendar bounds around the frozen dates, independent of retry time.
+    try:
+        calendar = get_calendar("XNYS", start=f"{start.year - 1:04d}-12-01", end=f"{end.year + 1:04d}-01-31")
+        return calendar.sessions_distance(start, end)
+    except ValueError:
+        raise CallRefused("call_calendar_unavailable") from None
+
+
 def _vol_entry(market, options, symbol, expiry):
     """Seal ATM implied volatility and expected move from committed options snapshot."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
@@ -326,7 +342,7 @@ def _vol_entry(market, options, symbol, expiry):
         raise CallRefused("call_contract_not_shown")
     price_dec, price_text, price_moment = _vol_underlying(market, options, symbol)
     entry_session = _session(price_moment)
-    trading_days = _weekdays_after(entry_session, expiry)
+    trading_days = _trading_sessions_after(entry_session, expiry)
     if trading_days < 2:
         raise CallRefused("call_horizon_too_short")
     by_strike = {}

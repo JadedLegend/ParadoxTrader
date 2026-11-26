@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from core.market.options import options_evidence
 from core.runtime.rehearsal.calls import (
     CALL_OPTIONS, CALLS_FILE, CallRefused, CallStore,
     call_results_line, open_calls_line, settle_open_calls, settle_option_call, settle_vol_call,
@@ -21,7 +22,7 @@ from core.runtime.rehearsal.examples import ScriptedHTTP, ScriptedResponse
 from core.runtime.rehearsal.heartbeat import Heartbeat, Schedule
 from core.runtime.rehearsal.provider import OpenRouterTransport
 from core.runtime.rehearsal.store import RehearsalStore
-from scripts.evaluate_calls import main as evaluate_main, summarize_calls
+from scripts.evaluate_calls import main as evaluate_main, resolve_calls_db, summarize_calls
 from tests.test_rehearsal_provider import manifest
 
 OPEN = datetime(2026, 11, 19, 15, 0, tzinfo=timezone.utc)  # Thursday 10:00 ET.
@@ -151,13 +152,13 @@ class VolCallStoreTests(Blocked):
         [row] = self.calls.open_vol_calls("tempest")
         self.assertEqual(row["call_id"], call_id)
         self.assertEqual(row["entry_iv"], "0.142")
-        self.assertEqual(row["trading_days"], 6)
-        self.assertEqual(row["implied_move_pct"], "2.19")
+        self.assertEqual(row["trading_days"], 5)  # Excludes Thanksgiving; includes Friday's early close.
+        self.assertEqual(row["implied_move_pct"], "2.00")
         self.assertEqual(row["atm_strike"], "593")
         self.assertEqual(row["entry_session"], "2026-11-19")
         line = open_calls_line([], [row])
         self.assertIn("vol call", line)
-        self.assertIn("SPY 2026-11-27 IV high (priced +/-2.19%, medium)", line)
+        self.assertIn("SPY 2026-11-27 IV high (priced +/-2.00%, medium)", line)
 
         # Shared cap of 5 across stock and vol calls.
         for idx in range(2, CALL_OPTIONS["max_open_per_agent"] + 1):
@@ -265,6 +266,25 @@ class VolSettleTests(Blocked):
 
 
 class VolControllerTests(Blocked):
+    def test_legacy_inquiry_evidence_cannot_seal_an_options_call(self):
+        store = RehearsalStore(self.root / "sessions")
+        run_id = store.prepare(day_cfg())["run_id"]
+        controller = RehearsalController(
+            store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=ScriptedHTTP()),
+        )
+        details = {
+            "metadata": {"call_options": CALL_OPTIONS},
+            "private_context": {
+                "market": MARKET,
+                "options": options_evidence(options_snapshot(stale=True)),
+            },
+        }
+        for index, choice in enumerate((VOL_CALL, OPTION_CALL), 1):
+            job = {"agent_id": "tempest", "wake_id": f"tempest-r{index}"}
+            with self.subTest(kind=choice["kind"]), self.assertRaisesRegex(CallRefused, "call_options_unavailable"):
+                controller._call(job, choice, details)
+        self.assertFalse(CallStore(store.safe_run_file(run_id, CALLS_FILE)).has_open())
+
     def test_controller_wake_offers_and_records_vol_call(self):
         store = RehearsalStore(self.root / "sessions")
         run_id = store.prepare(day_cfg())["run_id"]
@@ -505,7 +525,7 @@ class HandBackAndEvaluateTests(Blocked):
             [opt_id, vol_id],
         )
         line = call_results_line(first)
-        self.assertIn("vol call 1: SPY 2026-11-27 options priced +/-2.19% (IV 14.2%, high)", line)
+        self.assertIn("vol call 1: SPY 2026-11-27 options priced +/-2.00% (IV 14.2%, high)", line)
         self.assertIn("option call 2: long SPY 2026-11-27 593 call at 2.18 ask (indicative, spread 3.67%)", line)
         self.assertIn("Expiry close 594 -> intrinsic 1 (-54.13%", line)
 
@@ -519,6 +539,19 @@ class HandBackAndEvaluateTests(Blocked):
             for stmt in ("DELETE FROM vol_handbacks", "DELETE FROM option_handbacks"):
                 with self.subTest(stmt=stmt), self.assertRaises(sqlite3.DatabaseError):
                     conn.execute(stmt)
+
+    def test_root_discovery_finds_calls_after_the_first_page(self):
+        root = self.root / "sessions"
+        store = RehearsalStore(root)
+        with patch("core.runtime.rehearsal.store._now", return_value="2026-11-19T15:00:00+00:00"):
+            oldest = store.prepare(day_cfg())["run_id"]
+        with patch("core.runtime.rehearsal.store._now", return_value="2026-11-20T15:00:00+00:00"):
+            for _ in range(50):
+                store.prepare(day_cfg())
+        self.assertIsNone(resolve_calls_db(root=root))
+        path = store.safe_run_file(oldest, CALLS_FILE)
+        path.touch()
+        self.assertEqual(resolve_calls_db(root=root), path)
 
     def test_evaluate_calls_summarizes_calibration_spread_and_direction_vs_payoff_without_reasons(self):
         missing = summarize_calls(self.root / "nonexistent.sqlite3")
@@ -540,7 +573,7 @@ class HandBackAndEvaluateTests(Blocked):
             choice={**STOCK_CALL, "horizon_days": 10, "confidence": "low", "reason": secret_reason},
             market=MARKET, now=OPEN,
         )
-        # Close at 594.0: vol high is right (+0.08% < 2.19%), option call ITM (+1.00) < ask (2.18) -> wrong
+        # Close at 594.0: vol high is right (+0.08% < 2.00%), option call ITM (+1.00) < ask (2.18) -> wrong
         # despite underlying moving up (+0.08% -> right_direction_net_loss_count=1), stock call stays open (horizon 10).
         settle_open_calls(
             calls,

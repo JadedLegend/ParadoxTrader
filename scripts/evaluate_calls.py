@@ -61,11 +61,17 @@ def resolve_calls_db(*, db_path=None, root=None):
         return path if path.is_file() else None
     if root is not None:
         from core.runtime.rehearsal.store import RehearsalStore
-        runs = RehearsalStore(root).list_runs(limit=50)["runs"]
-        for run in runs:
-            candidate = RehearsalStore(root).safe_run_file(run["run_id"], CALLS_FILE)
-            if candidate.is_file():
-                return candidate
+        store = RehearsalStore(root)
+        offset = 0
+        while True:
+            page = store.list_runs(limit=50, offset=offset)
+            for run in page["runs"]:
+                candidate = store.safe_run_file(run["run_id"], CALLS_FILE)
+                if candidate.is_file():
+                    return candidate
+            offset += len(page["runs"])
+            if not page["runs"] or offset >= page["total"]:
+                break
     return None
 
 
