@@ -529,7 +529,9 @@ class RehearsalController:
                 chain = self.options()
             except Exception:
                 chain = {"status": "unavailable", "reason": "the options view could not be read"}
-            chain = options_at_decision(chain, self._now()) or {}
+            moment = self._now()
+            chain = options_at_decision(chain, moment) or {}
+            private["options_committed_at"] = moment.isoformat()
             line = options_line(chain)
             expiries = sorted({c["expiration"] for c in (chain.get("contracts") or [])
                                if isinstance(c, dict) and c.get("expiration")})
@@ -748,13 +750,15 @@ class RehearsalController:
         if details is None or "call_options" not in details["metadata"]:
             raise CallRefused("call_not_offered")
         path = self.store.safe_run_file(self.run_id, CALLS_FILE)
+        private = details["private_context"]
+        committed_at = private.get("options_committed_at") if choice.get("kind") in ("option", "vol") else None
         with self._memory_lock:
             ensure_private_db_file(path)
             call_id = CallStore(path).record(
                 agent_id=job["agent_id"], run_id=self.run_id, wake_id=job["wake_id"],
-                choice=choice, market=details["private_context"].get("market"),
-                # Legacy inquiry evidence did not preserve per-contract freshness.
-                options=details["private_context"].get("options_snapshot"),
+                choice=choice, market=private.get("market"),
+                options=private.get("options_snapshot"),
+                now=datetime.fromisoformat(committed_at) if committed_at else None,
             )
         return [{"kind": "call", "id": call_id}]
 

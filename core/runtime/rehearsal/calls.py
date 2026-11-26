@@ -23,6 +23,8 @@ import math
 import re
 import sqlite3
 
+from core.market.options import STALE_QUOTE_SECONDS
+
 CALLS_FILE = "calls.sqlite3"
 CALL_OPTIONS = {
     "directions": ["up", "down"],
@@ -295,7 +297,7 @@ def _vol_underlying(market, options, symbol):
     return price, format(price.normalize(), "f"), moment.astimezone(timezone.utc)
 
 
-def _parse_quote_time(row):
+def _parse_quote_time(row, now):
     """Check staleness and return UTC quote_time, or raise CallRefused('call_options_stale')."""
     if row.get("stale") is True:
         raise CallRefused("call_options_stale")
@@ -306,12 +308,12 @@ def _parse_quote_time(row):
         qt = datetime.fromisoformat(raw_qt.replace("Z", "+00:00"))
     except ValueError:
         raise CallRefused("call_options_stale") from None
-    if qt.tzinfo is None:
+    if qt.tzinfo is None or not 0 <= (now - qt).total_seconds() <= STALE_QUOTE_SECONDS:
         raise CallRefused("call_options_stale")
     return qt.astimezone(timezone.utc)
 
 
-def _trading_sessions_after(entry_session, expiry):
+def _exchange_sessions_after(entry_session, expiry):
     """Count NYSE sessions after entry through expiry, including early closes."""
     from exchange_calendars import get_calendar
 
@@ -327,7 +329,7 @@ def _trading_sessions_after(entry_session, expiry):
         raise CallRefused("call_calendar_unavailable") from None
 
 
-def _vol_entry(market, options, symbol, expiry):
+def _vol_entry(market, options, symbol, expiry, now):
     """Seal ATM implied volatility and expected move from committed options snapshot."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
         raise CallRefused("call_options_unavailable")
@@ -342,7 +344,7 @@ def _vol_entry(market, options, symbol, expiry):
         raise CallRefused("call_contract_not_shown")
     price_dec, price_text, price_moment = _vol_underlying(market, options, symbol)
     entry_session = _session(price_moment)
-    trading_days = _trading_sessions_after(entry_session, expiry)
+    trading_days = _exchange_sessions_after(entry_session, expiry)
     if trading_days < 2:
         raise CallRefused("call_horizon_too_short")
     by_strike = {}
@@ -351,28 +353,26 @@ def _vol_entry(market, options, symbol, expiry):
             strike = Decimal(str(row["strike"]))
         except (KeyError, TypeError, ValueError, InvalidOperation):
             continue
-        if not strike.is_finite() or strike <= 0:
+        if not strike.is_finite() or strike <= 0 or row.get("type") not in ("call", "put"):
             continue
         by_strike.setdefault(strike, []).append(row)
     if not by_strike:
         raise CallRefused("call_contract_not_shown")
-    paired = [s for s, rows in by_strike.items() if {r.get("type") for r in rows} >= {"call", "put"}]
-    pool = paired or list(by_strike)
-    atm_strike = min(pool, key=lambda s: (abs(s - price_dec), s))
+    atm_strike = min(by_strike, key=lambda strike: (abs(strike - price_dec), strike))
     atm_rows = by_strike[atm_strike]
-    quote_times, ivs = [], []
+    quote_times, ivs = [], {}
     for row in atm_rows:
-        quote_times.append(_parse_quote_time(row))
+        quote_times.append(_parse_quote_time(row, now))
         if row.get("iv") is not None and not isinstance(row.get("iv"), bool):
             try:
                 iv = Decimal(str(row["iv"]))
             except (ValueError, InvalidOperation):
                 iv = None
             if iv is not None and iv.is_finite() and iv > 0:
-                ivs.append(iv)
+                ivs.setdefault(row["type"], iv)
     if not ivs:
         raise CallRefused("call_no_iv")
-    entry_iv = (sum(ivs) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
+    entry_iv = (sum(ivs.values()) / Decimal(len(ivs))).quantize(Decimal("0.0001"))
     implied_move_pct = (entry_iv * Decimal(str(math.sqrt(trading_days / 252))) * Decimal("100")).quantize(Decimal("0.01"))
     if implied_move_pct <= 0:
         raise CallRefused("call_no_iv")
@@ -399,7 +399,7 @@ def _optional_decimal(value):
     return format(dec.normalize(), "f") if dec.is_finite() else None
 
 
-def _option_entry(market, options, symbol, expiry, option_type, strike):
+def _option_entry(market, options, symbol, expiry, option_type, strike, now):
     """Seal a single-leg long option contract at its quoted ask price."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
         raise CallRefused("call_options_unavailable")
@@ -423,7 +423,7 @@ def _option_entry(market, options, symbol, expiry, option_type, strike):
             break
     if matched is None:
         raise CallRefused("call_contract_not_shown")
-    qt = _parse_quote_time(matched)
+    qt = _parse_quote_time(matched, now)
     try:
         bid = Decimal(str(matched["bid"]))
         ask = Decimal(str(matched["ask"]))
@@ -503,16 +503,16 @@ class CallStore:
                           + len(self._open_option(connection, agent_id)))
             if open_count >= CALL_OPTIONS["max_open_per_agent"]:
                 if kind == "vol":
-                    _vol_entry(market, options, choice["symbol"], choice["expiry"])
+                    _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
                 elif kind == "option":
                     _option_entry(market, options, choice["symbol"], choice["expiry"],
-                                  choice["option_type"], choice["strike"])
+                                  choice["option_type"], choice["strike"], stamp)
                 else:
                     _entry(market, choice["symbol"])
                 raise CallRefused("call_too_many_open")
             call_id = self._next_call_id(connection)
             if kind == "vol":
-                sealed = _vol_entry(market, options, choice["symbol"], choice["expiry"])
+                sealed = _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
                 connection.execute(
                     "INSERT INTO vol_calls (call_id, agent_id, run_id, wake_id, symbol, expiry, iv_view,"
                     " confidence, reason, entry_price, price_as_of, entry_iv, implied_move_pct,"
@@ -526,7 +526,7 @@ class CallStore:
                 return call_id
             if kind == "option":
                 sealed = _option_entry(market, options, choice["symbol"], choice["expiry"],
-                                       choice["option_type"], choice["strike"])
+                                       choice["option_type"], choice["strike"], stamp)
                 connection.execute(
                     "INSERT INTO option_calls (call_id, agent_id, run_id, wake_id, contract, symbol, expiry,"
                     " option_type, strike, confidence, reason, entry_bid, entry_ask, spread_pct,"
