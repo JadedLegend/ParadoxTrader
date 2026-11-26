@@ -420,7 +420,7 @@ def _last_weekday(year, month, weekday):
 
 
 def _nyse_holidays(year):
-    """Return standard NYSE full-day market holidays for ``year``."""
+    """Return NYSE full-day market holidays and known closures for ``year``."""
     jan1 = date(year, 1, 1)
     # NYSE Rule 7.2 observes Sunday Jan 1 on Jan 2, never Saturday Jan 1 on Dec 31.
     holidays = {
@@ -437,6 +437,8 @@ def _nyse_holidays(year):
         holidays.add(_nth_weekday(year, 1, 0, 3))
     if year >= 2022:
         holidays.add(_observed_holiday(date(year, 6, 19)))
+    if year == 2025:
+        holidays.add(date(2025, 1, 9))  # National day of mourning for Jimmy Carter.
     return holidays
 
 

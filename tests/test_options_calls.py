@@ -315,6 +315,25 @@ class VolCallStoreTests(Blocked):
         [row] = self.calls.open_vol_calls("tempest")
         self.assertEqual((row["trading_days"], row["implied_move_pct"]), (2, "1.27"))
 
+    def test_carter_mourning_closure_does_not_count_toward_vol_horizon(self):
+        expiry = "2025-01-10"
+
+        def record_as_of(day):
+            now = OPEN.replace(year=2025, month=1, day=day)
+            return self.calls.record(
+                agent_id="tempest", run_id="run-a", wake_id=f"tempest-r{day}",
+                choice={**VOL_CALL, "expiry": expiry}, market=MARKET, now=now,
+                options=options_snapshot(expiry=expiry, checked_at=now,
+                                         quote_time=(now - timedelta(seconds=30)).isoformat()),
+            )
+
+        with self.assertRaises(CallRefused) as refused:
+            record_as_of(8)
+        self.assertEqual(refused.exception.code, "call_horizon_too_short")
+        record_as_of(7)
+        [row] = self.calls.open_vol_calls("tempest")
+        self.assertEqual(row["trading_days"], 2)
+
 
 class VolSettleTests(Blocked):
     SESSIONS = ["2026-11-19", "2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25",

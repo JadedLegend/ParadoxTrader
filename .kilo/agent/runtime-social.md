@@ -7,13 +7,13 @@ permission:
   edit:
     "**/*": ask
     "*": ask
-    "**/*.md": ask
     "core/runtime/*.py": allow
     "core/runtime/**/*.py": allow
     "core/runtime/skills/*": allow
     "core/runtime/skills/**": allow
     "core/runtime/orientations/*": allow
     "core/runtime/orientations/**": allow
+    "**/*.md": ask
     "core/forum/*.py": allow
     "core/forum/**/*.py": allow
     "core/messaging/*.py": allow
