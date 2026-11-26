@@ -2,7 +2,7 @@
 
 Scripted offline data and controller tests; the network is blocked."""
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -297,6 +297,39 @@ class VolSettleTests(Blocked):
 
 
 class VolControllerTests(Blocked):
+    def test_recomputes_cached_freshness_once_and_reuses_it_on_recovery(self):
+        for minutes_after_fetch, stale in ((10, False), (25, True)):
+            with self.subTest(stale=stale):
+                store = RehearsalStore(self.root / f"sessions-{minutes_after_fetch}")
+                run_id = store.prepare(day_cfg())["run_id"]
+                snapshot = options_snapshot(quote_time=(OPEN - timedelta(minutes=15)).isoformat())
+                transport = OpenRouterTransport("scripted-offline", http_post=ScriptedHTTP())
+                controller = RehearsalController(store, run_id, transport=transport,
+                                                 market=lambda: MARKET, options=lambda: snapshot)
+                controller._now = lambda: OPEN + timedelta(minutes=minutes_after_fetch)
+                controller.prepare_profiles()
+                store.add_wake(run_id, "tempest")
+                controller._token = store.begin(run_id)
+                job = store.claim_job(run_id, "tempest-r1", controller._token)
+                first = controller._decision_details(job, new_picker=True)
+                self.assertTrue(all(row["stale"] == stale
+                                    for row in first["private_context"]["options_snapshot"]["contracts"]))
+                self.assertTrue(all(not row["stale"] for row in snapshot["contracts"]))
+
+                store.recover(run_id)
+                resumed = RehearsalController(store, run_id, transport=transport)
+                resumed._now = lambda: OPEN + timedelta(hours=2)
+                resumed._token = store.begin(run_id, resume=True)
+                job = store.claim_job(run_id, "tempest-r1", resumed._token)
+                details = resumed._decision_details(job, new_picker=True)
+                self.assertEqual(details["private_context"], first["private_context"])
+                if stale:
+                    with self.assertRaises(CallRefused) as refused:
+                        resumed._call(job, VOL_CALL, details)
+                    self.assertEqual(refused.exception.code, "call_options_stale")
+                else:
+                    self.assertEqual(resumed._call(job, VOL_CALL, details), [{"kind": "call", "id": 1}])
+
     def test_legacy_reduced_options_cannot_seal_a_vol_call(self):
         from core.market.options import options_evidence
 
@@ -339,7 +372,7 @@ class VolControllerTests(Blocked):
 
         controller = RehearsalController(
             store, run_id, transport=OpenRouterTransport("scripted-offline", http_post=http),
-            market=lambda: MARKET, options=lambda: options_snapshot(),
+            market=lambda: MARKET, options=lambda: options_snapshot(), now=lambda: OPEN,
         )
         job = controller.run_wake("tempest")
         self.assertEqual((job["status"], job["action"]), ("completed", "call"))
