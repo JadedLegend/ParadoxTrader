@@ -53,6 +53,7 @@ def options_snapshot(*, status="open", symbol="SPY", expiry="2026-11-27", iv=0.1
         "feed": "indicative",
         "source": "alpaca-options",
         "checked_at": checked_at.isoformat(),
+        "underlying_as_of": checked_at.isoformat(),
         "underlying_price": 593.50,
         "contracts": contracts,
     }
@@ -134,6 +135,20 @@ class VolCallStoreTests(Blocked):
     def setUp(self):
         super().setUp()
         self.calls = CallStore(self.root / CALLS_FILE)
+
+    def test_options_fetch_time_cannot_refresh_the_underlying_price(self):
+        snapshot = options_snapshot()
+        for underlying_time, code in ((None, "call_no_price"),
+                                      ((OPEN - timedelta(hours=24)).isoformat(), "call_options_stale")):
+            with self.subTest(underlying_time=underlying_time):
+                snapshot.pop("underlying_as_of", None)
+                if underlying_time is not None:
+                    snapshot["underlying_as_of"] = underlying_time
+                with self.assertRaises(CallRefused) as refused:
+                    self.calls.record(agent_id="siren", run_id="a", wake_id="siren-r1",
+                                      choice=VOL_CALL, market=MARKET, options=snapshot, now=OPEN)
+                self.assertEqual(refused.exception.code, code)
+        self.assertEqual(self.calls.all_open_vol(), [])
 
     def test_dashboard_and_settlement_reads_preserve_stock_only_schema(self):
         self.calls.record(agent_id="tempest", run_id="old", wake_id="tempest-r1",
