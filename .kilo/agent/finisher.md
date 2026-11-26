@@ -16,7 +16,9 @@ permission:
     "git diff --stat": allow
     "git diff --check": allow
     "git diff*--output*": ask
-    "git log*": allow
+    "git log -1": allow
+    "git log --oneline": allow
+    "git log --oneline -5": allow
     "git log*--output*": ask
     "python3 -B -m unittest*": allow
     "python3 -B scripts/build_* --check": allow

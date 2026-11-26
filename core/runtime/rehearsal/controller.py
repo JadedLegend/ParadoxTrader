@@ -637,7 +637,7 @@ class RehearsalController:
         results and the whole wake counts once toward HANDBACK_WAKES. Only day
         runs keep calls; a rehearsal never has any."""
         path = self.store.safe_run_file(self.run_id, CALLS_FILE)
-        if not path.exists():
+        if not path.exists() and (self.manifest.get("kind") != "day" or self.market is None):
             return ""
         step = getattr(self, "_step", None)
         first = job["round"] - (step[0] - 1) if step else job["round"]

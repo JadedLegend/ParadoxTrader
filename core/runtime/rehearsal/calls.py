@@ -24,6 +24,7 @@ import re
 import sqlite3
 
 from core.market.options import STALE_QUOTE_SECONDS
+from core.trading.queue import ensure_private_db_file
 
 CALLS_FILE = "calls.sqlite3"
 CALL_OPTIONS = {
@@ -79,6 +80,14 @@ OPTION_CALL_INSTRUCTIONS = (
 )
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS handback_wakes (
+ agent_id TEXT NOT NULL, run_id TEXT NOT NULL, sitting TEXT NOT NULL,
+ results TEXT NOT NULL, PRIMARY KEY (agent_id, run_id, sitting)
+);
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_update BEFORE UPDATE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS handback_wakes_no_delete BEFORE DELETE ON handback_wakes
+ BEGIN SELECT RAISE(ABORT, 'handback wakes are append-only'); END;
 CREATE TABLE IF NOT EXISTS calls (
  call_id INTEGER PRIMARY KEY,
  agent_id TEXT NOT NULL, run_id TEXT NOT NULL, wake_id TEXT NOT NULL,
@@ -678,9 +687,15 @@ class CallStore:
         context; the settlement itself stays in the record. Asking again for
         the same wake returns the same results."""
         if not self.path.exists():
-            return []
+            ensure_private_db_file(self.path)
+        key = (agent_id, run_id, sitting)
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
+            saved = connection.execute(
+                "SELECT results FROM handback_wakes WHERE agent_id=? AND run_id=? AND sitting=?", key
+            ).fetchone()
+            if saved is not None:
+                return json.loads(saved["results"])
             specs = (
                 ("stock", "calls", "settlements", "handbacks",
                  "c.call_id, c.symbol, c.direction, c.horizon_days, c.confidence, c.entry_price, c.entry_session"),
@@ -691,13 +706,25 @@ class CallStore:
                  "c.call_id, c.contract, c.symbol, c.expiry, c.option_type, c.strike, c.confidence,"
                  " c.entry_bid, c.entry_ask, c.spread_pct, c.entry_underlying_price, c.entry_session"),
             )
+            # Older stores only tracked which results were shown. Use those rows
+            # when resuming such a wake, without adding any newly eligible calls.
+            previously_shown = any(connection.execute(
+                f"SELECT 1 FROM {handback_table} h JOIN {table} c USING (call_id)"
+                " WHERE c.agent_id=? AND h.run_id=? AND h.sitting=? LIMIT 1", key
+            ).fetchone() for _, table, _, handback_table, _ in specs)
             candidates = []
             for kind, table, settle_table, handback_table, cols in specs:
+                handbacks = f"FROM {handback_table} h WHERE h.call_id=c.call_id"
+                if previously_shown:
+                    eligible = f"EXISTS (SELECT 1 {handbacks} AND h.run_id=? AND h.sitting=?)"
+                    params = key
+                else:
+                    eligible = f"(SELECT COUNT(*) {handbacks}) < ?"
+                    params = (agent_id, HANDBACK_WAKES)
                 for raw in connection.execute(
                     f"SELECT {cols}, s.detail FROM {table} c JOIN {settle_table} s USING (call_id)"
-                    f" WHERE c.agent_id=? AND (SELECT COUNT(*) FROM {handback_table} h WHERE h.call_id=c.call_id"
-                    " AND NOT (h.run_id=? AND h.sitting=?)) < ? ORDER BY c.call_id DESC LIMIT ?",
-                    (agent_id, run_id, sitting, HANDBACK_WAKES, MAX_HANDBACKS),
+                    f" WHERE c.agent_id=? AND {eligible} ORDER BY c.call_id DESC LIMIT ?",
+                    (*params, MAX_HANDBACKS),
                 ):
                     row = dict(raw)
                     row["kind"] = kind
@@ -711,6 +738,10 @@ class CallStore:
                 connection.execute(f"INSERT OR IGNORE INTO {table} (call_id, run_id, sitting, shown_at)"
                                    " VALUES (?,?,?,?)", (row["call_id"], run_id, sitting, stamp))
                 row["detail"] = json.loads(row["detail"])
+            connection.execute(
+                "INSERT INTO handback_wakes (agent_id, run_id, sitting, results) VALUES (?,?,?,?)",
+                (*key, json.dumps(rows)),
+            )
             return rows
 
     def counts(self):
