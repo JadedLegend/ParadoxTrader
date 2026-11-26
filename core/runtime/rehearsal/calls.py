@@ -278,7 +278,7 @@ def _entry(market, symbol):
     return format(price.normalize(), "f"), moment.astimezone(timezone.utc), market["status"]
 
 
-def _vol_underlying(market, options, symbol):
+def _option_underlying(market, options, symbol):
     """Entry underlying price + timestamp from committed market or options snapshot."""
     if isinstance(market, dict) and market.get("status") in ("ok", "closed"):
         try:
@@ -287,6 +287,11 @@ def _vol_underlying(market, options, symbol):
         except CallRefused as error:
             if error.code == "call_no_price":
                 pass
+    return _snapshot_underlying(options)
+
+
+def _snapshot_underlying(options):
+    """Read the underlying price and time sealed with the options snapshot."""
     try:
         price = Decimal(str(options["underlying_price"]))
         moment = datetime.fromisoformat(str(options["checked_at"]).replace("Z", "+00:00"))
@@ -328,7 +333,7 @@ def _exchange_sessions_after(entry_session, expiry):
         raise CallRefused("call_options_unavailable") from None
 
 
-def _vol_entry(market, options, symbol, expiry, now):
+def _vol_entry(options, symbol, expiry, now):
     """Seal ATM implied volatility and expected move from committed options snapshot."""
     if not isinstance(options, dict) or options.get("status") not in ("open", "ok"):
         raise CallRefused("call_options_unavailable")
@@ -341,7 +346,9 @@ def _vol_entry(market, options, symbol, expiry, now):
     ]
     if not contracts:
         raise CallRefused("call_contract_not_shown")
-    price_dec, price_text, price_moment = _vol_underlying(market, options, symbol)
+    price_dec, price_text, price_moment = _snapshot_underlying(options)
+    if not 0 <= (now - price_moment).total_seconds() <= STALE_QUOTE_SECONDS:
+        raise CallRefused("call_options_stale")
     entry_session = _session(price_moment)
     trading_days = _exchange_sessions_after(entry_session, expiry)
     if trading_days < 2:
@@ -431,7 +438,7 @@ def _option_entry(market, options, symbol, expiry, option_type, strike, now):
     if (isinstance(matched.get("bid"), bool) or isinstance(matched.get("ask"), bool)
             or not bid.is_finite() or not ask.is_finite() or bid < 0 or ask <= 0 or ask < bid):
         raise CallRefused("call_bad_option_quote")
-    _, price_text, price_moment = _vol_underlying(market, options, symbol)
+    _, price_text, price_moment = _option_underlying(market, options, symbol)
     entry_session = _session(price_moment)
     if expiry <= entry_session:
         raise CallRefused("call_horizon_too_short")
@@ -502,7 +509,7 @@ class CallStore:
                           + len(self._open_option(connection, agent_id)))
             if open_count >= CALL_OPTIONS["max_open_per_agent"]:
                 if kind == "vol":
-                    _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
+                    _vol_entry(options, choice["symbol"], choice["expiry"], stamp)
                 elif kind == "option":
                     _option_entry(market, options, choice["symbol"], choice["expiry"],
                                   choice["option_type"], choice["strike"], stamp)
@@ -511,7 +518,7 @@ class CallStore:
                 raise CallRefused("call_too_many_open")
             call_id = self._next_call_id(connection)
             if kind == "vol":
-                sealed = _vol_entry(market, options, choice["symbol"], choice["expiry"], stamp)
+                sealed = _vol_entry(options, choice["symbol"], choice["expiry"], stamp)
                 connection.execute(
                     "INSERT INTO vol_calls (call_id, agent_id, run_id, wake_id, symbol, expiry, iv_view,"
                     " confidence, reason, entry_price, price_as_of, entry_iv, implied_move_pct,"
