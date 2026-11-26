@@ -796,7 +796,8 @@ def update_config(req: ConfigUpdateRequest, authorization: Optional[str] = Heade
 
 
 @app.post("/api/phase")
-def set_phase(req: PhaseRequest):
+def set_phase(req: PhaseRequest, authorization: Optional[str] = Header(default=None)):
+    _require_lineage_operator(authorization)
     if req.phase not in [0, 1, 2, 3]:
         raise HTTPException(status_code=400, detail="Phase must be 0, 1, 2, or 3")
     cfg = load_config_yaml()

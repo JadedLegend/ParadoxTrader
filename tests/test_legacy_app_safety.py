@@ -36,6 +36,47 @@ class LegacyAppSafetyTests(unittest.TestCase):
                 self.assertEqual(ctx.exception.detail, "guardrails_not_writable_via_api")
             save.assert_not_called()
 
+    def test_phase_write_requires_operator_before_side_effects(self):
+        from fastapi.testclient import TestClient
+        from api import app as legacy
+        from core.runtime import config
+
+        client = TestClient(legacy.app)  # no lifespan or real stores
+        cached = {"runtime": {"current_phase": 0}}
+        cfg = {"runtime": {"current_phase": 0, "community": {"forum_open": True}}}
+        with (
+            mock.patch.object(legacy, "load_config_yaml", return_value=cfg) as load,
+            mock.patch.object(legacy, "save_config_yaml") as save,
+            mock.patch.object(legacy, "get_forum") as forum,
+            mock.patch.object(config, "_config_cache", cached),
+        ):
+            for token, headers, status, detail in (
+                ("", {}, 503, "lineage_operator_unavailable"),
+                ("test-operator", {}, 403, "lineage_operator_required"),
+                ("test-operator", {"Authorization": "Bearer wrong"}, 403, "lineage_operator_required"),
+            ):
+                with self.subTest(status=status, headers_present=bool(headers)):
+                    with mock.patch.dict(os.environ, {"LINEAGE_OPERATOR_TOKEN": token}):
+                        response = client.post("/api/phase", json={"phase": 1}, headers=headers)
+                    self.assertEqual(response.status_code, status)
+                    self.assertEqual(response.json()["detail"], detail)
+            load.assert_not_called()
+            save.assert_not_called()
+            forum.assert_not_called()
+            self.assertIs(config._config_cache, cached)
+
+            with mock.patch.dict(os.environ, {"LINEAGE_OPERATOR_TOKEN": "test-operator"}):
+                response = client.post(
+                    "/api/phase", json={"phase": 1}, headers={"Authorization": "Bearer test-operator"}
+                )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"status": "phase set", "phase": 1})
+            save.assert_called_once_with({"runtime": {"current_phase": 1, "community": {"forum_open": True}}})
+            self.assertIsNone(config._config_cache)
+            forum.return_value.post_announcement.assert_called_once_with(
+                author="SYSTEM", content="Phase advanced to Phase 1: Forum Opens."
+            )
+
     def test_no_root_render_blueprint_and_start_sh_refuses_by_default(self):
         self.assertFalse((ROOT / "render.yaml").exists())
         script = (ROOT / "start.sh").read_text()
